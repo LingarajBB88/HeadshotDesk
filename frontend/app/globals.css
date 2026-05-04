@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --max-content: 1200px;
+    --max-app: 1400px;
+  }
+
+  html {
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-paper text-ink;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-md bg-accent text-accent-fg
+           px-4 py-2 text-sm font-medium hover:opacity-90 transition;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-md border border-muted-200
+           bg-paper text-ink px-4 py-2 text-sm font-medium hover:bg-muted-50 transition;
+  }
+}

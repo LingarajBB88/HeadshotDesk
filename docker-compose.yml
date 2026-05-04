@@ -1,0 +1,59 @@
+# Local development environment for HeadshotDesk.
+# Starts Postgres, Redis, the FastAPI backend, and the Next.js frontend.
+# Run:   docker compose up
+# Stop:  docker compose down
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: headshotdesk
+      POSTGRES_PASSWORD: headshotdesk
+      POSTGRES_DB: headshotdesk
+    ports:
+      - "5432:5432"
+    volumes:
+      - headshotdesk_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U headshotdesk"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://headshotdesk:headshotdesk@db:5432/headshotdesk
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+
+volumes:
+  headshotdesk_db:

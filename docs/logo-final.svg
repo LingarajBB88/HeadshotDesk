@@ -1,0 +1,11 @@
+<svg width="380" height="120" viewBox="0 0 380 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- HeadshotDesk — final logo (combined Concept C + B color split) -->
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="80" height="80" rx="18" fill="#0B0F1A"/>
+    <text x="40" y="56" text-anchor="middle" font-family="Inter Tight, Inter, system-ui, sans-serif" font-size="38" font-weight="600" fill="#FFFFFF" letter-spacing="-2">HD</text>
+    <circle cx="65" cy="18" r="4" fill="#5B6CFF"/>
+  </g>
+  <text x="120" y="68" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" letter-spacing="-1">
+    <tspan fill="#5B6CFF">Headshot</tspan><tspan fill="#0B0F1A">Desk</tspan>
+  </text>
+</svg>

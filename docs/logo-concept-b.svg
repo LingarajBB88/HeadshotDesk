@@ -1,0 +1,10 @@
+<svg width="380" height="120" viewBox="0 0 380 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Concept B: Wordmark with custom split-color treatment + desk-edge line -->
+  <g transform="translate(20,28)">
+    <rect x="0" y="60" width="335" height="3" fill="#5B6CFF"/>
+    <text x="0" y="50" font-family="Inter Tight, Inter, system-ui, sans-serif" font-size="42" font-weight="700" letter-spacing="-1.8">
+      <tspan fill="#5B6CFF">Headshot</tspan><tspan fill="#0B0F1A">Desk</tspan>
+    </text>
+    <circle cx="332" cy="22" r="4" fill="#5B6CFF"/>
+  </g>
+</svg>

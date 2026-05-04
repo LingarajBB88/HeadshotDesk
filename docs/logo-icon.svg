@@ -1,0 +1,6 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- HeadshotDesk — icon-only version for favicons, app icons, social avatars -->
+  <rect x="20" y="20" width="80" height="80" rx="18" fill="#0B0F1A"/>
+  <text x="60" y="76" text-anchor="middle" font-family="Inter Tight, Inter, system-ui, sans-serif" font-size="38" font-weight="600" fill="#FFFFFF" letter-spacing="-2">HD</text>
+  <circle cx="85" cy="38" r="4" fill="#5B6CFF"/>
+</svg>

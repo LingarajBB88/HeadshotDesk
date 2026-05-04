@@ -1,0 +1,11 @@
+<svg width="380" height="120" viewBox="0 0 380 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Concept C: HD monogram tile (also reads as High-Definition — happy accident) -->
+  <g transform="translate(20,20)">
+    <rect x="0" y="0" width="80" height="80" rx="18" fill="#0B0F1A"/>
+    <text x="40" y="56" text-anchor="middle" font-family="Inter Tight, Inter, system-ui, sans-serif" font-size="38" font-weight="700" fill="#FFFFFF" letter-spacing="-2">HD</text>
+    <circle cx="65" cy="18" r="4" fill="#5B6CFF"/>
+  </g>
+  <text x="120" y="68" font-family="Inter, system-ui, sans-serif" font-size="30" font-weight="500" fill="#0B0F1A" letter-spacing="-1">
+    HeadshotDesk
+  </text>
+</svg>
