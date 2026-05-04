@@ -4,24 +4,26 @@ Things only Lingaraj can do. Claude can't create accounts, deploy to production,
 
 ## Before next session
 
-### Required (~1-2 hours total)
-- [ ] **Domain name** — buy via Cloudflare Registrar (at-cost pricing). Suggested: `headshotdesk.com` or `headshotdesk.app`.
-- [ ] **GitHub** — create account, create a private repo named `headshotdesk`. We'll move the scaffolded code there.
-- [ ] **Cloudflare** — sign up (free). Manages domain DNS + R2 storage.
-- [ ] **Vercel** — sign up with GitHub login. Free tier for dev; **upgrade to Pro ($20/mo) before launch** (Hobby plan forbids commercial use).
-- [ ] **Railway** — sign up. Plan: $5 trial credit, then ~$20-25/mo once we deploy backend + Redis.
-- [ ] **Neon** — sign up. Free for dev (0.5GB); **upgrade to Pro ($19/mo) before launch** for branching, autoscaling, point-in-time recovery.
-- [ ] **Stripe** — create account, stay in test mode for now. No card needed yet.
-- [ ] **Postmark** — sign up. Free for 100 emails/month while we build; **upgrade to $15/mo plan before launch.**
+### Done ✅
+- [x] **Domain** — `headshotdesk.com` registered
+- [x] **GitHub** — `LingarajBB88/HeadshotDesk` repo, scaffold pushed (commit `7c88359`)
 
-### Add at launch (don't pay yet, but we'll wire them up)
-- [ ] **Sentry** — error monitoring. Free up to 5k errors/mo.
-- [ ] **PostHog** — product analytics + feature flags + session replay. Free up to 1M events/mo.
-- [ ] **Axiom** — log aggregation. Free up to 0.5GB/day.
+### Still needed before deployment (~30 min)
+- [ ] **Cloudflare** — sign up (free). Transfer domain DNS here for at-cost renewals + R2 storage. Then create an empty R2 bucket called `headshotdesk-dev`.
+- [ ] **Vercel** — sign up with GitHub login. Free tier for dev; **upgrade to Pro ($20/mo) before launch.**
+- [ ] **Railway** — sign up. ~$20-25/mo once we deploy.
+- [ ] **Neon** — sign up. Free for dev; **Pro ($19/mo) before launch.**
+- [ ] **Stripe** — create account, test mode is fine. No card yet.
+- [ ] **Postmark** — sign up. Free for 100 emails/mo; $15/mo before launch.
+
+### Add at launch
+- [ ] **Sentry** — error monitoring (free up to 5k errors/mo)
+- [ ] **PostHog** — analytics + feature flags + session replay (free up to 1M events/mo)
+- [ ] **Axiom** — log aggregation (free up to 0.5GB/day)
 
 ### Add for v0.2 (AI features)
-- [ ] **Replicate** — sign up, add $10 credit. Pay-per-prediction.
-- [ ] **PhotoRoom** — sign up. $99/mo for 5,000 background-removal API calls (only kicks in once you have real volume).
+- [ ] **Replicate** — sign up, $10 credit
+- [ ] **PhotoRoom** — sign up ($99/mo only when volume justifies)
 
 ## Beta tester recruitment
 - [ ] Reach out to the photographers you mentioned. We don't need them yet, but warming them up now helps.

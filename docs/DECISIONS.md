@@ -104,6 +104,11 @@ A running list of meaningful decisions and the reasoning behind each. Append-onl
 **Decision:** Cloudflare Registrar.
 **Why:** At-cost pricing (no markup). ~$10/year vs $15-20 elsewhere. Domain DNS already there, simpler ops.
 
+### D-022 — Domain (locked 2026-05-04)
+**Decision:** `headshotdesk.com` registered.
+**Why:** Matches the brand exactly. `.com` for trust.
+**Next:** Once Cloudflare account exists, transfer DNS to Cloudflare for at-cost renewals + R2 + DDoS protection. Set `frontend.headshotdesk.com` and `api.headshotdesk.com` as planned subdomains.
+
 ### D-021 — Logo direction (locked 2026-05-04)
 **Decision:** Combined design — Concept C "HD" monogram tile + Concept B two-tone wordmark ("Headshot" in `#5B6CFF`, "Desk" in `#0B0F1A`).
 **Why:**

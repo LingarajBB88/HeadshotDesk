@@ -6,7 +6,7 @@ Things still to resolve. We work through these as they come up — not everythin
 - ~~Final brand name~~ ✅ **HeadshotDesk** (D-008)
 - ~~Primary accent color~~ ✅ **Cool Studio — `#5B6CFF` indigo on `#0B0F1A` ink** (D-007/D-008)
 - ~~Logo direction~~ ✅ **HD monogram + two-tone wordmark** (D-021)
-- Domain name (`headshotdesk.com` is the obvious target — confirm availability + register)
+- ~~Domain~~ ✅ **headshotdesk.com registered** (D-022)
 - Free trial length OR money-back guarantee period
 - Initial photographer beta tester list (who/how many)
 

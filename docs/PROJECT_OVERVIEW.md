@@ -41,6 +41,7 @@ Two audiences, in this order:
 ## Files in this docs folder
 
 - `PROJECT_OVERVIEW.md` — this file. Start here every session.
+- `SESSION_LOG.md` — **read the latest entry first when resuming.** Per-session log.
 - `MVP_ROADMAP.md` — release-by-release feature list.
 - `ARCHITECTURE.md` — tech architecture, data model, services map.
 - `DECISIONS.md` — log of every meaningful decision and the reasoning.
