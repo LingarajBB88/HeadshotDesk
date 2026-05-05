@@ -1,8 +1,6 @@
-"""ORM models. Each file mirrors a logical table group."""
-# Models will be added as features are built. v0.1 starts with:
-# from app.models.account import Account
-# from app.models.user import User
-# from app.models.job import Job
-# from app.models.participant import Participant
-# from app.models.file import File
-# from app.models.subscription import Subscription
+"""ORM models. Importing here ensures Alembic sees them via Base.metadata."""
+from app.models.account import Account
+from app.models.auth_session import AuthSession
+from app.models.user import User
+
+__all__ = ["Account", "User", "AuthSession"]

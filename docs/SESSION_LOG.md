@@ -5,6 +5,76 @@ Future Claude: read the **most recent entry** at the start of every session.
 
 ---
 
+## Session 3 — 2026-05-05
+
+### What got done
+**Feature 1 — Authentication shipped.** Full backend + frontend.
+
+Backend:
+- SQLAlchemy models: `Account`, `User`, `AuthSession`
+- Alembic migration `0001` runs the SQL schema (proper Python migration that wraps the `.sql` file)
+- Refresh token helpers in `core/security.py` (random URL-safe tokens, SHA256 hashed at rest)
+- Auth service: `signup`, `login`, `refresh`, `logout` (in `services/auth_service.py`)
+- Pydantic schemas for all auth requests/responses
+- Auth API routes under `/api/v1/auth/...`
+- `get_current_user` and `get_current_account` FastAPI dependencies
+- Auth router wired into `main.py`
+
+Frontend:
+- `lib/auth.ts` — token storage (localStorage for v0.1), signup/login/logout/fetchMe wrappers
+- `components/AuthCard.tsx`, `components/FormField.tsx` — shared UI
+- `/signup` page with full form + error handling
+- `/login` page
+- `/(app)/layout.tsx` — protected layout, redirects to `/login` if not authed, shows nav + sign-out
+- `/(app)/jobs/page.tsx` — placeholder dashboard until Feature 2
+- Marketing landing page updated with header + Sign in link
+
+### How to run locally
+```bash
+cd ~/HeadshotDesk
+docker compose up
+# in another terminal:
+docker compose exec backend alembic upgrade head
+# Then open:
+#   http://localhost:3000        — landing
+#   http://localhost:3000/signup — create account
+#   http://localhost:8000/docs   — API explorer
+```
+
+### Tests added + bugs fixed (same session)
+- **20-test pytest suite** under `backend/tests/test_auth.py`
+- Dev dependencies now installed in Docker image (`Dockerfile` updated)
+- Tests cover signup, login, refresh, logout, /me, email case-insensitivity, security parity (wrong-email / wrong-password indistinguishable), refresh token can't be used as access token, idempotent logout
+- **Bug caught + fixed:** `auth_sessions.ip_address` is Postgres `INET`. FastAPI TestClient sets `request.client.host = "testclient"` which fails `INET` validation. Fixed in `_client_meta` to validate IP via `ipaddress.ip_address()` before storing — drops invalid IPs to None.
+- **Test strengthening:** `test_refresh_returns_working_access_token` now verifies functional behavior (new token authenticates on /me) instead of byte-comparing tokens (which fail when issued in the same second with identical claims).
+- **Final state: 20/20 passing.**
+
+### Tested manually (browser)
+- ✅ Sign up → redirected to /jobs
+- ✅ Sign out → redirected to /login
+- ✅ Sign in → redirected to /jobs
+
+### What's queued for next session
+**Feature 2 — Jobs CRUD** (Task #14)
+
+Specifically:
+1. Backend: `Job` model, schemas, service, routes (create/list/get/update/archive)
+2. Public job slug generation (URL-safe, unique)
+3. Frontend: `/jobs` (real list, replacing placeholder), `/jobs/new`, `/jobs/[id]`
+4. Photographer dashboard with job cards + status
+5. Tests for jobs alongside auth tests
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days, no card needed at signup)
+- Photographer beta tester names (3-5 needed)
+
+### Browser-redirect scenarios still to manually verify (~30s each)
+- Refresh /jobs while logged in → should stay logged in
+- Visit /jobs in incognito → should redirect to /login
+- Edit `hsd_access` in localStorage to garbage → should redirect to /login
+
+---
+
 ## Session 2 — 2026-05-04
 
 ### What got done
