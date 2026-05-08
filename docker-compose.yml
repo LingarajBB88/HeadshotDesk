@@ -43,6 +43,9 @@ services:
       redis: { condition: service_healthy }
     volumes:
       - ./backend:/app
+    # Override the Dockerfile CMD with --reload for local dev so file changes
+    # are picked up without restarting the container.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   frontend:
     image: node:22-alpine

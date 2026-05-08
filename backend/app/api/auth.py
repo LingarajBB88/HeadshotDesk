@@ -11,10 +11,12 @@ from app.schemas.auth import (
     AccessTokenOnly,
     AccountOut,
     AuthResponse,
+    ForgotPasswordRequest,
     LoginRequest,
     LogoutRequest,
     MeResponse,
     RefreshRequest,
+    ResetPasswordRequest,
     SignupRequest,
     TokenPair,
     UserOut,
@@ -99,6 +101,31 @@ def logout(
     db: Session = Depends(get_db),
 ) -> Response:
     auth_service.logout(db, refresh_token=payload.refresh_token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> Response:
+    """
+    Always returns 204 — even if the email isn't in our system —
+    to prevent email enumeration. The actual reset email is only
+    sent if the address belongs to a real account.
+    """
+    auth_service.request_password_reset(db, email=payload.email)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> Response:
+    auth_service.reset_password(
+        db, token=payload.token, new_password=payload.new_password
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

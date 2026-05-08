@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from datetime import timedelta
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +24,10 @@ from app.core.security import (
     verify_password,
 )
 from app.models import Account, AuthSession, User
+from app.services import email_service
+
+# Password reset tokens are valid for one hour.
+PASSWORD_RESET_TTL = timedelta(hours=1)
 
 
 def _utcnow() -> datetime:
@@ -181,3 +187,70 @@ def logout(db: Session, *, refresh_token: str) -> None:
     if session is not None and session.revoked_at is None:
         session.revoked_at = _utcnow()
         db.commit()
+
+
+# ============================================================================
+# Password reset
+# ============================================================================
+
+def request_password_reset(db: Session, *, email: str) -> None:
+    """
+    Generate a password reset token and email it. Always returns silently —
+    we don't reveal whether the email exists in our system, to prevent email
+    enumeration attacks.
+    """
+    user = db.scalar(select(User).where(User.email == email))
+    if user is None or user.deleted_at is not None or user.password_hash is None:
+        # Pretend we sent the email. Don't leak that the account doesn't exist.
+        return
+
+    raw_token = generate_refresh_token()  # reuse: 32 bytes of URL-safe random
+    user.password_reset_token_hash = hash_refresh_token(raw_token)
+    user.password_reset_token_expires_at = _utcnow() + PASSWORD_RESET_TTL
+    db.commit()
+
+    reset_url = f"{settings.frontend_url}/reset-password?token={raw_token}"
+    email_service.send_password_reset_email(
+        to_email=user.email,
+        reset_url=reset_url,
+        user_name=user.name,
+    )
+
+
+def reset_password(db: Session, *, token: str, new_password: str) -> None:
+    """Validate token, set new password, invalidate the token + revoke all sessions."""
+    token_hash = hash_refresh_token(token)
+    user = db.scalar(
+        select(User).where(User.password_reset_token_hash == token_hash)
+    )
+    now = _utcnow()
+    if (
+        user is None
+        or user.password_reset_token_expires_at is None
+        or user.password_reset_token_expires_at <= now
+        or user.deleted_at is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This reset link is invalid or has expired.",
+        )
+
+    # Update password
+    user.password_hash = hash_password(new_password)
+    # Invalidate the reset token
+    user.password_reset_token_hash = None
+    user.password_reset_token_expires_at = None
+
+    # Belt and suspenders: revoke every active session for this user, forcing
+    # re-login everywhere. If the password was reset because of a compromise,
+    # this kicks the attacker out.
+    sessions = db.scalars(
+        select(AuthSession).where(
+            AuthSession.user_id == user.id,
+            AuthSession.revoked_at.is_(None),
+        )
+    ).all()
+    for s in sessions:
+        s.revoked_at = now
+
+    db.commit()

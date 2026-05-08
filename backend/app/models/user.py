@@ -25,6 +25,12 @@ class User(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Password reset — only the hash is stored; the raw token is emailed.
+    password_reset_token_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    password_reset_token_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

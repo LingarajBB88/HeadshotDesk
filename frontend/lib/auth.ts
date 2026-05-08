@@ -125,3 +125,22 @@ export async function fetchMe(): Promise<MeResponse | null> {
 export function isAuthenticated(): boolean {
   return getAccessToken() !== null;
 }
+
+// --- Password reset ---
+
+export async function requestPasswordReset(email: string): Promise<void> {
+  await api("/api/v1/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  await api("/api/v1/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+}

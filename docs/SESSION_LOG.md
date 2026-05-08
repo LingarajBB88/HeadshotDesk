@@ -5,6 +5,198 @@ Future Claude: read the **most recent entry** at the start of every session.
 
 ---
 
+## Session 5 — 2026-05-07
+
+### What got done
+**Mobile responsive pass + logo polish + forgot password flow shipped.**
+
+Mobile fixes:
+- App nav header: HD wordmark hides on phones (icon only), account name hides on small screens, tighter spacing
+- `/jobs` list: stacked cards on mobile, table on desktop (`sm:` breakpoint)
+- Job detail header wraps cleanly on mobile (title + status + archive button)
+- Marketing hero: 4xl → 5xl → 6xl progressive scale instead of jumping
+- Marketing/auth/app layouts all use `px-4 sm:px-6` for breathing room
+
+Logo (`components/Logo.tsx`):
+- New reusable `<Logo />` component with the accent dot at top-right corner of the HD tile
+- Two sizes (`sm`, `md`), optional wordmark, optional `hideWordmarkOnMobile`
+- Replaces inline HD tiles in 3 places: marketing nav, app nav, AuthCard
+
+Forgot password flow:
+- Migration 0002: `password_reset_token_hash` + `password_reset_token_expires_at` columns on `users`
+- `services/email_service.py`: dev mode logs to stdout, production wired for Postmark
+- `auth_service`: `request_password_reset` (email-enumeration safe) + `reset_password` (revokes all sessions on success)
+- `POST /api/v1/auth/forgot-password` (always 204, even for unknown emails)
+- `POST /api/v1/auth/reset-password` (token-based, single-use, 1-hour expiry)
+- Frontend: `/forgot-password` page, `/reset-password?token=...` page with token validation, "Forgot password?" link from login
+- 8 new tests (`test_password_reset.py`)
+
+Bugs caught + fixed:
+- **`docker-compose.yml`**: backend now runs uvicorn with `--reload`, so file edits are picked up automatically. Was causing stale-code 404s on new routes.
+- **`lib/api.ts`**: helper threw on 204 No Content responses (empty body, can't parse JSON). Added explicit 204 handling. Affected logout, forgot-password, reset-password — all silently broken.
+
+### Tested manually (browser)
+- ✅ Logo dot visible in all 3 places (marketing, auth card, app nav)
+- ✅ Mobile layout pass on Chrome DevTools iPhone SE preset
+- ✅ Forgot password → dev email URL in logs → reset → new password works → old password fails
+- ✅ Job creation works (was failing due to stale-code 404 — fixed by `--reload`)
+- ✅ Job detail page rendering correctly (screenshot verified)
+
+### What's queued for next session
+**Feature 3 — Participant signup forms** (Task #15)
+
+Specifically:
+1. Backend: `Participant` model, schemas, service, routes
+2. CSV import (parse, dedupe by email, bulk create)
+3. Public signup form at `/s/{slug}` (no auth required)
+4. Frontend: participant list inside `/jobs/[id]`, CSV upload UI, signup form share link
+5. Tests for participant flow
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days, no card needed at signup)
+- Photographer beta tester names (3-5 needed)
+
+---
+
+## Session 6 — 2026-05-08
+
+### What got done
+**Feature 2 — Jobs CRUD shipped + lots of polish/bug fixes.**
+
+Jobs CRUD (separate session block — see end of Session 5 entry which got
+inlined here over the day):
+- Backend: Job model, schemas, service, routes, 32 tests
+- Frontend: list with Active/Archived tabs, create form, detail with archive,
+  clickable rows, StatusPill component
+- Cross-account isolation enforced in the service layer (defense-in-depth)
+
+Validation hardening:
+- StrictEmail type rejects single-char TLDs
+- shoot_date required + must be today or later (create-time only)
+- location required + must contain at least one letter (no pure digits)
+- Reusable form-error helper that maps Pydantic 422 to inline field errors
+
+Form error handling overhaul:
+- ApiError.fieldErrors getter for Pydantic 422 detail arrays
+- classifyFormError helper used by all 5 forms (signup/login/forgot/reset/new-job)
+- Friendlier wording mapping ("value is not a valid email address" →
+  "Enter a valid email address.")
+
+Bug fixes:
+- docker-compose: uvicorn now runs with --reload (was causing stale-code 404s)
+- lib/api.ts: handle 204 No Content responses (was crashing logout, forgot/reset)
+- Job rows: entire row clickable, not just the name link
+- "[object Object]" form errors fixed via the new error classifier
+
+### Tested manually
+- Sign up / sign in / sign out cycle ✓
+- Forgot password → dev email URL → reset → old fails / new works ✓
+- Create job with valid input ✓
+- Job creation with invalid email shows inline error ✓
+- Job creation with past date / missing fields blocked ✓
+- Active / Archived tabs work ✓
+- Clicking anywhere on a job row navigates ✓
+
+### Tests
+**60 passing total** (20 auth + 8 password reset + 32 jobs).
+
+### What's queued for next session
+**Feature 3 — Participant signup forms** (Task #15)
+
+Specifically:
+1. Backend: `Participant` model (table already exists in schema), schemas, service, routes
+2. CSV import endpoint (parse, dedupe by email, bulk create)
+3. Public signup form at `/s/{slug}` (no auth required) — visitors fill in name + email + custom fields
+4. Frontend: participant list + counts inside `/jobs/[id]`, CSV upload UI, "Copy signup link" button
+5. Tests for participant flow
+
+After Feature 3 lands, a photographer can run a complete shoot end-to-end on HeadshotDesk (minus AI retouch + galleries which are v0.2).
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days)
+- Photographer beta tester names (3-5 needed)
+- Email validation depth — `gmail.co` is technically valid (`.co` is a real TLD).
+  Future options: confirm-email field on signup, MX record validation, "did
+  you mean .com?" warnings. For MVP, accept the looseness.
+
+---
+
+## Session 5 — 2026-05-07
+(merged into Session 6 above due to continuous work over multiple days)
+
+---
+
+## Session 4 — 2026-05-06
+
+### What got done
+**Feature 2 — Jobs CRUD shipped.** Full backend + frontend + tests.
+
+Backend (6 new + 3 modified files):
+- `models/job.py` — SQLAlchemy `Job` model (mirrors existing SQL schema, no new migration needed)
+- `core/slugs.py` — URL-safe slug generator using Crockford-style alphabet (no confusable chars)
+- `schemas/job.py` — `JobCreate`, `JobUpdate`, `JobOut`, `JobListItem`, `JobList`
+- `services/job_service.py` — create/list/get/update/archive, all account-scoped
+- `api/jobs.py` — REST routes:
+  - `POST   /api/v1/jobs`
+  - `GET    /api/v1/jobs?include_archived=true`
+  - `GET    /api/v1/jobs/{id}`
+  - `PATCH  /api/v1/jobs/{id}`
+  - `POST   /api/v1/jobs/{id}/archive`
+- Wired into `main.py`
+
+**Cross-account safety enforced in the service layer**, not the route layer — so it's impossible to accidentally leak data even if a future route forgets the check. Tests verify this.
+
+Frontend (4 new + 1 modified files):
+- `lib/jobs.ts` — typed API client + display helpers
+- `components/StatusPill.tsx` — color-coded job status indicator
+- `/jobs` — real list view (replaces placeholder), shows table OR empty state
+- `/jobs/new` — create form
+- `/jobs/[id]` — detail page with archive button + placeholder participant section
+
+Tests (1 new file, 24 tests):
+- Auth required on all endpoints
+- Create (minimal, full, validation, slug uniqueness)
+- List (empty, populated, **cross-account isolation**, archived filtering)
+- Get (own, other-account returns 404, nonexistent returns 404)
+- Update (single field, partial, status, **cross-account rejected**)
+- Archive (sets status + timestamp, idempotent, cross-account rejected)
+
+### How to test locally
+```bash
+cd ~/HeadshotDesk
+docker compose up
+
+# In another terminal — run all tests (auth + jobs):
+docker compose exec backend pytest tests/ -v
+
+# Then in browser, while logged in:
+# - http://localhost:3000/jobs       → empty state
+# - Click "New job" → create one
+# - Click the job → see detail page
+# - Archive it
+```
+
+### What's queued for next session
+**Feature 3 — Participant signup forms** (Task #15)
+
+Specifically:
+1. Backend: `Participant` model, schemas, service, routes
+2. CSV import (parse, dedupe by email, create participants in bulk)
+3. Public signup form at `/s/{slug}` (no auth required) — visitors fill in their name + email + optional fields
+4. Frontend: participant list inside `/jobs/[id]`, CSV upload UI, signup form share link
+5. Tests for participant flow
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days, no card needed at signup)
+- Photographer beta tester names (3-5 needed)
+
+### Browser-redirect scenarios still to manually verify (~30s each)
+- Refresh /jobs while logged in → should stay logged in
+- Visit /jobs in incognito → should redirect to /login
+- Edit `hsd_access` in localStorage to garbage → should redirect to /login
+
+---
+
 ## Session 3 — 2026-05-05
 
 ### What got done

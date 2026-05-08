@@ -8,15 +8,18 @@ import { AuthCard } from "@/components/AuthCard";
 import { FormField } from "@/components/FormField";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
+import { classifyFormError } from "@/lib/form-errors";
 
 export default function LoginPage() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
+    setFieldErrors({});
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
@@ -27,9 +30,13 @@ export default function LoginPage() {
       router.push("/jobs");
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
+        // Generic — don't leak which was wrong.
         setFormError("Incorrect email or password.");
       } else {
-        setFormError("Something went wrong. Please try again.");
+        const c = classifyFormError(err);
+        if (c.fieldErrors) setFieldErrors(c.fieldErrors);
+        else if (c.formError) setFormError(c.formError);
+        else setFormError("Something went wrong. Please try again.");
       }
     } finally {
       setSubmitting(false);
@@ -56,6 +63,7 @@ export default function LoginPage() {
           type="email"
           autoComplete="email"
           required
+          error={fieldErrors.email}
         />
         <FormField
           label="Password"
@@ -63,7 +71,14 @@ export default function LoginPage() {
           type="password"
           autoComplete="current-password"
           required
+          error={fieldErrors.password}
         />
+
+        <p className="-mt-2 mb-4 text-right text-xs">
+          <Link href="/forgot-password" className="text-muted-600 hover:text-accent">
+            Forgot password?
+          </Link>
+        </p>
 
         {formError ? (
           <p className="mb-4 text-sm text-red-600" role="alert">

@@ -8,6 +8,7 @@ import { AuthCard } from "@/components/AuthCard";
 import { FormField } from "@/components/FormField";
 import { ApiError } from "@/lib/api";
 import { signup } from "@/lib/auth";
+import { classifyFormError } from "@/lib/form-errors";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -30,16 +31,13 @@ export default function SignupPage() {
       });
       router.push("/jobs");
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setFieldErrors({ email: err.message });
-        } else if (err.status === 422) {
-          setFormError("Please double-check your details.");
-        } else {
-          setFormError(err.message);
-        }
+      if (err instanceof ApiError && err.status === 409) {
+        setFieldErrors({ email: err.message });
       } else {
-        setFormError("Something went wrong. Please try again.");
+        const c = classifyFormError(err);
+        if (c.fieldErrors) setFieldErrors(c.fieldErrors);
+        else if (c.formError) setFormError(c.formError);
+        else setFormError("Something went wrong. Please try again.");
       }
     } finally {
       setSubmitting(false);

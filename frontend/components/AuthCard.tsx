@@ -3,6 +3,8 @@
 
 import Link from "next/link";
 
+import { Logo } from "@/components/Logo";
+
 export function AuthCard({
   title,
   subtitle,
@@ -17,17 +19,8 @@ export function AuthCard({
   return (
     <main className="min-h-dvh flex items-center justify-center px-6 py-12 bg-muted-50">
       <div className="w-full max-w-md">
-        <Link href="/" className="flex items-center gap-2 justify-center mb-8">
-          <span
-            className="inline-flex items-center justify-center h-10 w-10 rounded-card bg-ink text-paper font-display font-semibold"
-            style={{ letterSpacing: "-1px" }}
-          >
-            HD
-          </span>
-          <span className="text-lg font-medium tracking-tight">
-            <span className="text-accent">Headshot</span>
-            <span className="text-ink">Desk</span>
-          </span>
+        <Link href="/" className="flex justify-center mb-8">
+          <Logo size="md" wordmark />
         </Link>
 
         <div className="bg-paper border border-muted-200 rounded-dialog p-8 shadow-sm">

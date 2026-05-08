@@ -4,11 +4,13 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.schemas.types import StrictEmail
+
 
 # --- Requests ---
 
 class SignupRequest(BaseModel):
-    email: EmailStr
+    email: StrictEmail
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(min_length=1, max_length=120)
     account_name: str = Field(min_length=1, max_length=120)
@@ -16,7 +18,7 @@ class SignupRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr  # Login uses base EmailStr — we just need to look up an existing account.
     password: str
 
 
@@ -26,6 +28,15 @@ class RefreshRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: StrictEmail
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 # --- Response shapes ---

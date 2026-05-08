@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { type Account, type User, fetchMe, logout } from "@/lib/auth";
 
 // Layout for authenticated pages. Redirects to /login if no valid session.
@@ -46,17 +47,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh">
       <header className="border-b border-muted-200 bg-paper">
-        <div className="mx-auto max-w-[1400px] px-6 h-14 flex items-center gap-6">
-          <Link href="/jobs" className="flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-ink text-paper text-xs font-display font-semibold">
-              HD
-            </span>
-            <span className="font-medium text-sm tracking-tight">
-              <span className="text-accent">Headshot</span>
-              <span className="text-ink">Desk</span>
-            </span>
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">
+          {/* Logo — wordmark hidden on small screens, only HD tile shows */}
+          <Link href="/jobs">
+            <Logo size="sm" wordmark hideWordmarkOnMobile />
           </Link>
-          <nav className="flex items-center gap-5 text-sm text-muted-600">
+
+          {/* Primary nav — tighter spacing on mobile */}
+          <nav className="flex items-center gap-3 sm:gap-5 text-sm text-muted-600">
             <Link href="/jobs" className="hover:text-ink">
               Jobs
             </Link>
@@ -67,8 +65,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Settings
             </Link>
           </nav>
+
+          {/* Account info — name hidden on mobile, sign-out always visible */}
           <div className="ml-auto flex items-center gap-3 text-sm">
-            <span className="text-muted-600">{state.account.name}</span>
+            <span className="hidden md:inline text-muted-600">{state.account.name}</span>
             <button
               onClick={handleLogout}
               className="text-muted-600 hover:text-ink transition"
@@ -78,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1400px] px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10">{children}</main>
     </div>
   );
 }
