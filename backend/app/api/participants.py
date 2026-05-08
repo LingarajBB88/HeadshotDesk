@@ -1,0 +1,114 @@
+"""
+Participants API — auth-required photographer-facing routes.
+
+The public signup-form endpoints live separately in app/api/public.py.
+"""
+from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_account
+from app.db import get_db
+from app.models import Account
+from app.schemas.participant import (
+    CsvImportResult,
+    ParticipantCreate,
+    ParticipantList,
+    ParticipantOut,
+    ParticipantUpdate,
+)
+from app.services import participant_service
+
+router = APIRouter()
+
+
+# Nested-under-job routes ---------------------------------------------------
+
+@router.get("/jobs/{job_id}/participants", response_model=ParticipantList)
+def list_for_job(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantList:
+    items, total = participant_service.list_participants(
+        db, account=account, job_id=job_id
+    )
+    return ParticipantList(
+        items=[ParticipantOut.model_validate(p) for p in items],
+        total=total,
+    )
+
+
+@router.post(
+    "/jobs/{job_id}/participants",
+    response_model=ParticipantOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_for_job(
+    job_id: str,
+    payload: ParticipantCreate,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    p = participant_service.add_participant(
+        db,
+        account=account,
+        job_id=job_id,
+        name=payload.name,
+        email=payload.email,
+        title=payload.title,
+    )
+    return ParticipantOut.model_validate(p)
+
+
+@router.post(
+    "/jobs/{job_id}/participants/import",
+    response_model=CsvImportResult,
+)
+async def import_csv_for_job(
+    job_id: str,
+    file: UploadFile = File(...),
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> CsvImportResult:
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")  # strip BOM if present
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    result = participant_service.import_csv(
+        db, account=account, job_id=job_id, csv_text=text
+    )
+    return CsvImportResult(**result)
+
+
+# Direct routes -------------------------------------------------------------
+
+@router.patch("/participants/{participant_id}", response_model=ParticipantOut)
+def update(
+    participant_id: str,
+    payload: ParticipantUpdate,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    p = participant_service.update_participant(
+        db,
+        account=account,
+        participant_id=participant_id,
+        fields=payload.model_dump(exclude_unset=True),
+    )
+    return ParticipantOut.model_validate(p)
+
+
+@router.delete(
+    "/participants/{participant_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+def delete(
+    participant_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> Response:
+    participant_service.delete_participant(
+        db, account=account, participant_id=participant_id
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

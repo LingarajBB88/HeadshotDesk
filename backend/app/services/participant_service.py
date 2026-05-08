@@ -1,0 +1,335 @@
+"""
+Participant business logic. All authed operations are scoped to the
+participant's parent job, which is in turn scoped to the current account.
+"""
+from __future__ import annotations
+
+import csv
+import io
+
+from fastapi import HTTPException, status
+from pydantic import ValidationError
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.core.ids import new_id
+from app.core.security import generate_refresh_token  # reused for opaque tokens
+from app.models import Account, Job, Participant
+from app.schemas.participant import ParticipantCreate
+from app.services import job_service
+
+
+# ============================================================================
+# Authed (photographer-side) operations
+# ============================================================================
+
+def list_participants(
+    db: Session,
+    *,
+    account: Account,
+    job_id: str,
+) -> tuple[list[Participant], int]:
+    # Verify the job belongs to the current account (raises 404 if not).
+    job_service.get_job(db, account=account, job_id=job_id)
+
+    stmt = (
+        select(Participant)
+        .where(Participant.job_id == job_id)
+        .order_by(Participant.created_at.asc())
+    )
+    items = list(db.scalars(stmt).all())
+    total = (
+        db.scalar(
+            select(func.count())
+            .select_from(Participant)
+            .where(Participant.job_id == job_id)
+        )
+        or 0
+    )
+    return items, total
+
+
+def add_participant(
+    db: Session,
+    *,
+    account: Account,
+    job_id: str,
+    name: str,
+    email: str | None,
+    title: str | None,
+) -> Participant:
+    job_service.get_job(db, account=account, job_id=job_id)
+
+    if email:
+        existing = db.scalar(
+            select(Participant).where(
+                Participant.job_id == job_id,
+                Participant.email == email,
+            )
+        )
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A participant with this email is already on this job.",
+            )
+
+    participant = Participant(
+        id=new_id("part"),
+        job_id=job_id,
+        name=name.strip(),
+        email=email,
+        title=title.strip() if title else None,
+        gallery_token=generate_refresh_token(),
+    )
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    return participant
+
+
+def get_participant(
+    db: Session,
+    *,
+    account: Account,
+    participant_id: str,
+) -> Participant:
+    p = db.get(Participant, participant_id)
+    if p is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Participant not found."
+        )
+    # Verify the parent job is in this account.
+    job_service.get_job(db, account=account, job_id=p.job_id)
+    return p
+
+
+def update_participant(
+    db: Session,
+    *,
+    account: Account,
+    participant_id: str,
+    fields: dict,
+) -> Participant:
+    p = get_participant(db, account=account, participant_id=participant_id)
+
+    for key, value in fields.items():
+        if hasattr(p, key):
+            if isinstance(value, str):
+                value = value.strip() or None if key != "name" else value.strip()
+            setattr(p, key, value)
+
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+def delete_participant(
+    db: Session, *, account: Account, participant_id: str
+) -> None:
+    p = get_participant(db, account=account, participant_id=participant_id)
+    db.delete(p)
+    db.commit()
+
+
+# ============================================================================
+# CSV import
+# ============================================================================
+
+_DELIMITER_CANDIDATES = (",", ";", "\t", "|")
+
+
+def _preprocess_csv(csv_text: str) -> str:
+    """
+    Make the parser tolerant of common real-world CSV quirks:
+    - Strip BOM (utf-8-sig at decode time should catch this, but defense-in-depth)
+    - Normalize CRLF / CR line endings to LF
+    - Skip Excel-style 'sep=,' preamble
+    - Skip leading blank lines
+    """
+    # Strip BOM
+    if csv_text.startswith("﻿"):
+        csv_text = csv_text[1:]
+    # Normalize line endings
+    csv_text = csv_text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = csv_text.split("\n")
+    # Skip "sep=,", "sep=;", etc. that Excel sometimes adds
+    while lines and lines[0].strip().lower().startswith("sep="):
+        lines = lines[1:]
+    # Skip leading blank lines
+    while lines and not lines[0].strip():
+        lines = lines[1:]
+    return "\n".join(lines)
+
+
+def _detect_delimiter(first_line: str) -> str:
+    """
+    Pick the most likely CSV delimiter from the header line.
+
+    Comma is the default. Semicolon is what European/German Excel uses (the
+    comma is reserved for decimals there). Tab is what spreadsheet
+    copy-paste produces.
+    """
+    counts = {d: first_line.count(d) for d in _DELIMITER_CANDIDATES}
+    best, best_count = max(counts.items(), key=lambda kv: kv[1])
+    return best if best_count > 0 else ","
+
+
+def import_csv(
+    db: Session,
+    *,
+    account: Account,
+    job_id: str,
+    csv_text: str,
+) -> dict:
+    """
+    Bulk-import participants from CSV. Recognized columns: name, email, title.
+    Header row required. Each row is validated via the ParticipantCreate
+    Pydantic schema, so all the same rules as manual create apply (StrictEmail,
+    length limits, etc). Validation errors are collected per row, not fatal.
+    Duplicate emails (within this job) are silently deduplicated.
+    """
+    job_service.get_job(db, account=account, job_id=job_id)
+
+    csv_text = _preprocess_csv(csv_text)
+    if not csv_text.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="CSV file is empty.",
+        )
+
+    # Auto-detect delimiter (comma / semicolon / tab / pipe) so Excel exports
+    # from any locale work without the user having to convert manually.
+    first_line = csv_text.split("\n", 1)[0]
+    delimiter = _detect_delimiter(first_line)
+
+    reader = csv.DictReader(io.StringIO(csv_text), delimiter=delimiter)
+    fieldnames_lower = [
+        (f or "").lower().strip() for f in (reader.fieldnames or [])
+    ]
+    if "name" not in fieldnames_lower:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "CSV must include a 'name' column. Found: "
+                + (", ".join(reader.fieldnames or []) or "no headers")
+            ),
+        )
+
+    # Lower-case header lookup so Name/NAME/name all work
+    def get(row: dict, key: str) -> str:
+        for k, v in row.items():
+            if k and k.lower().strip() == key:
+                return (v or "").strip()
+        return ""
+
+    # Existing emails on this job — used to skip dupes
+    existing_emails_lower: set[str] = {
+        e.lower()
+        for (e,) in db.execute(
+            select(Participant.email).where(
+                Participant.job_id == job_id,
+                Participant.email.is_not(None),
+            )
+        )
+        if e is not None
+    }
+
+    created = 0
+    skipped_duplicates = 0
+    errors: list[str] = []
+    seen_in_batch: set[str] = set()
+
+    for i, row in enumerate(reader, start=2):  # header is row 1
+        # Skip fully-blank rows silently
+        if not any((v or "").strip() for v in row.values()):
+            continue
+
+        name = get(row, "name")
+        email = get(row, "email") or None
+        title = get(row, "title") or None
+
+        # Validate via the same Pydantic schema as manual create.
+        try:
+            validated = ParticipantCreate(name=name, email=email, title=title)
+        except ValidationError as e:
+            for err in e.errors():
+                field = err["loc"][-1] if err["loc"] else "row"
+                msg = err["msg"]
+                errors.append(f"Row {i}: {field} — {msg}")
+            continue
+
+        # Dedupe by email (case-insensitive) — already in DB or earlier in this CSV
+        if validated.email:
+            el = validated.email.lower()
+            if el in existing_emails_lower or el in seen_in_batch:
+                skipped_duplicates += 1
+                continue
+            seen_in_batch.add(el)
+
+        participant = Participant(
+            id=new_id("part"),
+            job_id=job_id,
+            name=validated.name,
+            email=validated.email,
+            title=validated.title,
+            gallery_token=generate_refresh_token(),
+        )
+        db.add(participant)
+        created += 1
+
+    db.commit()
+    return {
+        "created": created,
+        "skipped_duplicates": skipped_duplicates,
+        "errors": errors,
+    }
+
+
+# ============================================================================
+# Public (no auth) — for the signup form at /s/{slug}
+# ============================================================================
+
+def get_job_by_slug(db: Session, *, slug: str) -> Job:
+    """Public-safe lookup by slug. 404 if not found OR if not accepting signups."""
+    job = db.scalar(select(Job).where(Job.public_slug == slug))
+    if job is None or job.archived_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="This signup link is not active."
+        )
+    return job
+
+
+def public_signup(
+    db: Session,
+    *,
+    slug: str,
+    name: str,
+    email: str,
+    title: str | None,
+) -> Participant:
+    """A participant signs themselves up via the public signup form."""
+    job = get_job_by_slug(db, slug=slug)
+
+    # Reuse the dedupe-by-email guard. If the email already exists, treat as
+    # idempotent: the participant probably hit submit twice.
+    existing = db.scalar(
+        select(Participant).where(
+            Participant.job_id == job.id,
+            Participant.email == email,
+        )
+    )
+    if existing is not None:
+        return existing
+
+    participant = Participant(
+        id=new_id("part"),
+        job_id=job.id,
+        name=name.strip(),
+        email=email,
+        title=title.strip() if title else None,
+        gallery_token=generate_refresh_token(),
+    )
+    db.add(participant)
+    db.commit()
+    db.refresh(participant)
+    return participant

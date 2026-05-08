@@ -7,7 +7,7 @@ Run via tasks: see scripts/dev.sh
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, jobs
+from app.api import auth, jobs, participants, public
 from app.config import settings
 
 app = FastAPI(
@@ -35,9 +35,10 @@ def health() -> dict[str, str]:
 # v0.1 routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
+# Participants router has nested + direct routes; mount at /api/v1.
+app.include_router(participants.router, prefix="/api/v1", tags=["participants"])
+app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
 
 # Wired up as features ship:
-# app.include_router(participants.router, prefix="/api/v1/participants", tags=["participants"])
 # app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
-# app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
 # app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])

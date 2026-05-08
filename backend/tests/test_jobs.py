@@ -70,8 +70,11 @@ class TestCreateJob:
         body = r.json()
         assert body["name"] == "Acme team headshots"
         assert body["status"] == "draft"
+        # Slug now has the form "<job-name-slug>-<4 random chars>".
+        # For "Acme team headshots" we expect "acme-team-headshots-XXXX".
         assert body["public_slug"]
-        assert len(body["public_slug"]) == 10
+        assert body["public_slug"].startswith("acme-team-headshots-")
+        assert len(body["public_slug"].rsplit("-", 1)[1]) == 4
         assert body["client_name"] is None
         assert body["shoot_date"] == future
         assert body["archived_at"] is None
@@ -138,6 +141,47 @@ class TestCreateJob:
             )
             slugs.add(r.json()["public_slug"])
         assert len(slugs) == 5
+
+    def test_two_jobs_with_same_name_get_distinct_slugs(self, client: TestClient):
+        """Same name → same prefix, different random suffix."""
+        a = _signup(client)
+        slugs = []
+        for _ in range(3):
+            r = client.post(
+                "/api/v1/jobs",
+                json={
+                    "name": "Acme team headshots",
+                    "shoot_date": _future_date(),
+                    "location": "Test office",
+                },
+                headers=_auth(a["tokens"]["access_token"]),
+            )
+            slugs.append(r.json()["public_slug"])
+        # Distinct
+        assert len(set(slugs)) == 3
+        # Common prefix
+        for s in slugs:
+            assert s.startswith("acme-team-headshots-")
+
+    def test_job_with_unicode_name_gets_workable_slug(self, client: TestClient):
+        """Café Q4 → cafe-q4-xxxx; emoji-only name → pure random fallback."""
+        a = _signup(client)
+        r1 = client.post(
+            "/api/v1/jobs",
+            json={"name": "Café Q4", "shoot_date": _future_date(), "location": "HQ"},
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+        assert r1.json()["public_slug"].startswith("cafe-q4-")
+
+        r2 = client.post(
+            "/api/v1/jobs",
+            json={"name": "🎉🎊", "shoot_date": _future_date(), "location": "HQ"},
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+        # No usable chars in the name, so we fall back to a 10-char pure-random slug.
+        slug = r2.json()["public_slug"]
+        assert "-" not in slug
+        assert len(slug) == 10
 
     def test_create_rejects_missing_shoot_date(self, client: TestClient):
         a = _signup(client)

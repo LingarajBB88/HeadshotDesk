@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.ids import new_id
-from app.core.slugs import generate_slug
+from app.core.slugs import generate_named_slug
 from app.models import Account, Job, User
 
 # Maximum attempts to find an unused slug before giving up.
@@ -26,10 +26,10 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _unique_slug(db: Session) -> str:
-    """Generate a slug that's not already in use."""
+def _unique_slug(db: Session, *, name: str) -> str:
+    """Generate a slug derived from the job name that's not already in use."""
     for _ in range(_MAX_SLUG_ATTEMPTS):
-        candidate = generate_slug()
+        candidate = generate_named_slug(name)
         existing = db.scalar(select(Job.id).where(Job.public_slug == candidate))
         if existing is None:
             return candidate
@@ -54,7 +54,7 @@ def create_job(
     job = Job(
         id=new_id("job"),
         account_id=account.id,
-        public_slug=_unique_slug(db),
+        public_slug=_unique_slug(db, name=name),
         name=name,
         client_name=client_name,
         client_email=client_email,

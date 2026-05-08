@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ParticipantsSection } from "@/components/ParticipantsSection";
+import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
 import { archiveJob, getJob, type Job } from "@/lib/jobs";
@@ -104,14 +106,6 @@ export default function JobDetailPage() {
         <Detail label="Location" value={job.location ?? "—"} />
         <Detail label="Client email" value={job.client_email ?? "—"} />
         <Detail
-          label="Public signup URL"
-          value={
-            <code className="text-xs bg-muted-50 px-2 py-1 rounded border border-muted-200">
-              /s/{job.public_slug}
-            </code>
-          }
-        />
-        <Detail
           label="Created"
           value={new Date(job.created_at).toLocaleDateString()}
         />
@@ -121,11 +115,23 @@ export default function JobDetailPage() {
         />
       </dl>
 
-      <div className="mt-12 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
-        <p className="text-sm font-medium text-ink">Participants</p>
-        <p className="mt-1 text-xs text-muted-600">
-          CSV upload + signup form coming next session.
-        </p>
+      {/* Signup link is the primary share-out for this job — give it a top-level
+          spot, not buried under Participants. Hidden when archived since the
+          public page returns 404 for archived jobs. */}
+      {job.status !== "archived" ? (
+        <div className="mt-10 max-w-2xl">
+          <SignupLinkBar
+            url={
+              typeof window !== "undefined"
+                ? `${window.location.origin}/s/${job.public_slug}`
+                : `/s/${job.public_slug}`
+            }
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-12">
+        <ParticipantsSection jobId={job.id} />
       </div>
     </div>
   );

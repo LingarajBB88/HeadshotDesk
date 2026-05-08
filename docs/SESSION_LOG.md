@@ -58,6 +58,58 @@ Specifically:
 
 ---
 
+## Session 7 — 2026-05-08 (continued)
+
+### What got done
+**Feature 3 — Participant signup forms shipped + UX iterations.**
+
+Initial Feature 3 build:
+- Participant SQLAlchemy model
+- Schemas: ParticipantCreate, ParticipantUpdate, PublicJobOut, PublicParticipantSignup, CsvImportResult
+- Service with cross-account isolation, dedupe-by-email, idempotent public signup
+- Authed routes: list/create/update/delete + CSV import (multipart/form-data)
+- Public routes (no auth) at `/api/v1/public/jobs/{slug}` and `/api/v1/public/jobs/{slug}/signup`
+- Frontend: lib/participants.ts client, <ParticipantsSection> component, /s/[slug] public signup page
+- 21 initial tests
+
+UX iterations applied today:
+- **Sample CSV download** — "Download a blank template" link in the upload area
+- **Signup link UX** — clickable URL that opens in new tab + Copy button (was just Copy)
+- **Signup link relocated** — moved out of Participants section, placed at top-level on the job detail page (more discoverable, better information hierarchy)
+- **Hidden for archived jobs** — backend returns 404 anyway, no point showing a dead link
+- **CSV parser hardened** — auto-detects delimiter (comma/semicolon/tab/pipe); handles BOM, CRLF/CR, Excel `sep=` preamble, blank rows; row-level Pydantic validation (StrictEmail per row, length checks); per-row error reporting
+- Extracted reusable `<SignupLinkBar>` component
+
+### Tested manually
+- Manual add participant ✓
+- CSV upload from comma-delimited template ✓
+- CSV upload from semicolon-delimited (European Excel) ✓
+- Public signup page works in incognito ✓
+- Copy / open signup link ✓
+
+### Tests
+**90 passing total** (20 auth + 8 password reset + 32 jobs + 30 participants).
+
+### What's queued for next session
+**Feature 4 — Shoot queue / tether** (Task #21)
+
+Specifically:
+1. New "Shoot mode" view inside `/jobs/[id]` (or separate `/jobs/[id]/shoot`)
+2. Participant queue, large-text rendering for shoot-day visibility
+3. Click/double-click a name → copy to system clipboard
+4. Capture One picks up via "Clipboard Contents" rename token on the next shot
+5. Active-participant indicator + "shot count" badge per participant (counts files we've received for them)
+6. Done/skip buttons to advance through the queue
+7. (Later session) desktop helper for watch-folder upload, but the in-browser queue is the MVP
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days)
+- Photographer beta tester names (3-5 needed)
+- Email validation depth — `gmail.co` accepted (`.co` is a real TLD)
+- Shoot queue UX: separate page vs. tab/modal inside job detail?
+
+---
+
 ## Session 6 — 2026-05-08
 
 ### What got done
