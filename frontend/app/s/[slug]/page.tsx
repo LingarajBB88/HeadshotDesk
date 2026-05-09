@@ -16,6 +16,7 @@ export default function PublicSignupPage() {
   const [job, setJob] = useState<PublicJob | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [wasNewSignup, setWasNewSignup] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -47,16 +48,38 @@ export default function PublicSignupPage() {
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
-      await publicSignup(slug, {
-        name: String(data.get("name") ?? "").trim(),
+      const firstName = String(data.get("first_name") ?? "").trim();
+      const lastName = String(data.get("last_name") ?? "").trim();
+
+      // Local validation — first name required.
+      if (!firstName) {
+        setFieldErrors({ first_name: "Required." });
+        setSubmitting(false);
+        return;
+      }
+
+      // Backend stores a single `name` field; combine on the way out.
+      // Keeps UI flexible without forcing a data model change.
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+
+      const result = await publicSignup(slug, {
+        name: fullName,
         email: String(data.get("email") ?? "").trim(),
         title: (String(data.get("title") ?? "").trim()) || null,
       });
+      setWasNewSignup(result.created);
       setSubmitted(true);
     } catch (err) {
       const c = classifyFormError(err);
-      if (c.fieldErrors) setFieldErrors(c.fieldErrors);
-      else if (c.formError) setFormError(c.formError);
+      if (c.fieldErrors) {
+        // Backend emits errors on the unified `name` field — surface them on first_name.
+        const remapped: Record<string, string> = { ...c.fieldErrors };
+        if (remapped.name) {
+          remapped.first_name = remapped.name;
+          delete remapped.name;
+        }
+        setFieldErrors(remapped);
+      } else if (c.formError) setFormError(c.formError);
       else setFormError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
@@ -78,11 +101,22 @@ export default function PublicSignupPage() {
           ) : submitted ? (
             <>
               <h1 className="font-display text-2xl font-semibold tracking-tight">
-                You&apos;re on the list
+                {wasNewSignup ? "You're on the list" : "You're already signed up"}
               </h1>
               <p className="mt-2 text-sm text-muted-600">
-                We&apos;ve added you to <strong className="text-ink">{job.name}</strong>.
-                You&apos;ll get an email with your photo gallery once the shoot is delivered.
+                {wasNewSignup ? (
+                  <>
+                    We&apos;ve added you to{" "}
+                    <strong className="text-ink">{job.name}</strong>. You&apos;ll
+                    get an email with your photo gallery once the shoot is delivered.
+                  </>
+                ) : (
+                  <>
+                    We already had your details for{" "}
+                    <strong className="text-ink">{job.name}</strong>. No need to
+                    sign up again — see you on shoot day.
+                  </>
+                )}
               </p>
               {job.shoot_date ? (
                 <p className="mt-4 text-sm text-muted-600">
@@ -128,13 +162,21 @@ export default function PublicSignupPage() {
               )}
 
               <form onSubmit={onSubmit} noValidate>
-                <FormField
-                  label="Your name"
-                  name="name"
-                  autoComplete="name"
-                  required
-                  error={fieldErrors.name}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    label="First name"
+                    name="first_name"
+                    autoComplete="given-name"
+                    required
+                    error={fieldErrors.first_name}
+                  />
+                  <FormField
+                    label="Last name"
+                    name="last_name"
+                    autoComplete="family-name"
+                    error={fieldErrors.last_name}
+                  />
+                </div>
                 <FormField
                   label="Email"
                   name="email"

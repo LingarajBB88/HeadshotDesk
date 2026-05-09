@@ -112,3 +112,33 @@ def delete(
         db, account=account, participant_id=participant_id
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# Shoot queue ---------------------------------------------------------------
+
+@router.post(
+    "/participants/{participant_id}/mark-shot", response_model=ParticipantOut
+)
+def mark_shot(
+    participant_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    p = participant_service.mark_shot(
+        db, account=account, participant_id=participant_id
+    )
+    return ParticipantOut.model_validate(p)
+
+
+@router.post(
+    "/participants/{participant_id}/reset-shot", response_model=ParticipantOut
+)
+def reset_shot(
+    participant_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    p = participant_service.reset_shot(
+        db, account=account, participant_id=participant_id
+    )
+    return ParticipantOut.model_validate(p)

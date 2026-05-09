@@ -108,26 +108,67 @@ export function ParticipantsSection({ jobId }: Props) {
             </p>
           </div>
         ) : (
-          <ul className="rounded-card border border-muted-200 bg-paper divide-y divide-muted-200">
-            {participants.map((p) => (
-              <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{p.name}</p>
-                  <p className="text-xs text-muted-600 truncate">
-                    {p.email ?? "—"}
-                    {p.title ? ` · ${p.title}` : ""}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDelete(p)}
-                  className="text-xs text-muted-600 hover:text-red-600 transition shrink-0"
-                  aria-label={`Remove ${p.name}`}
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            {/* Mobile: stacked cards */}
+            <ul className="sm:hidden rounded-card border border-muted-200 bg-paper divide-y divide-muted-200">
+              {participants.map((p) => (
+                <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{p.name}</p>
+                    <p className="text-xs text-muted-600 truncate">
+                      {p.email ?? "—"}
+                      {p.title ? ` · ${p.title}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(p)}
+                    className="text-xs text-muted-600 hover:text-red-600 transition shrink-0"
+                    aria-label={`Remove ${p.name}`}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop: table */}
+            <div className="hidden sm:block overflow-hidden rounded-card border border-muted-200 bg-paper">
+              <table className="w-full text-sm">
+                <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
+                  <tr>
+                    <th className="px-5 py-3">Name</th>
+                    <th className="px-5 py-3">Email</th>
+                    <th className="px-5 py-3">Title</th>
+                    <th className="px-5 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-muted-200">
+                  {participants.map((p) => (
+                    <tr key={p.id} className="hover:bg-muted-50 transition">
+                      <td className="px-5 py-3 font-medium">{p.name}</td>
+                      <td className="px-5 py-3 text-muted-600">
+                        {p.email ?? "—"}
+                      </td>
+                      <td className="px-5 py-3 text-muted-600">
+                        {p.title ?? "—"}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          onClick={() => handleDelete(p)}
+                          className="text-xs text-muted-600 hover:text-red-600 transition"
+                          aria-label={`Remove ${p.name}`}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </section>

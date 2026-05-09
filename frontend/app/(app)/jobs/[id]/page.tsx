@@ -91,13 +91,18 @@ export default function JobDetailPage() {
           ) : null}
         </div>
         {job.status !== "archived" ? (
-          <button
-            onClick={handleArchive}
-            disabled={archiving}
-            className="btn-secondary disabled:opacity-60 self-start sm:self-auto"
-          >
-            {archiving ? "Archiving…" : "Archive"}
-          </button>
+          <div className="flex gap-2 self-start sm:self-auto">
+            <Link href={`/jobs/${job.id}/shoot`} className="btn-primary">
+              Start shooting
+            </Link>
+            <button
+              onClick={handleArchive}
+              disabled={archiving}
+              className="btn-secondary disabled:opacity-60"
+            >
+              {archiving ? "Archiving…" : "Archive"}
+            </button>
+          </div>
         ) : null}
       </div>
 

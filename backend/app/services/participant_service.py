@@ -58,7 +58,7 @@ def add_participant(
     email: str | None,
     title: str | None,
 ) -> Participant:
-    job_service.get_job(db, account=account, job_id=job_id)
+    job = job_service.get_job(db, account=account, job_id=job_id)
 
     if email:
         existing = db.scalar(
@@ -82,6 +82,9 @@ def add_participant(
         gallery_token=generate_refresh_token(),
     )
     db.add(participant)
+    # First participant flips the job into "open_for_signup" so the dashboard
+    # reflects reality.
+    job_service.maybe_advance_status(job, "open_for_signup")
     db.commit()
     db.refresh(participant)
     return participant
@@ -129,6 +132,45 @@ def delete_participant(
     p = get_participant(db, account=account, participant_id=participant_id)
     db.delete(p)
     db.commit()
+
+
+# ============================================================================
+# Shoot queue — mark / reset shot status
+# ============================================================================
+
+def mark_shot(
+    db: Session, *, account: Account, participant_id: str
+) -> Participant:
+    """Mark a participant as photographed. Idempotent — repeat calls just
+    refresh the timestamp.
+
+    Also advances the parent job's status to 'in_progress' on the first shot.
+    """
+    from datetime import datetime, timezone
+
+    p = get_participant(db, account=account, participant_id=participant_id)
+    p.shot_at = datetime.now(timezone.utc)
+
+    # First shot of a job → it's officially "in_progress" now.
+    job = db.get(Job, p.job_id)
+    if job is not None:
+        job_service.maybe_advance_status(job, "in_progress")
+
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+def reset_shot(
+    db: Session, *, account: Account, participant_id: str
+) -> Participant:
+    """Send a participant back to the pending queue. Used when the photographer
+    wants to re-shoot someone."""
+    p = get_participant(db, account=account, participant_id=participant_id)
+    p.shot_at = None
+    db.commit()
+    db.refresh(p)
+    return p
 
 
 # ============================================================================
@@ -234,6 +276,9 @@ def import_csv(
         if e is not None
     }
 
+    # Refetch the job so we can advance its status if anything imports cleanly.
+    job = job_service.get_job(db, account=account, job_id=job_id)
+
     created = 0
     skipped_duplicates = 0
     errors: list[str] = []
@@ -277,6 +322,9 @@ def import_csv(
         db.add(participant)
         created += 1
 
+    if created > 0:
+        job_service.maybe_advance_status(job, "open_for_signup")
+
     db.commit()
     return {
         "created": created,
@@ -306,12 +354,16 @@ def public_signup(
     name: str,
     email: str,
     title: str | None,
-) -> Participant:
-    """A participant signs themselves up via the public signup form."""
+) -> tuple[Participant, bool]:
+    """A participant signs themselves up via the public signup form.
+
+    Returns (participant, created). `created` is False if the same email is
+    already signed up — we treat repeated submits as idempotent so accidental
+    double-clicks don't error, but the caller can show a different message
+    if they want.
+    """
     job = get_job_by_slug(db, slug=slug)
 
-    # Reuse the dedupe-by-email guard. If the email already exists, treat as
-    # idempotent: the participant probably hit submit twice.
     existing = db.scalar(
         select(Participant).where(
             Participant.job_id == job.id,
@@ -319,7 +371,7 @@ def public_signup(
         )
     )
     if existing is not None:
-        return existing
+        return existing, False
 
     participant = Participant(
         id=new_id("part"),
@@ -330,6 +382,7 @@ def public_signup(
         gallery_token=generate_refresh_token(),
     )
     db.add(participant)
+    job_service.maybe_advance_status(job, "open_for_signup")
     db.commit()
     db.refresh(participant)
-    return participant
+    return participant, True

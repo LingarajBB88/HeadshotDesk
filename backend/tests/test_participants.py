@@ -377,7 +377,9 @@ class TestPublicSignup:
             json={"name": "Walk-in Wendy", "email": "wendy@example.com"},
         )
         assert r.status_code == 201
-        assert r.json()["name"] == "Walk-in Wendy"
+        body = r.json()
+        assert body["created"] is True
+        assert body["participant"]["name"] == "Walk-in Wendy"
 
         # Photographer should now see her in the participant list
         listing = client.get(
@@ -387,20 +389,22 @@ class TestPublicSignup:
         assert listing.json()["total"] == 1
 
     def test_signup_is_idempotent_for_same_email(self, client: TestClient):
-        """If a participant hits submit twice, don't error — just return the existing record."""
+        """If a participant hits submit twice, don't error — return existing
+        with created=False so the UI can distinguish."""
         a = _signup(client)
         job = _create_job(client, a["tokens"]["access_token"])
         body = {"name": "Wendy", "email": "wendy@example.com"}
 
         first = client.post(
             f"/api/v1/public/jobs/{job['public_slug']}/signup", json=body
-        )
+        ).json()
         second = client.post(
             f"/api/v1/public/jobs/{job['public_slug']}/signup", json=body
-        )
-        assert first.status_code == 201
-        assert second.status_code == 201
-        assert first.json()["id"] == second.json()["id"]
+        ).json()
+
+        assert first["created"] is True
+        assert second["created"] is False
+        assert first["participant"]["id"] == second["participant"]["id"]
 
     def test_signup_rejects_invalid_email(self, client: TestClient):
         a = _signup(client)
@@ -420,3 +424,182 @@ class TestPublicSignup:
             json={"name": "Anon", "email": "anon@example.com"},
         )
         assert r.status_code == 201
+
+
+# ============================================================================
+# Shoot queue (mark-shot / reset-shot)
+# ============================================================================
+
+class TestShootQueue:
+    def _add_participant(self, client: TestClient, token: str, job_id: str) -> dict:
+        return client.post(
+            f"/api/v1/jobs/{job_id}/participants",
+            json={"name": "Jane Doe", "email": "jane@example.com"},
+            headers=_auth(token),
+        ).json()
+
+    def test_new_participant_starts_unshot(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        p = self._add_participant(client, a["tokens"]["access_token"], job["id"])
+        assert p["shot_at"] is None
+
+    def test_mark_shot_sets_timestamp(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        p = self._add_participant(client, a["tokens"]["access_token"], job["id"])
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+        assert r.status_code == 200
+        assert r.json()["shot_at"] is not None
+
+    def test_reset_shot_clears_timestamp(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        p = self._add_participant(client, a["tokens"]["access_token"], job["id"])
+        client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/reset-shot",
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+        assert r.status_code == 200
+        assert r.json()["shot_at"] is None
+
+    def test_mark_shot_is_idempotent(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        p = self._add_participant(client, a["tokens"]["access_token"], job["id"])
+
+        first = client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(a["tokens"]["access_token"]),
+        ).json()
+        second = client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(a["tokens"]["access_token"]),
+        ).json()
+        # Both succeed; timestamp gets updated on the second call (no error).
+        assert first["shot_at"] is not None
+        assert second["shot_at"] is not None
+
+    def test_cannot_mark_other_account_participant_shot(self, client: TestClient):
+        a1 = _signup(client)
+        a2 = _signup(client)
+        job = _create_job(client, a1["tokens"]["access_token"])
+        p = self._add_participant(client, a1["tokens"]["access_token"], job["id"])
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(a2["tokens"]["access_token"]),
+        )
+        assert r.status_code == 404
+
+    def test_mark_shot_requires_auth(self, client: TestClient):
+        r = client.post("/api/v1/participants/anything/mark-shot")
+        assert r.status_code == 401
+
+
+# ============================================================================
+# Job-status auto-advancement
+# ============================================================================
+
+class TestJobStatusAutoAdvance:
+    def _job_status(self, client: TestClient, token: str, job_id: str) -> str:
+        r = client.get(f"/api/v1/jobs/{job_id}", headers=_auth(token))
+        return r.json()["status"]
+
+    def test_adding_first_participant_opens_signup(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        assert self._job_status(client, token, job["id"]) == "draft"
+
+        client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Alice", "email": "alice@example.com"},
+            headers=_auth(token),
+        )
+        assert self._job_status(client, token, job["id"]) == "open_for_signup"
+
+    def test_public_signup_opens_signup(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/signup",
+            json={"name": "Walk-in", "email": "walk@example.com"},
+        )
+        assert self._job_status(client, token, job["id"]) == "open_for_signup"
+
+    def test_csv_import_opens_signup(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        client.post(
+            f"/api/v1/jobs/{job['id']}/participants/import",
+            files={"file": ("p.csv", b"name,email\nAlice,alice@example.com\n", "text/csv")},
+            headers=_auth(token),
+        )
+        assert self._job_status(client, token, job["id"]) == "open_for_signup"
+
+    def test_first_mark_shot_starts_progress(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Alice", "email": "alice@example.com"},
+            headers=_auth(token),
+        ).json()
+        # After add: open_for_signup
+        assert self._job_status(client, token, job["id"]) == "open_for_signup"
+
+        client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot",
+            headers=_auth(token),
+        )
+        # After first shot: in_progress
+        assert self._job_status(client, token, job["id"]) == "in_progress"
+
+    def test_status_is_forward_only(self, client: TestClient):
+        """Adding a participant doesn't downgrade in_progress to open_for_signup."""
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Alice", "email": "alice@example.com"},
+            headers=_auth(token),
+        ).json()
+        client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot", headers=_auth(token)
+        )
+        assert self._job_status(client, token, job["id"]) == "in_progress"
+
+        # Adding another participant should NOT downgrade.
+        client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Bob", "email": "bob@example.com"},
+            headers=_auth(token),
+        )
+        assert self._job_status(client, token, job["id"]) == "in_progress"
+
+    def test_archived_status_not_auto_advanced(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        client.post(f"/api/v1/jobs/{job['id']}/archive", headers=_auth(token))
+        # Try to add a participant — should still succeed, but status stays archived.
+        client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Alice", "email": "alice@example.com"},
+            headers=_auth(token),
+        )
+        assert self._job_status(client, token, job["id"]) == "archived"

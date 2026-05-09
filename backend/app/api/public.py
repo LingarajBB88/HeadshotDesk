@@ -10,6 +10,7 @@ from app.schemas.participant import (
     ParticipantOut,
     PublicJobOut,
     PublicParticipantSignup,
+    PublicSignupResult,
 )
 from app.services import participant_service
 
@@ -31,19 +32,22 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
 
 @router.post(
     "/jobs/{slug}/signup",
-    response_model=ParticipantOut,
+    response_model=PublicSignupResult,
     status_code=status.HTTP_201_CREATED,
 )
 def signup(
     slug: str,
     payload: PublicParticipantSignup,
     db: Session = Depends(get_db),
-) -> ParticipantOut:
-    p = participant_service.public_signup(
+) -> PublicSignupResult:
+    p, created = participant_service.public_signup(
         db,
         slug=slug,
         name=payload.name,
         email=payload.email,
         title=payload.title,
     )
-    return ParticipantOut.model_validate(p)
+    return PublicSignupResult(
+        participant=ParticipantOut.model_validate(p),
+        created=created,
+    )

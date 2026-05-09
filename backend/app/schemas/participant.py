@@ -55,6 +55,7 @@ class ParticipantOut(BaseModel):
     name: str
     email: EmailStr | None
     title: str | None
+    shot_at: datetime | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -63,3 +64,14 @@ class ParticipantOut(BaseModel):
 class ParticipantList(BaseModel):
     items: list[ParticipantOut]
     total: int
+
+
+class PublicSignupResult(BaseModel):
+    """Response from POST /api/v1/public/jobs/{slug}/signup.
+
+    `created` lets the UI distinguish between a fresh signup and an idempotent
+    re-submission (same email already on the list). Both return 201/200 so the
+    user always sees a success state.
+    """
+    participant: ParticipantOut
+    created: bool

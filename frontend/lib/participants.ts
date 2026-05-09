@@ -9,6 +9,7 @@ export type Participant = {
   name: string;
   email: string | null;
   title: string | null;
+  shot_at: string | null;  // ISO timestamp when photographed; null if pending
   created_at: string;
 };
 
@@ -66,6 +67,20 @@ export async function deleteParticipant(participantId: string): Promise<void> {
   });
 }
 
+export async function markShot(participantId: string): Promise<Participant> {
+  return api<Participant>(`/api/v1/participants/${participantId}/mark-shot`, {
+    method: "POST",
+    token: authToken(),
+  });
+}
+
+export async function resetShot(participantId: string): Promise<Participant> {
+  return api<Participant>(`/api/v1/participants/${participantId}/reset-shot`, {
+    method: "POST",
+    token: authToken(),
+  });
+}
+
 export async function importCsv(
   jobId: string,
   file: File,
@@ -94,13 +109,18 @@ export async function getPublicJob(slug: string): Promise<PublicJob> {
   return api<PublicJob>(`/api/v1/public/jobs/${slug}`);
 }
 
+export type PublicSignupResult = {
+  participant: Participant;
+  created: boolean;
+};
+
 export async function publicSignup(
   slug: string,
   input: { name: string; email: string; title?: string | null },
-): Promise<Participant> {
+): Promise<PublicSignupResult> {
   const body: Record<string, unknown> = { name: input.name, email: input.email };
   if (input.title) body.title = input.title;
-  return api<Participant>(`/api/v1/public/jobs/${slug}/signup`, {
+  return api<PublicSignupResult>(`/api/v1/public/jobs/${slug}/signup`, {
     method: "POST",
     body: JSON.stringify(body),
   });

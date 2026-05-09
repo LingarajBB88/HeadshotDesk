@@ -131,3 +131,35 @@ def archive_job(db: Session, *, account: Account, job_id: str) -> Job:
         db.commit()
         db.refresh(job)
     return job
+
+
+# ============================================================================
+# Status auto-advancement
+# ============================================================================
+
+# Forward-only ordering. Anything past `delivered` is terminal; archived is its
+# own axis (set by archive_job).
+_STATUS_ORDER = {
+    "draft": 0,
+    "open_for_signup": 1,
+    "in_progress": 2,
+    "delivered": 3,
+}
+
+
+def maybe_advance_status(job: Job, target: str) -> bool:
+    """
+    Advance a Job's status forward to `target` if it's not already there or
+    further. No-op for archived jobs (manual flow only). Caller is responsible
+    for committing — this just mutates the object.
+
+    Returns True if the status changed.
+    """
+    if job.status == "archived":
+        return False
+    current_rank = _STATUS_ORDER.get(job.status, -1)
+    target_rank = _STATUS_ORDER.get(target, -1)
+    if target_rank > current_rank:
+        job.status = target
+        return True
+    return False

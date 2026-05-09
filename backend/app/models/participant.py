@@ -31,6 +31,11 @@ class Participant(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Shoot queue: NULL = pending, set = already photographed.
+    shot_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
