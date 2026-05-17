@@ -56,6 +56,7 @@ class ParticipantOut(BaseModel):
     email: EmailStr | None
     title: str | None
     shot_at: datetime | None
+    photo_count: int = 0  # how many uploaded files are assigned to them
     created_at: datetime
 
     model_config = {"from_attributes": True}

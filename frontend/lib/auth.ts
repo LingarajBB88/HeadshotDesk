@@ -122,10 +122,6 @@ export async function fetchMe(): Promise<MeResponse | null> {
   }
 }
 
-export function isAuthenticated(): boolean {
-  return getAccessToken() !== null;
-}
-
 // --- Password reset ---
 
 export async function requestPasswordReset(email: string): Promise<void> {

@@ -148,12 +148,27 @@ export default function ShootQueuePage() {
             Pending ({pending.length})
           </h2>
           {pending.length === 0 ? (
-            <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
-              <p className="text-sm font-medium text-ink">All done</p>
-              <p className="mt-1 text-xs text-muted-600">
-                Everyone&apos;s been photographed. Reset anyone if you need to re-shoot.
-              </p>
-            </div>
+            participants.length === 0 ? (
+              <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
+                <p className="text-sm font-medium text-ink">No participants yet</p>
+                <p className="mt-1 text-xs text-muted-600">
+                  Add people on the job page, then come back here to start shooting.
+                </p>
+                <Link
+                  href={`/jobs/${id}`}
+                  className="mt-3 inline-block text-xs font-medium text-accent hover:underline"
+                >
+                  Back to job
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
+                <p className="text-sm font-medium text-ink">All done</p>
+                <p className="mt-1 text-xs text-muted-600">
+                  Everyone&apos;s been photographed. Reset anyone if you need to re-shoot.
+                </p>
+              </div>
+            )
           ) : (
             <ul className="mt-4 space-y-3">
               {pending.map((p) => (

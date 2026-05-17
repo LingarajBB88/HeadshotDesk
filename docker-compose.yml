@@ -43,6 +43,9 @@ services:
       redis: { condition: service_healthy }
     volumes:
       - ./backend:/app
+      # Persist uploaded files across container restarts (and let the host
+      # see them too — useful for debugging).
+      - ./backend/uploads:/app/uploads
     # Override the Dockerfile CMD with --reload for local dev so file changes
     # are picked up without restarting the container.
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import csv
 import io
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
@@ -32,21 +33,41 @@ def list_participants(
     # Verify the job belongs to the current account (raises 404 if not).
     job_service.get_job(db, account=account, job_id=job_id)
 
+    # Local import keeps participant_service.File-free at module load time
+    # (avoids circular import risk).
+    from app.models import File
+
     stmt = (
         select(Participant)
         .where(Participant.job_id == job_id)
         .order_by(Participant.created_at.asc())
     )
-    items = list(db.scalars(stmt).all())
-    total = (
-        db.scalar(
-            select(func.count())
-            .select_from(Participant)
-            .where(Participant.job_id == job_id)
-        )
-        or 0
-    )
-    return items, total
+    participants = list(db.scalars(stmt).all())
+
+    # Compute photo counts per participant in one query.
+    # Restrict to original variant — thumbnails and other variants shouldn't
+    # inflate the count (they're internal).
+    counts: dict[str, int] = {}
+    if participants:
+        rows = db.execute(
+            select(File.participant_id, func.count())
+            .where(
+                File.job_id == job_id,
+                File.deleted_at.is_(None),
+                File.variant == "original",
+                File.participant_id.is_not(None),
+            )
+            .group_by(File.participant_id)
+        ).all()
+        counts = {pid: int(c) for pid, c in rows}
+
+    # Attach as a transient attribute so Pydantic from_attributes picks it up.
+    for p in participants:
+        # mypy: dynamic attribute; harmless and not persisted.
+        p.photo_count = counts.get(p.id, 0)  # type: ignore[attr-defined]
+
+    total = len(participants)
+    return participants, total
 
 
 def add_participant(
@@ -146,8 +167,6 @@ def mark_shot(
 
     Also advances the parent job's status to 'in_progress' on the first shot.
     """
-    from datetime import datetime, timezone
-
     p = get_participant(db, account=account, participant_id=participant_id)
     p.shot_at = datetime.now(timezone.utc)
 

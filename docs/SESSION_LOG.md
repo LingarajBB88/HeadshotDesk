@@ -5,6 +5,77 @@ Future Claude: read the **most recent entry** at the start of every session.
 
 ---
 
+## Session 8 — 2026-05-17
+
+### What got done
+**Features 5 + 6 shipped — file uploads, galleries, watch-folder auto-sync, search, content dedup, bulk delete.**
+
+Feature 5 — File upload + galleries:
+- `File` SQLAlchemy model (`id`, `job_id`, `participant_id`, `original_filename`, `storage_key`, dimensions, size, mime, `variant`, `source_file_id`, `is_favorite`, `is_selected`, `ai_status`, soft-delete via `deleted_at`)
+- `storage_service` abstraction: local-disk in dev, R2/S3 hooks for prod
+- Multi-file upload route with per-file validation (mime allowlist, 50MB ceiling, empty-file guard)
+- Pillow-based dimension read + synchronous thumbnail generation (400×400 JPEG q80) stored as `variant='thumbnail'` row pointing at the original via `source_file_id`
+- Filename → participant auto-matching (exact normalized match, then token-set with min-2-token guard so single-word participants don't grab unrelated files)
+- Drag-drop UI + multi-file picker + batch progress
+- Per-row Delete and participant Reassign dropdown
+- Image thumbnail component fetches via authed fetch + blob URL (no public unsigned URLs)
+- `Cache-Control: private, immutable, max-age=86400` on raw + thumbnail endpoints
+- Files grouped by participant in the gallery; "Unassigned" bucket highlights mismatches
+
+Feature 5b — Watch folder (File System Access API):
+- `FolderWatcher` class with 3-second polling, size-stability gate (one full cycle before upload to avoid mid-export partial files)
+- `IndexedDB` persistence: folder handle survives page reloads; permission re-grant flow handled via `queryPermission` + `requestPermission` (both called synchronously from user gesture)
+- Fingerprint→file_id map persisted across sessions so Finder rename → backend PATCH rename (no re-upload)
+- "Holding back" notice when a file matches a participant who hasn't been shot yet — auto-uploads once they're marked shot
+- Auto-resume on mount if browser permission is still granted (same-tab navigation)
+- Pre-existing files in the folder get processed on initial scan (was: catalog-only)
+
+Feature 6 — Performance + search:
+- Server-side thumbnails (30KB vs 10MB raw) eliminated multi-second gallery loads
+- Parallel `file.getFile()` reads in scan loop (sequential awaits made initial scan crawl on big folders)
+- Debounced `<SearchInput>` component, reused in Participants + Photos sections
+- Photos search matches by filename OR participant name; participants search matches name/email/title
+- `<CollapsibleSection>` wrapper for both sections
+
+Feature 6b — Robustness iterations from manual testing:
+- **Single-token match guard** — "Test" participant no longer grabs "Sangeetha Test.jpg"; min-2 token rule with exact-match fallback for genuinely single-word names
+- **Shoot page empty state** — "No participants yet" instead of "All done" when there's nobody on the job
+- **Content-based dedup** — SHA-256 of file bytes catches Finder Cmd-D duplicates (migration `0004_files_content_sha256` adds the column + partial index); same content → existing row reused
+- **Sticky-name rule** — when multiple duplicate files have different names, the participant-matched name wins; unmatched siblings can't clobber an assigned row's filename (both upload-dedup and PATCH-rename paths)
+- **Stale fingerprint self-heal** — when the watcher's cached `file_id` returns 404 (user deleted the row), it drops the fingerprint and falls through to upload instead of getting permanently stuck on "Rename failed"
+- **Duplicates notice** — upload response includes a `duplicates` count; UI shows "N duplicates merged with existing photos" so the photographer knows the paste was absorbed, not silently dropped
+- **Bulk delete** — multi-select checkboxes per row + group-level select-all (tri-state for partial selection); `POST /jobs/{id}/files/bulk-delete` endpoint deletes in one round-trip with per-account scoping
+
+### Tested manually
+- Drag-drop upload + auto-match by filename ✓
+- CSV import + signup link sharing still work end-to-end ✓
+- Watch folder: pause/resume, unmap/remap, page reload, cross-session rename ✓
+- Cmd-D'd duplicate in Finder → no new gallery row, dedup notice fires ✓
+- Renaming an already-uploaded file in Finder → display name updates, participant reassigned ✓
+- Bulk select + delete across multiple participant groups ✓
+- Single-token participant "Test" no longer grabs "Sangeetha Test.jpg" ✓
+- Shoot page "No participants yet" empty state ✓
+
+### Tests
+**~115 passing total** (auth + password reset + jobs + participants + files). New `test_files.py` covers matching helper, upload + dedup, rename API, bulk-delete (incl. cross-account isolation + unknown-IDs reporting + malformed payload).
+
+### What's queued for next session
+**Feature 7 — AI retouching** (or whichever is next on the roadmap)
+
+Specifically the photographer's wishlist:
+1. AI background removal / clean-up per photo
+2. Multi-aspect crop variants (LinkedIn square, Slack circle, badge — `variant` field on the File model already supports this)
+3. Per-photo "favorite" toggle (`is_favorite` column wired but no UI yet)
+4. Gallery share link for clients (read-only public view of selected photos)
+
+### Open questions still parked
+- Free trial length (proposed default: 14 days)
+- Photographer beta tester names (3-5 needed)
+- AI provider: in-house (Replicate / fal / Together) vs vendor (PhotoRoom API)
+- Hibernate plan billing mechanics still need to be modeled
+
+---
+
 ## Session 5 — 2026-05-07
 
 ### What got done

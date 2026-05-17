@@ -10,6 +10,7 @@ export type Participant = {
   email: string | null;
   title: string | null;
   shot_at: string | null;  // ISO timestamp when photographed; null if pending
+  photo_count: number;     // number of uploaded files assigned to them
   created_at: string;
 };
 

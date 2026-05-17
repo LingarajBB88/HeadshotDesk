@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ParticipantsSection } from "@/components/ParticipantsSection";
+import { PhotosSection } from "@/components/PhotosSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
@@ -18,6 +19,9 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+  // Bumped whenever Photos changes — drives ParticipantsSection to refetch so
+  // the photo-count status pills stay in sync without a hard refresh.
+  const [participantsRefreshKey, setParticipantsRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -136,7 +140,18 @@ export default function JobDetailPage() {
       ) : null}
 
       <div className="mt-12">
-        <ParticipantsSection jobId={job.id} />
+        <ParticipantsSection
+          jobId={job.id}
+          refreshKey={participantsRefreshKey}
+        />
+      </div>
+
+      <div className="mt-12">
+        <PhotosSection
+          jobId={job.id}
+          jobName={job.name}
+          onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
+        />
       </div>
     </div>
   );

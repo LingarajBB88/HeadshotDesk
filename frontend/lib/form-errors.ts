@@ -9,7 +9,7 @@ import { ApiError } from "./api";
  * unless we have a known nicer phrase. New rules should be added here so all
  * forms benefit immediately.
  */
-export function prettifyFieldErrors(
+function prettifyFieldErrors(
   raw: Record<string, string>,
 ): Record<string, string> {
   const out: Record<string, string> = {};

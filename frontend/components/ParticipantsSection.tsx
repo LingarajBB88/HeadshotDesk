@@ -13,17 +13,36 @@ import {
   type Participant,
 } from "@/lib/participants";
 
+import { CollapsibleSection } from "./CollapsibleSection";
 import { FormField } from "./FormField";
+import { ParticipantStatusPill } from "./ParticipantStatusPill";
+import { SearchInput } from "./SearchInput";
 
 type Props = {
   jobId: string;
+  /** Bumped by the parent when something elsewhere changes participant photo counts. */
+  refreshKey?: number;
 };
 
-export function ParticipantsSection({ jobId }: Props) {
+export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Derived: filtered participants for display. Matches name OR email OR title.
+  const filteredParticipants = participants
+    ? participants.filter((p) => {
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return (
+          p.name.toLowerCase().includes(q) ||
+          (p.email ?? "").toLowerCase().includes(q) ||
+          (p.title ?? "").toLowerCase().includes(q)
+        );
+      })
+    : null;
 
   async function refresh() {
     try {
@@ -38,7 +57,7 @@ export function ParticipantsSection({ jobId }: Props) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
+  }, [jobId, refreshKey]);
 
   async function handleDelete(p: Participant) {
     if (!confirm(`Remove ${p.name}? Their info will be deleted.`)) return;
@@ -51,29 +70,28 @@ export function ParticipantsSection({ jobId }: Props) {
   }
 
   return (
-    <section>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-semibold tracking-tight">
-            Participants
-            {participants ? (
-              <span className="ml-2 text-sm font-normal text-muted-600">
-                ({participants.length})
-              </span>
-            ) : null}
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-600">
-            Add people manually, upload a CSV, or share the signup link.
-          </p>
+    <CollapsibleSection
+      title="Participants"
+      count={participants?.length}
+      description="Add people manually, upload a CSV, or share the signup link."
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          {participants && participants.length > 0 ? (
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search participants…"
+            />
+          ) : null}
+          <button
+            onClick={() => setAdding((v) => !v)}
+            className="btn-primary text-xs"
+          >
+            {adding ? "Cancel" : "Add participant"}
+          </button>
         </div>
-        <button
-          onClick={() => setAdding((v) => !v)}
-          className="btn-primary text-xs"
-        >
-          {adding ? "Cancel" : "Add participant"}
-        </button>
-      </div>
-
+      }
+    >
       {adding ? (
         <AddParticipantForm
           jobId={jobId}
@@ -107,15 +125,24 @@ export function ParticipantsSection({ jobId }: Props) {
               Use the “Add participant” button, drop a CSV above, or share the signup link with the team.
             </p>
           </div>
+        ) : filteredParticipants && filteredParticipants.length === 0 ? (
+          <div className="rounded-card border border-dashed border-muted-200 bg-paper p-6 text-center">
+            <p className="text-sm text-muted-600">
+              No participants match &ldquo;{search}&rdquo;.
+            </p>
+          </div>
         ) : (
           <>
             {/* Mobile: stacked cards */}
             <ul className="sm:hidden rounded-card border border-muted-200 bg-paper divide-y divide-muted-200">
-              {participants.map((p) => (
+              {(filteredParticipants ?? participants).map((p) => (
                 <li key={p.id} className="px-5 py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-medium truncate">{p.name}</p>
-                    <p className="text-xs text-muted-600 truncate">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium truncate">{p.name}</p>
+                      <ParticipantStatusPill p={p} />
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-600 truncate">
                       {p.email ?? "—"}
                       {p.title ? ` · ${p.title}` : ""}
                     </p>
@@ -139,13 +166,14 @@ export function ParticipantsSection({ jobId }: Props) {
                     <th className="px-5 py-3">Name</th>
                     <th className="px-5 py-3">Email</th>
                     <th className="px-5 py-3">Title</th>
+                    <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">
                       <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-muted-200">
-                  {participants.map((p) => (
+                  {(filteredParticipants ?? participants).map((p) => (
                     <tr key={p.id} className="hover:bg-muted-50 transition">
                       <td className="px-5 py-3 font-medium">{p.name}</td>
                       <td className="px-5 py-3 text-muted-600">
@@ -153,6 +181,9 @@ export function ParticipantsSection({ jobId }: Props) {
                       </td>
                       <td className="px-5 py-3 text-muted-600">
                         {p.title ?? "—"}
+                      </td>
+                      <td className="px-5 py-3">
+                        <ParticipantStatusPill p={p} />
                       </td>
                       <td className="px-5 py-3 text-right">
                         <button
@@ -171,7 +202,7 @@ export function ParticipantsSection({ jobId }: Props) {
           </>
         )}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }
 
