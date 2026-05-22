@@ -33,6 +33,7 @@ def create(
         client_email=payload.client_email,
         shoot_date=payload.shoot_date,
         location=payload.location,
+        download_cap=payload.download_cap,
     )
     return JobOut.model_validate(job)
 

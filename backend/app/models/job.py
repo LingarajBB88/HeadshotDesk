@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     func,
 )
@@ -43,6 +44,12 @@ class Job(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
     settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # F5b.1: per-job hard cap on unique photos each participant can download
+    # from their /g/{token} gallery. Default 1 matches a typical "one final
+    # headshot" package. Photographer can bump this per job. 0 = no downloads
+    # allowed (useful while still in proofing).
+    download_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
     created_by: Mapped[str] = mapped_column(
         String, ForeignKey("users.id"), nullable=False
     )
@@ -62,6 +69,7 @@ class Job(Base):
             "status IN ('draft', 'open_for_signup', 'in_progress', 'delivered', 'archived')",
             name="ck_jobs_status",
         ),
+        CheckConstraint("download_cap >= 0", name="ck_jobs_download_cap_nonneg"),
         Index("idx_jobs_account_id", "account_id"),
         Index("idx_jobs_status", "status"),
     )

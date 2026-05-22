@@ -18,6 +18,37 @@ import { FormField } from "./FormField";
 import { ParticipantStatusPill } from "./ParticipantStatusPill";
 import { SearchInput } from "./SearchInput";
 
+// Shared button for "Copy gallery link" — used in both the mobile card list
+// and the desktop table. Briefly shows "Copied!" after a successful copy.
+function CopyGalleryLinkButton({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    if (typeof window === "undefined") return;
+    const url = `${window.location.origin}/g/${token}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Browsers without clipboard support (or denied permission) — show a
+      // prompt as a fallback so the photographer can still get the link out.
+      window.prompt("Copy this link:", url);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="text-xs text-accent hover:underline transition"
+      aria-label="Copy gallery link"
+    >
+      {copied ? "Copied!" : "Copy link"}
+    </button>
+  );
+}
+
 type Props = {
   jobId: string;
   /** Bumped by the parent when something elsewhere changes participant photo counts. */
@@ -147,13 +178,16 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                       {p.title ? ` · ${p.title}` : ""}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDelete(p)}
-                    className="text-xs text-muted-600 hover:text-red-600 transition shrink-0"
-                    aria-label={`Remove ${p.name}`}
-                  >
-                    Remove
-                  </button>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <CopyGalleryLinkButton token={p.gallery_token} />
+                    <button
+                      onClick={() => handleDelete(p)}
+                      className="text-xs text-muted-600 hover:text-red-600 transition"
+                      aria-label={`Remove ${p.name}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -186,13 +220,16 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                         <ParticipantStatusPill p={p} />
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => handleDelete(p)}
-                          className="text-xs text-muted-600 hover:text-red-600 transition"
-                          aria-label={`Remove ${p.name}`}
-                        >
-                          Remove
-                        </button>
+                        <div className="inline-flex items-center gap-4">
+                          <CopyGalleryLinkButton token={p.gallery_token} />
+                          <button
+                            onClick={() => handleDelete(p)}
+                            className="text-xs text-muted-600 hover:text-red-600 transition"
+                            aria-label={`Remove ${p.name}`}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

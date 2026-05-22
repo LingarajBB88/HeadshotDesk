@@ -7,7 +7,7 @@ Run via tasks: see scripts/dev.sh
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, files, jobs, participants, public
+from app.api import auth, files, gallery, jobs, participants, public
 from app.config import settings
 
 app = FastAPI(
@@ -38,6 +38,8 @@ app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
 # Participants router has nested + direct routes; mount at /api/v1.
 app.include_router(participants.router, prefix="/api/v1", tags=["participants"])
 app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
+# F5b.1 public gallery — token-only auth, no JWT.
+app.include_router(gallery.router, prefix="/api/v1/public/gallery", tags=["gallery"])
 # Files router has nested + direct routes; mount at /api/v1.
 app.include_router(files.router, prefix="/api/v1", tags=["files"])
 

@@ -34,3 +34,8 @@ build/
 
 # Logs
 *.log
+
+# Local dev upload artifacts — large binary files that bloat the repo.
+# The previously committed job_* dirs stay tracked; this only stops NEW
+# ones from being staged accidentally.
+backend/uploads/job_*/

@@ -11,6 +11,9 @@ export type Participant = {
   title: string | null;
   shot_at: string | null;  // ISO timestamp when photographed; null if pending
   photo_count: number;     // number of uploaded files assigned to them
+  // F5b.1: token for the participant's public /g/{token} gallery URL.
+  // The photographer uses this to build the link to share.
+  gallery_token: string;
   created_at: string;
 };
 

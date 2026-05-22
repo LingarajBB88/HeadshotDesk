@@ -1,0 +1,49 @@
+"""Pydantic schemas for the public participant gallery (/g/{token})."""
+from datetime import date, datetime
+
+from pydantic import BaseModel, Field
+
+
+class GalleryFileOut(BaseModel):
+    """A single photo as shown in the participant's gallery.
+
+    Slim by design — no width/height/size to avoid leaking metadata to the
+    public surface and to keep payloads small. Frontend builds image URLs
+    from the id + token.
+    """
+
+    id: str
+    original_filename: str
+    uploaded_at: datetime
+    is_downloaded: bool  # whether this participant has already downloaded this file
+
+    model_config = {"from_attributes": True}
+
+
+class GalleryJobOut(BaseModel):
+    """Slim job info for the gallery header."""
+
+    name: str
+    client_name: str | None
+    shoot_date: date | None
+
+
+class GalleryOut(BaseModel):
+    """Full payload for GET /api/v1/public/gallery/{token}."""
+
+    participant_name: str
+    job: GalleryJobOut
+    files: list[GalleryFileOut]
+    download_cap: int        # per-job cap set by photographer
+    downloads_used: int      # unique photos this participant has downloaded
+
+
+class GalleryZipRequest(BaseModel):
+    """Body for POST /api/v1/public/gallery/{token}/files/zip.
+
+    file_ids must reference photos in this participant's gallery. The endpoint
+    enforces the per-job cap on the count of NEW (unclaimed) files in the
+    batch; already-claimed files in the same batch are re-downloads (free).
+    """
+
+    file_ids: list[str] = Field(..., min_length=1, max_length=500)

@@ -21,12 +21,18 @@ export default function NewJobPage() {
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
+      const rawCap = String(data.get("download_cap") ?? "").trim();
+      const parsedCap = rawCap === "" ? null : Number(rawCap);
       const job = await createJob({
         name: String(data.get("name") ?? "").trim(),
         client_name: (String(data.get("client_name") ?? "").trim()) || null,
         client_email: (String(data.get("client_email") ?? "").trim()) || null,
         shoot_date: (String(data.get("shoot_date") ?? "").trim()) || null,
         location: (String(data.get("location") ?? "").trim()) || null,
+        download_cap:
+          parsedCap !== null && Number.isFinite(parsedCap) && parsedCap >= 0
+            ? Math.floor(parsedCap)
+            : null,
       });
       router.push(`/jobs/${job.id}`);
     } catch (err) {
@@ -87,6 +93,16 @@ export default function NewJobPage() {
           required
           hint="Where the shoot is happening. Shows on participant emails."
           error={fieldErrors.location}
+        />
+        <FormField
+          label="Photos per participant"
+          name="download_cap"
+          type="number"
+          min={0}
+          max={1000}
+          defaultValue={1}
+          hint="How many photos each participant can download from their gallery. Defaults to 1 — change later if the package is different."
+          error={fieldErrors.download_cap}
         />
 
         {formError ? (

@@ -50,6 +50,7 @@ def create_job(
     client_email: str | None = None,
     shoot_date=None,
     location: str | None = None,
+    download_cap: int | None = None,
 ) -> Job:
     job = Job(
         id=new_id("job"),
@@ -62,6 +63,8 @@ def create_job(
         location=location,
         status="draft",
         created_by=creator.id,
+        # download_cap omitted falls back to the model default (1).
+        **({"download_cap": download_cap} if download_cap is not None else {}),
     )
     db.add(job)
     try:

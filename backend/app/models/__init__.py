@@ -4,6 +4,15 @@ from app.models.auth_session import AuthSession
 from app.models.file import File
 from app.models.job import Job
 from app.models.participant import Participant
+from app.models.participant_download import ParticipantDownload
 from app.models.user import User
 
-__all__ = ["Account", "User", "AuthSession", "Job", "Participant", "File"]
+__all__ = [
+    "Account",
+    "User",
+    "AuthSession",
+    "Job",
+    "Participant",
+    "ParticipantDownload",
+    "File",
+]

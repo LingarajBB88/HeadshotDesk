@@ -19,6 +19,9 @@ export type Job = {
   shoot_date: string | null;
   location: string | null;
   status: JobStatus;
+  // F5b.1: per-job hard cap on unique photos each participant can download
+  // from their /g/{token} gallery. 0 disables downloads entirely.
+  download_cap: number;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -60,6 +63,7 @@ export async function createJob(input: {
   client_email?: string | null;
   shoot_date?: string | null;
   location?: string | null;
+  download_cap?: number | null;
 }): Promise<Job> {
   // Strip empty strings → null so backend doesn't try to validate them as emails/dates.
   const body: Record<string, unknown> = { name: input.name };
@@ -67,6 +71,9 @@ export async function createJob(input: {
   if (input.client_email) body.client_email = input.client_email;
   if (input.shoot_date) body.shoot_date = input.shoot_date;
   if (input.location) body.location = input.location;
+  if (typeof input.download_cap === "number" && Number.isFinite(input.download_cap)) {
+    body.download_cap = input.download_cap;
+  }
 
   return api<Job>("/api/v1/jobs", {
     method: "POST",
@@ -77,7 +84,18 @@ export async function createJob(input: {
 
 export async function updateJob(
   id: string,
-  patch: Partial<Pick<Job, "name" | "client_name" | "client_email" | "shoot_date" | "location" | "status">>,
+  patch: Partial<
+    Pick<
+      Job,
+      | "name"
+      | "client_name"
+      | "client_email"
+      | "shoot_date"
+      | "location"
+      | "status"
+      | "download_cap"
+    >
+  >,
 ): Promise<Job> {
   return api<Job>(`/api/v1/jobs/${id}`, {
     method: "PATCH",

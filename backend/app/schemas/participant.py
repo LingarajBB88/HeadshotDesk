@@ -57,6 +57,12 @@ class ParticipantOut(BaseModel):
     title: str | None
     shot_at: datetime | None
     photo_count: int = 0  # how many uploaded files are assigned to them
+    # F5b.1: token for the public /g/{token} gallery URL. Exposed in this
+    # schema so the photographer-facing UI can render a "Copy gallery link"
+    # button. It's also returned in the public signup response (the
+    # participant gets their own token) — that's an intentional, minor early
+    # leak: the participant already has implicit access to their own gallery.
+    gallery_token: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

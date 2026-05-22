@@ -45,6 +45,9 @@ class JobCreate(BaseModel):
     client_email: StrictEmail | None = None
     shoot_date: date  # Required at create time.
     location: str = Field(min_length=2, max_length=300)  # Required.
+    # F5b.1: optional at create time — falls back to DB default (1) when
+    # omitted. Bounded by the same range as JobUpdate.
+    download_cap: int | None = Field(default=None, ge=0, le=1000)
 
     _validate_location = field_validator("location")(_validate_location)
     _validate_date = field_validator("shoot_date")(_validate_shoot_date_not_past)
@@ -63,6 +66,10 @@ class JobUpdate(BaseModel):
     shoot_date: date | None = None
     location: str | None = Field(default=None, max_length=300)
     status: JobStatus | None = None
+    # F5b.1: per-job download cap. 0 disables downloads entirely (useful while
+    # in proofing); 1 is the default for a single-headshot package. Max is a
+    # soft sanity cap — bigger packages can always raise it.
+    download_cap: int | None = Field(default=None, ge=0, le=1000)
 
     _validate_location = field_validator("location")(_validate_location)
 
@@ -78,6 +85,7 @@ class JobOut(BaseModel):
     shoot_date: date | None
     location: str | None
     status: JobStatus
+    download_cap: int
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

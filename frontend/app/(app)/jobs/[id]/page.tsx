@@ -9,7 +9,7 @@ import { PhotosSection } from "@/components/PhotosSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
-import { archiveJob, getJob, type Job } from "@/lib/jobs";
+import { archiveJob, getJob, updateJob, type Job } from "@/lib/jobs";
 
 export default function JobDetailPage() {
   const router = useRouter();
@@ -114,6 +114,11 @@ export default function JobDetailPage() {
         <Detail label="Shoot date" value={job.shoot_date ?? "—"} />
         <Detail label="Location" value={job.location ?? "—"} />
         <Detail label="Client email" value={job.client_email ?? "—"} />
+        <DownloadCapDetail
+          job={job}
+          onChanged={(updated) => setJob(updated)}
+          editable={job.status !== "archived"}
+        />
         <Detail
           label="Created"
           value={new Date(job.created_at).toLocaleDateString()}
@@ -164,6 +169,106 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
         {label}
       </dt>
       <dd className="mt-1 text-sm text-ink">{value}</dd>
+    </div>
+  );
+}
+
+function DownloadCapDetail({
+  job,
+  onChanged,
+  editable,
+}: {
+  job: Job;
+  onChanged: (updated: Job) => void;
+  editable: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState<string>(String(job.download_cap));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const formattedHelper = (() => {
+    if (job.download_cap === 0) return "Downloads disabled.";
+    if (job.download_cap === 1) return "1 photo per participant.";
+    return `${job.download_cap} photos per participant.`;
+  })();
+
+  async function save() {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1000) {
+      setError("Enter a number between 0 and 1000.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateJob(job.id, { download_cap: Math.floor(parsed) });
+      onChanged(updated);
+      setEditing(false);
+    } catch {
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
+        Photos per participant
+      </dt>
+      <dd className="mt-1 text-sm text-ink">
+        {editing ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={1000}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              disabled={saving}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setValue(String(job.download_cap));
+                setError(null);
+              }}
+              disabled={saving}
+              className="text-xs text-muted-600 hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-3">
+            <span>{formattedHelper}</span>
+            {editable ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                Change
+              </button>
+            ) : null}
+          </div>
+        )}
+        {error ? (
+          <p className="mt-1 text-xs text-red-600">{error}</p>
+        ) : null}
+      </dd>
     </div>
   );
 }

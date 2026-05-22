@@ -53,13 +53,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Logo size="sm" wordmark hideWordmarkOnMobile />
           </Link>
 
-          {/* Primary nav — tighter spacing on mobile */}
+          {/* Primary nav — tighter spacing on mobile.
+              "Galleries" tab removed 2026-05-22 — was a stub link to a
+              non-existent /galleries route. Cross-job galleries dashboard
+              is now backlogged as F7 (v0.2). When that ships, restore the
+              link here. */}
           <nav className="flex items-center gap-3 sm:gap-5 text-sm text-muted-600">
             <Link href="/jobs" className="hover:text-ink">
               Jobs
-            </Link>
-            <Link href="/galleries" className="hover:text-ink">
-              Galleries
             </Link>
             <Link href="/settings" className="hover:text-ink">
               Settings
