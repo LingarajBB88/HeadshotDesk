@@ -105,6 +105,7 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
       title="Participants"
       count={participants?.length}
       description="Add people manually, upload a CSV, or share the signup link."
+      defaultOpen={false}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {participants && participants.length > 0 ? (

@@ -218,6 +218,7 @@ export function PhotosSection({
       title="Photos"
       count={files?.length}
       description="Drag JPEG/PNG files in or map a folder. Filenames like “Jane Doe_001.jpg” auto-match to participants."
+      defaultOpen={false}
       actions={
         files && files.length > 0 ? (
           <SearchInput

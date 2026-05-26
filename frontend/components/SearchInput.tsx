@@ -32,7 +32,7 @@ export function SearchInput({
   }, [local]);
 
   return (
-    <div className="relative w-full sm:w-64">
+    <div className="relative w-full sm:w-72">
       <input
         type="search"
         value={local}

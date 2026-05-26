@@ -95,13 +95,13 @@ export default function NewJobPage() {
           error={fieldErrors.location}
         />
         <FormField
-          label="Photos per participant"
+          label="Headshots per participant"
           name="download_cap"
           type="number"
           min={0}
           max={1000}
           defaultValue={1}
-          hint="How many photos each participant can download from their gallery. Defaults to 1 — change later if the package is different."
+          hint="How many headshots each participant can download from their gallery. Defaults to 1 — change later if the package is different."
           error={fieldErrors.download_cap}
         />
 

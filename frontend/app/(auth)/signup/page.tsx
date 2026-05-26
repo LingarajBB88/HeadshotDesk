@@ -16,16 +16,37 @@ export default function SignupPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Controlled password + confirm so we can compare without round-tripping
+  // through FormData. Both fields stay uncontrolled-ish for the rest of the
+  // form to keep this change small.
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  // Only surface the mismatch after the user leaves the confirm field or
+  // hits submit — avoids nagging on every keystroke while they're typing.
+  const [confirmTouched, setConfirmTouched] = useState(false);
+
+  const confirmMismatch =
+    confirmTouched && confirm.length > 0 && confirm !== password;
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
     setFieldErrors({});
+
+    // Block submission on mismatch. Force the touched state so the error
+    // shows even if the user hit submit without ever blurring the field.
+    if (password !== confirm) {
+      setConfirmTouched(true);
+      setFieldErrors({ confirm_password: "Passwords don't match." });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
       await signup({
         email: String(data.get("email") ?? "").trim(),
-        password: String(data.get("password") ?? ""),
+        password,
         name: String(data.get("name") ?? "").trim(),
         account_name: String(data.get("account_name") ?? "").trim(),
       });
@@ -88,7 +109,24 @@ export default function SignupPage() {
           minLength={8}
           required
           hint="At least 8 characters."
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           error={fieldErrors.password}
+        />
+        <FormField
+          label="Confirm password"
+          name="confirm_password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          required
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          onBlur={() => setConfirmTouched(true)}
+          error={
+            fieldErrors.confirm_password ??
+            (confirmMismatch ? "Passwords don't match." : undefined)
+          }
         />
 
         {formError ? (

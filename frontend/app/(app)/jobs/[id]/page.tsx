@@ -4,12 +4,20 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import {
+  JobProgressStepper,
+  JobStatTiles,
+  ShootDayHero,
+  type JobStats,
+} from "@/components/JobOverview";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
 import { PhotosSection } from "@/components/PhotosSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
+import { listFiles } from "@/lib/files";
 import { archiveJob, getJob, updateJob, type Job } from "@/lib/jobs";
+import { listParticipants } from "@/lib/participants";
 
 export default function JobDetailPage() {
   const router = useRouter();
@@ -22,6 +30,15 @@ export default function JobDetailPage() {
   // Bumped whenever Photos changes — drives ParticipantsSection to refetch so
   // the photo-count status pills stay in sync without a hard refresh.
   const [participantsRefreshKey, setParticipantsRefreshKey] = useState(0);
+  // Counts powering the HSD-34 stat tiles. Fetched alongside the job and
+  // re-fetched whenever the photo/participant data is invalidated. Nulls
+  // render as "—" so the tiles never look broken during load.
+  const [stats, setStats] = useState<JobStats>({
+    participantsTotal: null,
+    participantsShot: null,
+    photosUploaded: null,
+    galleriesReady: null,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -44,6 +61,37 @@ export default function JobDetailPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // Fetch participants + files in parallel for the stat tiles. Re-runs when
+  // `participantsRefreshKey` bumps (e.g. after a photo upload or a
+  // participant being marked shot from the shoot queue).
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      const [pRes, fRes] = await Promise.allSettled([
+        listParticipants(id),
+        listFiles(id),
+      ]);
+      if (cancelled) return;
+      const participants =
+        pRes.status === "fulfilled" ? pRes.value.items : null;
+      const files = fRes.status === "fulfilled" ? fRes.value : null;
+      setStats({
+        participantsTotal: participants?.length ?? null,
+        participantsShot:
+          participants?.filter((p) => p.shot_at != null).length ?? null,
+        photosUploaded: files?.total ?? null,
+        // "Galleries ready" = participants with at least one photo assigned.
+        // True delivery count comes when F5c email delivery ships.
+        galleriesReady:
+          participants?.filter((p) => p.photo_count > 0).length ?? null,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, participantsRefreshKey]);
 
   async function handleArchive() {
     if (!job) return;
@@ -90,9 +138,7 @@ export default function JobDetailPage() {
             </h1>
             <StatusPill status={job.status} />
           </div>
-          {job.client_name ? (
-            <p className="mt-1 text-muted-600">{job.client_name}</p>
-          ) : null}
+          {/* Client name moved into the shoot-day hero card below (HSD-34). */}
         </div>
         {job.status !== "archived" ? (
           <div className="flex gap-2 self-start sm:self-auto">
@@ -110,24 +156,34 @@ export default function JobDetailPage() {
         ) : null}
       </div>
 
-      <dl className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 max-w-2xl">
-        <Detail label="Shoot date" value={job.shoot_date ?? "—"} />
-        <Detail label="Location" value={job.location ?? "—"} />
-        <Detail label="Client email" value={job.client_email ?? "—"} />
-        <DownloadCapDetail
-          job={job}
-          onChanged={(updated) => setJob(updated)}
-          editable={job.status !== "archived"}
-        />
-        <Detail
-          label="Created"
-          value={new Date(job.created_at).toLocaleDateString()}
-        />
-        <Detail
-          label="Last updated"
-          value={new Date(job.updated_at).toLocaleDateString()}
-        />
-      </dl>
+      {/* HSD-34: progress stepper → stat tiles → hero + demoted metadata.
+          Together they give a glanceable answer to "where am I in this job?"
+          before the user drills into Participants or Photos. */}
+      <JobProgressStepper job={job} />
+
+      <JobStatTiles job={job} stats={stats} />
+
+      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-5">
+        <dl className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-8 gap-y-5">
+          <DownloadCapDetail
+            job={job}
+            onChanged={(updated) => setJob(updated)}
+            editable={job.status !== "archived"}
+          />
+          <Detail label="Client email" value={job.client_email ?? "—"} />
+          <Detail
+            label="Created"
+            value={new Date(job.created_at).toLocaleDateString()}
+          />
+          <Detail
+            label="Last updated"
+            value={new Date(job.updated_at).toLocaleDateString()}
+          />
+        </dl>
+        <div className="md:col-span-3">
+          <ShootDayHero job={job} />
+        </div>
+      </div>
 
       {/* Signup link is the primary share-out for this job — give it a top-level
           spot, not buried under Participants. Hidden when archived since the
@@ -189,8 +245,8 @@ function DownloadCapDetail({
 
   const formattedHelper = (() => {
     if (job.download_cap === 0) return "Downloads disabled.";
-    if (job.download_cap === 1) return "1 photo per participant.";
-    return `${job.download_cap} photos per participant.`;
+    if (job.download_cap === 1) return "1 headshot per participant.";
+    return `${job.download_cap} headshots per participant.`;
   })();
 
   async function save() {
@@ -215,7 +271,7 @@ function DownloadCapDetail({
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Photos per participant
+        Headshots per participant
       </dt>
       <dd className="mt-1 text-sm text-ink">
         {editing ? (
