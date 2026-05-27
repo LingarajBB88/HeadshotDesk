@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-import { updateJob, type Job } from "@/lib/jobs";
+import type { Job } from "@/lib/jobs";
 
 // HSD-34: Job detail UI/UX boost. Three coordinated pieces:
 //   1. <JobProgressStepper>  — 4-step horizontal stepper at the top of the
@@ -209,17 +207,7 @@ export type JobStats = {
   downloadsUsed: number | null;
 };
 
-export function JobStatTiles({
-  job,
-  stats,
-  onJobChanged,
-  editable,
-}: {
-  job: Job;
-  stats: JobStats;
-  onJobChanged: (updated: Job) => void;
-  editable: boolean;
-}) {
+export function JobStatTiles({ job, stats }: { job: Job; stats: JobStats }) {
   const participantsValue =
     stats.participantsTotal == null
       ? "—"
@@ -230,6 +218,19 @@ export function JobStatTiles({
       ? "—"
       : `${stats.galleriesReady ?? 0} / ${stats.participantsTotal}`;
 
+  // Downloads tile shows real consumption (X / Y) or "Off" when the cap is 0.
+  // Cap editing lives in the metadata row's DownloadCapDetail, not here —
+  // single source of truth.
+  const downloadsValue = (() => {
+    if (job.download_cap === 0) return "Off";
+    if (stats.downloadsUsed == null || stats.participantsTotal == null) return "—";
+    return `${stats.downloadsUsed} / ${stats.participantsTotal * job.download_cap}`;
+  })();
+  const downloadsHint =
+    job.download_cap === 0
+      ? "Downloads disabled."
+      : `Cap: ${job.download_cap} per participant.`;
+
   return (
     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
       <Tile label="Participants shot" value={participantsValue} />
@@ -239,139 +240,7 @@ export function JobStatTiles({
         value={galleriesValue}
         hint="Updates to delivery count when email delivery ships."
       />
-      <DownloadsTile
-        job={job}
-        downloadsUsed={stats.downloadsUsed}
-        participantsTotal={stats.participantsTotal}
-        onJobChanged={onJobChanged}
-        editable={editable}
-      />
-    </div>
-  );
-}
-
-/**
- * Downloads stat tile. Renders `X / Y downloaded` (or "Off" when cap = 0)
- * and exposes an inline cap editor so the photographer can change the cap
- * without expanding the collapsed Job details section.
- */
-function DownloadsTile({
-  job,
-  downloadsUsed,
-  participantsTotal,
-  onJobChanged,
-  editable,
-}: {
-  job: Job;
-  downloadsUsed: number | null;
-  participantsTotal: number | null;
-  onJobChanged: (updated: Job) => void;
-  editable: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string>(String(job.download_cap));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Keep the input in sync when the job's cap changes from elsewhere (e.g.
-  // optimistic update from the parent).
-  useEffect(() => {
-    setDraft(String(job.download_cap));
-  }, [job.download_cap]);
-
-  const isOff = job.download_cap === 0;
-  const totalBudget =
-    participantsTotal == null ? null : participantsTotal * job.download_cap;
-  const value = (() => {
-    if (isOff) return "Off";
-    if (downloadsUsed == null || totalBudget == null) return "—";
-    return `${downloadsUsed} / ${totalBudget}`;
-  })();
-  const hint = isOff
-    ? "Downloads disabled."
-    : `Cap: ${job.download_cap} per participant.`;
-
-  async function save() {
-    const parsed = Number(draft);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1000) {
-      setError("Enter 0–1000.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await updateJob(job.id, { download_cap: Math.floor(parsed) });
-      onJobChanged(updated);
-      setEditing(false);
-    } catch {
-      setError("Couldn't save.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="rounded-card bg-muted-50 px-4 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-600">
-          Downloads
-        </div>
-        {editable && !editing ? (
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="text-[11px] font-medium text-accent hover:underline"
-          >
-            Edit cap
-          </button>
-        ) : null}
-      </div>
-      {editing ? (
-        <div className="mt-1">
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={1000}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-              disabled={saving}
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setDraft(String(job.download_cap));
-                setError(null);
-              }}
-              disabled={saving}
-              className="text-xs text-muted-600 hover:text-ink"
-            >
-              Cancel
-            </button>
-          </div>
-          {error ? (
-            <p className="mt-1 text-[11px] text-red-600">{error}</p>
-          ) : null}
-        </div>
-      ) : (
-        <>
-          <div className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink">
-            {value}
-          </div>
-          <div className="mt-0.5 text-[11px] text-muted-400">{hint}</div>
-        </>
-      )}
+      <Tile label="Downloads" value={downloadsValue} hint={downloadsHint} />
     </div>
   );
 }
