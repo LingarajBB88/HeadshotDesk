@@ -109,17 +109,21 @@ def send_gallery_delivery_email(
     )
 
     if not settings.postmark_server_token:
-        # Dev mode: print to logs so we can copy the link.
+        # Dev mode: print the full text body to logs so we can preview the
+        # copy without firing real Postmark.
         logger.warning(
-            "[DEV EMAIL] Gallery delivery for %s (%s)\nGallery URL: %s",
+            "[DEV EMAIL] Gallery delivery for %s (%s)",
             participant_name,
             to_email,
-            gallery_url,
         )
+        body_indented = "\n".join("            " + line for line in text_body.splitlines())
         print(
             f"\n[DEV EMAIL] Gallery for {participant_name} <{to_email}>\n"
             f"            Subject: {subject}\n"
-            f"            Gallery URL: {gallery_url}\n",
+            f"            Gallery URL: {gallery_url}\n"
+            f"            ───── body ─────\n"
+            f"{body_indented}\n"
+            f"            ────────────────\n",
             flush=True,
         )
         return
