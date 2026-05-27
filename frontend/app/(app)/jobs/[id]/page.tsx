@@ -191,25 +191,23 @@ export default function JobDetailPage() {
             value={new Date(job.updated_at).toLocaleDateString()}
           />
         </dl>
-        <div className="md:col-span-3">
+        <div className="md:col-span-3 flex flex-col gap-4">
           <ShootDayHero job={job} />
+          {/* Signup link tucked under the shoot-day hero so the right column
+              owns both the "where + when" and the "how to share" — pulls the
+              Participants section up. Hidden when archived since the public
+              page returns 404 for archived jobs. */}
+          {job.status !== "archived" ? (
+            <SignupLinkBar
+              url={
+                typeof window !== "undefined"
+                  ? `${window.location.origin}/s/${job.public_slug}`
+                  : `/s/${job.public_slug}`
+              }
+            />
+          ) : null}
         </div>
       </div>
-
-      {/* Signup link is the primary share-out for this job — give it a
-          top-level spot, not buried under Participants. Hidden when archived
-          since the public page returns 404 for archived jobs. */}
-      {job.status !== "archived" ? (
-        <div className="mt-10 max-w-2xl">
-          <SignupLinkBar
-            url={
-              typeof window !== "undefined"
-                ? `${window.location.origin}/s/${job.public_slug}`
-                : `/s/${job.public_slug}`
-            }
-          />
-        </div>
-      ) : null}
 
       <div className="mt-12">
         <ParticipantsSection
