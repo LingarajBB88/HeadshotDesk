@@ -12,7 +12,6 @@ import {
 } from "@/components/JobOverview";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
 import { PhotosSection } from "@/components/PhotosSection";
-import { SectionHeader } from "@/components/SectionHeader";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
@@ -163,16 +162,9 @@ export default function JobDetailPage() {
         ) : null}
       </div>
 
-      {/* Round-2 polish: page now reads as five named zones — Overview,
-          Job details, Sharing, Participants, Photos. Light section headers
-          (small uppercase label + hairline) carry the structure; no card
-          backgrounds or heavy borders to avoid competing with the
-          shoot-day hero. */}
-      <SectionHeader>Overview</SectionHeader>
-
-      {/* HSD-34: progress stepper → stat tiles → hero card. Together they
-          give a glanceable answer to "where am I in this job?" before the
-          user drills into Participants or Photos. */}
+      {/* HSD-34: progress stepper → stat tiles → 2-col (metadata + hero).
+          No section headers — Lingaraj preferred the inline layout without
+          uppercase zone labels. */}
       <JobProgressStepper job={job} />
 
       <JobStatTiles job={job} stats={stats} />
@@ -204,27 +196,21 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      {/* Sharing — public signup link is the primary share-out. Hidden when
-          archived since the public page returns 404 for archived jobs. The
-          SectionHeader stays here because the signup link bar isn't itself a
-          collapsible section, so it needs a label to belong to a zone. */}
+      {/* Signup link is the primary share-out for this job — give it a
+          top-level spot, not buried under Participants. Hidden when archived
+          since the public page returns 404 for archived jobs. */}
       {job.status !== "archived" ? (
-        <>
-          <SectionHeader>Sharing</SectionHeader>
-          <div className="max-w-2xl">
-            <SignupLinkBar
-              url={
-                typeof window !== "undefined"
-                  ? `${window.location.origin}/s/${job.public_slug}`
-                  : `/s/${job.public_slug}`
-              }
-            />
-          </div>
-        </>
+        <div className="mt-10 max-w-2xl">
+          <SignupLinkBar
+            url={
+              typeof window !== "undefined"
+                ? `${window.location.origin}/s/${job.public_slug}`
+                : `/s/${job.public_slug}`
+            }
+          />
+        </div>
       ) : null}
 
-      {/* Participants and Photos own their own headers via CollapsibleSection
-          — no separate SectionHeader above to avoid the double-label issue. */}
       <div className="mt-12">
         <ParticipantsSection
           jobId={job.id}
