@@ -106,6 +106,10 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
       count={participants?.length}
       description="Add people manually, upload a CSV, or share the signup link."
       defaultOpen={false}
+      // Auto-open the section while the user is searching, so results aren't
+      // hidden behind a collapsed header. Reverts to internal state when the
+      // search clears.
+      forceOpen={search.trim().length > 0}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {participants && participants.length > 0 ? (

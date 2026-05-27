@@ -219,6 +219,9 @@ export function PhotosSection({
       count={files?.length}
       description="Drag JPEG/PNG files in or map a folder. Filenames like “Jane Doe_001.jpg” auto-match to participants."
       defaultOpen={false}
+      // Auto-open while the user is searching so results aren't hidden behind
+      // a collapsed header. Reverts to internal state when the search clears.
+      forceOpen={search.trim().length > 0}
       actions={
         files && files.length > 0 ? (
           <SearchInput
