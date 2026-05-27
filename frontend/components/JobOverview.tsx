@@ -100,7 +100,7 @@ export function JobProgressStepper({ job }: { job: Job }) {
   const allComplete = job.status === "archived" || job.status === "delivered";
 
   return (
-    <ol className="flex w-full items-start gap-1 sm:gap-2" aria-label="Job progress">
+    <ol className="mt-6 flex w-full items-start gap-1 sm:gap-2" aria-label="Job progress">
       {STAGE_ORDER.map((stage, i) => {
         const isDone = allComplete || i < currentIdx;
         const isCurrent = !allComplete && i === currentIdx;
