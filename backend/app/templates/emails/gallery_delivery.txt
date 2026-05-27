@@ -1,0 +1,7 @@
+Hi {{ participant.first_name }},
+
+Your headshots from {{ job.name }} are ready to view and download.
+
+{{ gallery.url }}
+
+— {{ photographer.display_name }}
