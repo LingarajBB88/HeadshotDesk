@@ -195,11 +195,15 @@ class TestBulkDeliver:
         r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
         assert r.json()["status"] == "delivered"
 
-    def test_status_stays_in_progress_when_someone_left_unsent(
+    def test_status_advances_when_only_no_email_skips_remain(
         self, client: TestClient
     ):
-        """If a participant has photos but no email, we can't deliver them.
-        The job should NOT auto-advance to `delivered` since work remains."""
+        """A participant without an email is categorically un-deliverable —
+        they won't ever be auto-emailed no matter how many times Deliver is
+        clicked. So once every *emailable* participant has been delivered,
+        the job advances to `delivered`. Photographer still sees the
+        `skipped_no_email` count in the result toast and can handle that
+        person manually."""
         a = _signup(client)
         photographer = a["tokens"]["access_token"]
         job = _create_job(client, photographer)
@@ -209,15 +213,93 @@ class TestBulkDeliver:
         _upload_for(client, photographer, job["id"], "No Email Joe_001.jpg")
 
         with patch("app.services.email_service.send_gallery_delivery_email"):
+            r = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
+            )
+            body = r.json()
+            assert body["sent"] == 1
+            assert body["skipped_no_email"] == 1
+
+        # Job should be marked delivered — the only outstanding participant
+        # is uncategorically un-emailable, not "deferred work".
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "delivered"
+
+    def test_no_photo_skips_dont_block_delivered_status(
+        self, client: TestClient
+    ):
+        """A participant without uploaded photos is categorically un-deliverable
+        for this pass — the photographer hasn't shot them yet. They shouldn't
+        block the delivered status; the photographer just clicks Deliver
+        again once their photos come in."""
+        a = _signup(client)
+        photographer = a["tokens"]["access_token"]
+        job = _create_job(client, photographer)
+        _add_participant(
+            client, photographer, job["id"], "Alice", "alice@example.com"
+        )
+        _add_participant(client, photographer, job["id"], "Bob", "bob@example.com")
+        # Only Alice has photos at the time of the first Deliver.
+        _upload_for(client, photographer, job["id"], "Alice_001.jpg")
+
+        with patch("app.services.email_service.send_gallery_delivery_email"):
             client.post(
                 f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
             )
 
-        # Joe has photos but no email → still "eligible-unsent" by the
-        # service's definition; status should NOT have flipped to delivered.
         r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
-        # The status will be whatever it was (open_for_signup or in_progress),
-        # but emphatically NOT delivered.
+        assert r.json()["status"] == "delivered"
+
+        # Bob's photos come in later. A second Deliver picks him up and the
+        # job stays "delivered" (no regression).
+        _upload_for(client, photographer, job["id"], "Bob_001.jpg")
+        with patch(
+            "app.services.email_service.send_gallery_delivery_email"
+        ) as send:
+            r2 = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
+            )
+            assert r2.json()["sent"] == 1
+            assert send.call_count == 1
+
+    def test_send_failure_leaves_participant_unsent_and_status_unchanged(
+        self, client: TestClient
+    ):
+        """If the email send raises, that participant's gallery_sent_at must
+        NOT be updated and the job must NOT advance to delivered — they're
+        still genuinely eligible-unsent."""
+        a = _signup(client)
+        photographer = a["tokens"]["access_token"]
+        job = _create_job(client, photographer)
+        alice = _add_participant(
+            client, photographer, job["id"], "Alice", "alice@example.com"
+        )
+        _upload_for(client, photographer, job["id"], "Alice_001.jpg")
+
+        with patch(
+            "app.services.email_service.send_gallery_delivery_email",
+            side_effect=RuntimeError("postmark down"),
+        ):
+            r = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
+            )
+            assert r.status_code == 200
+            body = r.json()
+            assert body["sent"] == 0
+            assert len(body["errors"]) == 1
+            assert "Alice" in body["errors"][0]
+
+        # gallery_sent_at must still be null on Alice
+        r = client.get(
+            f"/api/v1/jobs/{job['id']}/participants",
+            headers=_auth(photographer),
+        )
+        items = {p["id"]: p for p in r.json()["items"]}
+        assert items[alice["id"]]["gallery_sent_at"] is None
+
+        # And the job must NOT be marked delivered — the only eligible
+        # participant didn't actually receive an email.
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
         assert r.json()["status"] != "delivered"
 
     def test_cross_account_isolation(self, client: TestClient):
