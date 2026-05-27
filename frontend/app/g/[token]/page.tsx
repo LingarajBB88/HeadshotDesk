@@ -449,15 +449,18 @@ export default function PublicGalleryPage() {
           </div>
         )}
 
-        <p className="mt-12 text-center text-xs text-muted-600">
-          Powered by{" "}
+        {/* Round-2 polish: render the wordmark via <Logo> instead of plain
+            text so the footer matches the brand treatment used elsewhere. */}
+        <p className="mt-12 flex items-center justify-center gap-2 text-xs text-muted-600">
+          <span>Powered by</span>
           <a
             href={MARKETING_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:underline"
+            className="inline-flex items-center hover:opacity-80 transition"
+            aria-label="HeadshotDesk"
           >
-            HeadshotDesk
+            <Logo size="sm" wordmark />
           </a>
         </p>
       </div>

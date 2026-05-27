@@ -11,6 +11,11 @@ export type Participant = {
   title: string | null;
   shot_at: string | null;  // ISO timestamp when photographed; null if pending
   photo_count: number;     // number of uploaded files assigned to them
+  // Round-2 polish: unique files this participant has pulled from their
+  // gallery. The Job detail Downloads tile sums these across the job to show
+  // actual consumption against the cap budget. Only populated on the list
+  // endpoint; single-participant endpoints leave it at 0.
+  downloads_used: number;
   // F5b.1: token for the participant's public /g/{token} gallery URL.
   // The photographer uses this to build the link to share.
   gallery_token: string;

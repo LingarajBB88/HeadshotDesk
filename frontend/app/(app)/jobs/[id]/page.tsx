@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   JobProgressStepper,
   JobStatTiles,
@@ -12,11 +13,12 @@ import {
 } from "@/components/JobOverview";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
 import { PhotosSection } from "@/components/PhotosSection";
+import { SectionHeader } from "@/components/SectionHeader";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
 import { listFiles } from "@/lib/files";
-import { archiveJob, getJob, updateJob, type Job } from "@/lib/jobs";
+import { archiveJob, getJob, type Job } from "@/lib/jobs";
 import { listParticipants } from "@/lib/participants";
 
 export default function JobDetailPage() {
@@ -38,6 +40,7 @@ export default function JobDetailPage() {
     participantsShot: null,
     photosUploaded: null,
     galleriesReady: null,
+    downloadsUsed: null,
   });
 
   useEffect(() => {
@@ -86,6 +89,11 @@ export default function JobDetailPage() {
         // True delivery count comes when F5c email delivery ships.
         galleriesReady:
           participants?.filter((p) => p.photo_count > 0).length ?? null,
+        // Round-2 polish: sum of per-participant unique downloads, exposed
+        // by the participants list endpoint. Feeds the Downloads stat tile.
+        downloadsUsed:
+          participants?.reduce((sum, p) => sum + (p.downloads_used ?? 0), 0) ??
+          null,
       });
     })();
     return () => {
@@ -156,19 +164,39 @@ export default function JobDetailPage() {
         ) : null}
       </div>
 
-      {/* HSD-34: progress stepper → stat tiles → hero + demoted metadata.
-          Together they give a glanceable answer to "where am I in this job?"
-          before the user drills into Participants or Photos. */}
+      {/* Round-2 polish: page now reads as five named zones — Overview,
+          Job details, Sharing, Participants, Photos. Light section headers
+          (small uppercase label + hairline) carry the structure; no card
+          backgrounds or heavy borders to avoid competing with the
+          shoot-day hero. */}
+      <SectionHeader>Overview</SectionHeader>
+
+      {/* HSD-34: progress stepper → stat tiles → hero card. Together they
+          give a glanceable answer to "where am I in this job?" before the
+          user drills into Participants or Photos. */}
       <JobProgressStepper job={job} />
 
-      <JobStatTiles job={job} stats={stats} />
+      <JobStatTiles
+        job={job}
+        stats={stats}
+        onJobChanged={(updated) => setJob(updated)}
+        editable={job.status !== "archived"}
+      />
 
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-5">
-        <dl className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-8 gap-y-5">
-          <DownloadCapDetail
-            job={job}
-            onChanged={(updated) => setJob(updated)}
-            editable={job.status !== "archived"}
+      <div className="mt-6">
+        <ShootDayHero job={job} />
+      </div>
+
+      {/* Job details — reference data the photographer rarely needs once
+          setup is done. Collapsed by default; cap-editing lives in the
+          Downloads tile above so collapsing this doesn't bury the only
+          editable knob. */}
+      <SectionHeader>Job details</SectionHeader>
+      <CollapsibleSection title="Show details" defaultOpen={false}>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+          <Detail
+            label="Headshots per participant"
+            value={formatCap(job.download_cap)}
           />
           <Detail label="Client email" value={job.client_email ?? "—"} />
           <Detail
@@ -180,42 +208,45 @@ export default function JobDetailPage() {
             value={new Date(job.updated_at).toLocaleDateString()}
           />
         </dl>
-        <div className="md:col-span-3">
-          <ShootDayHero job={job} />
-        </div>
-      </div>
+      </CollapsibleSection>
 
-      {/* Signup link is the primary share-out for this job — give it a top-level
-          spot, not buried under Participants. Hidden when archived since the
-          public page returns 404 for archived jobs. */}
+      {/* Sharing — public signup link is the primary share-out. Hidden when
+          archived since the public page returns 404 for archived jobs. */}
       {job.status !== "archived" ? (
-        <div className="mt-10 max-w-2xl">
-          <SignupLinkBar
-            url={
-              typeof window !== "undefined"
-                ? `${window.location.origin}/s/${job.public_slug}`
-                : `/s/${job.public_slug}`
-            }
-          />
-        </div>
+        <>
+          <SectionHeader>Sharing</SectionHeader>
+          <div className="max-w-2xl">
+            <SignupLinkBar
+              url={
+                typeof window !== "undefined"
+                  ? `${window.location.origin}/s/${job.public_slug}`
+                  : `/s/${job.public_slug}`
+              }
+            />
+          </div>
+        </>
       ) : null}
 
-      <div className="mt-12">
-        <ParticipantsSection
-          jobId={job.id}
-          refreshKey={participantsRefreshKey}
-        />
-      </div>
+      <SectionHeader>Participants</SectionHeader>
+      <ParticipantsSection
+        jobId={job.id}
+        refreshKey={participantsRefreshKey}
+      />
 
-      <div className="mt-12">
-        <PhotosSection
-          jobId={job.id}
-          jobName={job.name}
-          onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
-        />
-      </div>
+      <SectionHeader>Photos</SectionHeader>
+      <PhotosSection
+        jobId={job.id}
+        jobName={job.name}
+        onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
+      />
     </div>
   );
+}
+
+function formatCap(cap: number): string {
+  if (cap === 0) return "Downloads disabled";
+  if (cap === 1) return "1 headshot per participant";
+  return `${cap} headshots per participant`;
 }
 
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
@@ -229,102 +260,6 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function DownloadCapDetail({
-  job,
-  onChanged,
-  editable,
-}: {
-  job: Job;
-  onChanged: (updated: Job) => void;
-  editable: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState<string>(String(job.download_cap));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const formattedHelper = (() => {
-    if (job.download_cap === 0) return "Downloads disabled.";
-    if (job.download_cap === 1) return "1 headshot per participant.";
-    return `${job.download_cap} headshots per participant.`;
-  })();
-
-  async function save() {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1000) {
-      setError("Enter a number between 0 and 1000.");
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await updateJob(job.id, { download_cap: Math.floor(parsed) });
-      onChanged(updated);
-      setEditing(false);
-    } catch {
-      setError("Couldn't save. Try again.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Headshots per participant
-      </dt>
-      <dd className="mt-1 text-sm text-ink">
-        {editing ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              max={1000}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-              disabled={saving}
-              autoFocus
-            />
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setValue(String(job.download_cap));
-                setError(null);
-              }}
-              disabled={saving}
-              className="text-xs text-muted-600 hover:text-ink"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-baseline gap-3">
-            <span>{formattedHelper}</span>
-            {editable ? (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-accent hover:underline"
-              >
-                Change
-              </button>
-            ) : null}
-          </div>
-        )}
-        {error ? (
-          <p className="mt-1 text-xs text-red-600">{error}</p>
-        ) : null}
-      </dd>
-    </div>
-  );
-}
+/* DownloadCapDetail was removed in Job detail polish round 2 — cap editing
+   now lives in the Downloads stat tile (see <DownloadsTile> in JobOverview).
+   The Job details collapsible just shows the current cap as a read-only row. */

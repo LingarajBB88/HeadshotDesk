@@ -35,7 +35,7 @@ def list_participants(
 
     # Local import keeps participant_service.File-free at module load time
     # (avoids circular import risk).
-    from app.models import File
+    from app.models import File, ParticipantDownload
 
     stmt = (
         select(Participant)
@@ -48,6 +48,7 @@ def list_participants(
     # Restrict to original variant — thumbnails and other variants shouldn't
     # inflate the count (they're internal).
     counts: dict[str, int] = {}
+    downloads: dict[str, int] = {}
     if participants:
         rows = db.execute(
             select(File.participant_id, func.count())
@@ -61,10 +62,23 @@ def list_participants(
         ).all()
         counts = {pid: int(c) for pid, c in rows}
 
-    # Attach as a transient attribute so Pydantic from_attributes picks it up.
+        # Per-participant download count for the Job detail Downloads tile.
+        # Scoped via Participant.job_id so we don't leak counts across jobs.
+        # ParticipantDownload's UNIQUE(participant_id, file_id) constraint means
+        # this naturally counts unique pulls — re-downloads don't inflate.
+        participant_ids = [p.id for p in participants]
+        dl_rows = db.execute(
+            select(ParticipantDownload.participant_id, func.count())
+            .where(ParticipantDownload.participant_id.in_(participant_ids))
+            .group_by(ParticipantDownload.participant_id)
+        ).all()
+        downloads = {pid: int(c) for pid, c in dl_rows}
+
+    # Attach as transient attributes so Pydantic from_attributes picks them up.
     for p in participants:
-        # mypy: dynamic attribute; harmless and not persisted.
+        # mypy: dynamic attributes; harmless and not persisted.
         p.photo_count = counts.get(p.id, 0)  # type: ignore[attr-defined]
+        p.downloads_used = downloads.get(p.id, 0)  # type: ignore[attr-defined]
 
     total = len(participants)
     return participants, total
