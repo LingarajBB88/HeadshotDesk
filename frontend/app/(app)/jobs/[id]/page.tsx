@@ -209,14 +209,16 @@ export default function JobDetailPage() {
         </div>
       </div>
 
-      <div className="mt-12">
+      {/* Simple hairline separators between Job details / Participants / Photos.
+          Lightweight visual segregation without uppercase zone labels. */}
+      <div className="mt-12 border-t border-muted-200 pt-12">
         <ParticipantsSection
           jobId={job.id}
           refreshKey={participantsRefreshKey}
         />
       </div>
 
-      <div className="mt-12">
+      <div className="mt-12 border-t border-muted-200 pt-12">
         <PhotosSection
           jobId={job.id}
           jobName={job.name}
