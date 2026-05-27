@@ -188,30 +188,34 @@ export default function JobDetailPage() {
       </div>
 
       {/* Job details — reference data the photographer rarely needs once
-          setup is done. Collapsed by default; cap-editing lives in the
-          Downloads tile above so collapsing this doesn't bury the only
-          editable knob. */}
-      <SectionHeader>Job details</SectionHeader>
-      <CollapsibleSection title="Show details" defaultOpen={false}>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-          <Detail
-            label="Headshots per participant"
-            value={formatCap(job.download_cap)}
-          />
-          <Detail label="Client email" value={job.client_email ?? "—"} />
-          <Detail
-            label="Created"
-            value={new Date(job.created_at).toLocaleDateString()}
-          />
-          <Detail
-            label="Last updated"
-            value={new Date(job.updated_at).toLocaleDateString()}
-          />
-        </dl>
-      </CollapsibleSection>
+          setup is done. One consolidated collapsible (its own header IS the
+          section label — no separate SectionHeader above to avoid double
+          headers). Collapsed by default; cap-editing lives in the Downloads
+          tile above so collapsing this doesn't bury the only editable knob. */}
+      <div className="mt-12">
+        <CollapsibleSection title="Job details" defaultOpen={false}>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 max-w-2xl">
+            <Detail
+              label="Headshots per participant"
+              value={formatCap(job.download_cap)}
+            />
+            <Detail label="Client email" value={job.client_email ?? "—"} />
+            <Detail
+              label="Created"
+              value={new Date(job.created_at).toLocaleDateString()}
+            />
+            <Detail
+              label="Last updated"
+              value={new Date(job.updated_at).toLocaleDateString()}
+            />
+          </dl>
+        </CollapsibleSection>
+      </div>
 
       {/* Sharing — public signup link is the primary share-out. Hidden when
-          archived since the public page returns 404 for archived jobs. */}
+          archived since the public page returns 404 for archived jobs. The
+          SectionHeader stays here because the signup link bar isn't itself a
+          collapsible section, so it needs a label to belong to a zone. */}
       {job.status !== "archived" ? (
         <>
           <SectionHeader>Sharing</SectionHeader>
@@ -227,18 +231,22 @@ export default function JobDetailPage() {
         </>
       ) : null}
 
-      <SectionHeader>Participants</SectionHeader>
-      <ParticipantsSection
-        jobId={job.id}
-        refreshKey={participantsRefreshKey}
-      />
+      {/* Participants and Photos own their own headers via CollapsibleSection
+          — no separate SectionHeader above to avoid the double-label issue. */}
+      <div className="mt-12">
+        <ParticipantsSection
+          jobId={job.id}
+          refreshKey={participantsRefreshKey}
+        />
+      </div>
 
-      <SectionHeader>Photos</SectionHeader>
-      <PhotosSection
-        jobId={job.id}
-        jobName={job.name}
-        onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
-      />
+      <div className="mt-12">
+        <PhotosSection
+          jobId={job.id}
+          jobName={job.name}
+          onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
+        />
+      </div>
     </div>
   );
 }
