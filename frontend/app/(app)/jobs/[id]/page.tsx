@@ -163,15 +163,21 @@ export default function JobDetailPage() {
         ) : null}
       </div>
 
-      {/* Whole Job overview (stepper + stat tiles + metadata/hero/signup
-          grid) wrapped in a CollapsibleSection so the photographer can
-          collapse it once setup is done and the focus shifts to Participants
-          and Photos. Open by default — the overview is the page's headline
-          on first load. */}
+      {/* Sticky stepper — pulled out of the Overview collapsible so it stays
+          pinned to the top of the viewport while the user scrolls into
+          Participants and Photos. CSS sticky only persists within the
+          element's containing block, so the stepper has to live at page-root
+          level (not inside a CollapsibleSection) to remain visible past the
+          Overview zone. Pin offset is 0 because the app header in the
+          parent layout isn't itself sticky. */}
+      <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 bg-paper/95 backdrop-blur border-b border-muted-200 pt-2 pb-3">
+        <JobProgressStepper job={job} />
+      </div>
+
+      {/* Overview — stat tiles + metadata/hero/signup grid. Stepper is now
+          sticky above so it isn't collapsed away. */}
       <div className="mt-6">
         <CollapsibleSection title="Overview" defaultOpen>
-          <JobProgressStepper job={job} />
-
           <JobStatTiles job={job} stats={stats} />
 
           {/* Inline two-column grid: metadata on the left, shoot-day hero
