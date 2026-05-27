@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { CollapsibleSection } from "@/components/CollapsibleSection";
 import {
   JobProgressStepper,
   JobStatTiles,
@@ -162,51 +163,54 @@ export default function JobDetailPage() {
         ) : null}
       </div>
 
-      {/* HSD-34: progress stepper → stat tiles → 2-col (metadata + hero).
-          No section headers — Lingaraj preferred the inline layout without
-          uppercase zone labels. */}
-      <JobProgressStepper job={job} />
+      {/* Whole Job overview (stepper + stat tiles + metadata/hero/signup
+          grid) wrapped in a CollapsibleSection so the photographer can
+          collapse it once setup is done and the focus shifts to Participants
+          and Photos. Open by default — the overview is the page's headline
+          on first load. */}
+      <div className="mt-6">
+        <CollapsibleSection title="Overview" defaultOpen>
+          <JobProgressStepper job={job} />
 
-      <JobStatTiles job={job} stats={stats} />
+          <JobStatTiles job={job} stats={stats} />
 
-      {/* Job details — restored to the inline two-column grid (metadata on
-          the left, shoot-day hero on the right) per Lingaraj's preference.
-          The cap is editable inline via DownloadCapDetail; the Downloads
-          stat tile above just displays consumption. Single source of truth
-          for cap editing = the metadata row. */}
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-5">
-        <dl className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-8 gap-y-5">
-          <DownloadCapDetail
-            job={job}
-            onChanged={(updated) => setJob(updated)}
-            editable={job.status !== "archived"}
-          />
-          <Detail label="Client email" value={job.client_email ?? "—"} />
-          <Detail
-            label="Created"
-            value={new Date(job.created_at).toLocaleDateString()}
-          />
-          <Detail
-            label="Last updated"
-            value={new Date(job.updated_at).toLocaleDateString()}
-          />
-        </dl>
-        <div className="md:col-span-3 flex flex-col gap-4">
-          <ShootDayHero job={job} />
-          {/* Signup link tucked under the shoot-day hero so the right column
-              owns both the "where + when" and the "how to share" — pulls the
-              Participants section up. Hidden when archived since the public
-              page returns 404 for archived jobs. */}
-          {job.status !== "archived" ? (
-            <SignupLinkBar
-              url={
-                typeof window !== "undefined"
-                  ? `${window.location.origin}/s/${job.public_slug}`
-                  : `/s/${job.public_slug}`
-              }
-            />
-          ) : null}
-        </div>
+          {/* Inline two-column grid: metadata on the left, shoot-day hero
+              + signup link on the right. Cap editable via DownloadCapDetail;
+              the Downloads stat tile above just displays consumption. */}
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-5">
+            <dl className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-8 gap-y-5">
+              <DownloadCapDetail
+                job={job}
+                onChanged={(updated) => setJob(updated)}
+                editable={job.status !== "archived"}
+              />
+              <Detail label="Client email" value={job.client_email ?? "—"} />
+              <Detail
+                label="Created"
+                value={new Date(job.created_at).toLocaleDateString()}
+              />
+              <Detail
+                label="Last updated"
+                value={new Date(job.updated_at).toLocaleDateString()}
+              />
+            </dl>
+            <div className="md:col-span-3 flex flex-col gap-4">
+              <ShootDayHero job={job} />
+              {/* Signup link tucked under the shoot-day hero so the right
+                  column owns both 'where + when' and 'how to share'. Hidden
+                  when archived since the public page 404s for archived jobs. */}
+              {job.status !== "archived" ? (
+                <SignupLinkBar
+                  url={
+                    typeof window !== "undefined"
+                      ? `${window.location.origin}/s/${job.public_slug}`
+                      : `/s/${job.public_slug}`
+                  }
+                />
+              ) : null}
+            </div>
+          </div>
+        </CollapsibleSection>
       </div>
 
       {/* Simple hairline separators between Job details / Participants / Photos.
