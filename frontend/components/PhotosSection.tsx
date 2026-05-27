@@ -427,10 +427,11 @@ function ParticipantFileGroup({
   onDelete: (f: FileItem) => void;
   onReassign: (f: FileItem, participantId: string | null) => void;
 }) {
-  // Default: unassigned/warning groups are open so the photographer fixes them
-  // first. Matched groups default to open too on small lists; the user can
-  // collapse to focus.
-  const [open, setOpen] = useState(true);
+  // Default: unassigned/warning groups stay open so the photographer fixes
+  // them first. Matched participant groups start collapsed so a job with
+  // many people doesn't render as a wall of thumbnails — the user expands
+  // the group they care about.
+  const [open, setOpen] = useState(!!warning);
 
   // Group-level select-all summary. "all" / "some" / "none" lets us render
   // a tri-state-ish checkbox: checked when all are selected, indeterminate
