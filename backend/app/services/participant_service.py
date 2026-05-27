@@ -13,11 +13,12 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core.ids import new_id
 from app.core.security import generate_refresh_token  # reused for opaque tokens
-from app.models import Account, Job, Participant
+from app.models import Account, Job, Participant, User
 from app.schemas.participant import ParticipantCreate
-from app.services import job_service
+from app.services import email_service, job_service
 
 
 # ============================================================================
@@ -156,6 +157,66 @@ def update_participant(
                 value = value.strip() or None if key != "name" else value.strip()
             setattr(p, key, value)
 
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+def resend_gallery_email(
+    db: Session,
+    *,
+    account: Account,
+    participant_id: str,
+) -> Participant:
+    """F5c per-row Resend. Always sends, regardless of whether the participant
+    has been delivered before — this is the explicit override path for
+    "I uploaded more photos for Jane after Deliver, nudge her again."
+
+    Refuses to send if the participant has zero photos (resending an empty
+    gallery is a worse experience than no email at all) or no email address.
+    """
+    from app.models import File
+
+    p = get_participant(db, account=account, participant_id=participant_id)
+    if not p.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Participant has no email address on file.",
+        )
+
+    photo_count = db.scalar(
+        select(func.count()).select_from(File).where(
+            File.job_id == p.job_id,
+            File.participant_id == p.id,
+            File.deleted_at.is_(None),
+            File.variant == "original",
+        )
+    ) or 0
+    if photo_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No photos assigned to this participant yet.",
+        )
+
+    job = db.get(Job, p.job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Job not found."
+        )
+    creator = db.get(User, job.created_by) if job.created_by else None
+    photographer_name = (
+        creator.name if creator and creator.name else account.name or "HeadshotDesk"
+    )
+
+    gallery_url = f"{settings.frontend_url}/g/{p.gallery_token}"
+    email_service.send_gallery_delivery_email(
+        to_email=p.email,
+        participant_name=p.name,
+        photographer_name=photographer_name,
+        job_name=job.name,
+        gallery_url=gallery_url,
+    )
+    p.gallery_sent_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(p)
     return p

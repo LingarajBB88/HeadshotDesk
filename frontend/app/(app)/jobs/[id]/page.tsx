@@ -17,7 +17,14 @@ import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
 import { listFiles } from "@/lib/files";
-import { archiveJob, getJob, updateJob, type Job } from "@/lib/jobs";
+import {
+  archiveJob,
+  deliverJob,
+  getJob,
+  updateJob,
+  type DeliveryResult,
+  type Job,
+} from "@/lib/jobs";
 import { listParticipants } from "@/lib/participants";
 
 export default function JobDetailPage() {
@@ -28,6 +35,14 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [archiving, setArchiving] = useState(false);
+  // F5c: how many participants are eligible for the next Deliver click —
+  // have at least one photo, have an email, and haven't been delivered yet.
+  // Surfaced from the participants fetch below so the Deliver button can
+  // show "Deliver to N" and disable itself when there's no one to send to.
+  const [deliverableCount, setDeliverableCount] = useState<number | null>(null);
+  const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
+  const [delivering, setDelivering] = useState(false);
+  const [deliverResult, setDeliverResult] = useState<DeliveryResult | null>(null);
   // Bumped whenever Photos changes — drives ParticipantsSection to refetch so
   // the photo-count status pills stay in sync without a hard refresh.
   const [participantsRefreshKey, setParticipantsRefreshKey] = useState(0);
@@ -94,6 +109,16 @@ export default function JobDetailPage() {
           participants?.reduce((sum, p) => sum + (p.downloads_used ?? 0), 0) ??
           null,
       });
+
+      // F5c: eligibility count for the Deliver button — participants who
+      // have at least one photo, an email on file, and haven't been
+      // delivered yet. Mirrors the backend's deliver_galleries filter.
+      setDeliverableCount(
+        participants?.filter(
+          (p) =>
+            p.gallery_sent_at == null && p.photo_count > 0 && !!p.email,
+        ).length ?? null,
+      );
     })();
     return () => {
       cancelled = true;
@@ -111,6 +136,31 @@ export default function JobDetailPage() {
       alert("Could not archive job.");
     } finally {
       setArchiving(false);
+    }
+  }
+
+  async function handleDeliver() {
+    if (!job) return;
+    setDelivering(true);
+    setDeliverResult(null);
+    try {
+      const result = await deliverJob(job.id);
+      setDeliverResult(result);
+      // Pull the latest job (status may have flipped to delivered) and
+      // bump the refresh key so participant gallery_sent_at re-fetches.
+      const updated = await getJob(job.id);
+      setJob(updated);
+      setParticipantsRefreshKey((k) => k + 1);
+    } catch {
+      setDeliverResult({
+        sent: 0,
+        skipped_already_delivered: 0,
+        skipped_no_photos: 0,
+        skipped_no_email: 0,
+        errors: ["Couldn't reach the server. Try again?"],
+      });
+    } finally {
+      setDelivering(false);
     }
   }
 
@@ -148,10 +198,30 @@ export default function JobDetailPage() {
           {/* Client name moved into the shoot-day hero card below (HSD-34). */}
         </div>
         {job.status !== "archived" ? (
-          <div className="flex gap-2 self-start sm:self-auto">
+          <div className="flex flex-wrap gap-2 self-start sm:self-auto">
             <Link href={`/jobs/${job.id}/shoot`} className="btn-primary">
               Start shooting
             </Link>
+            {/* F5c Deliver button — only visible when there's actually
+                someone to email. Disabled with a tooltip when the count
+                is 0 so the photographer understands why. */}
+            <button
+              type="button"
+              onClick={() => setDeliverConfirmOpen(true)}
+              disabled={!deliverableCount || delivering}
+              title={
+                deliverableCount === 0
+                  ? "No one to deliver to yet — participants need a photo and an email."
+                  : undefined
+              }
+              className="btn-secondary disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {delivering
+                ? "Sending…"
+                : deliverableCount
+                  ? `Deliver to ${deliverableCount}`
+                  : "Deliver"}
+            </button>
             <button
               onClick={handleArchive}
               disabled={archiving}
@@ -162,6 +232,30 @@ export default function JobDetailPage() {
           </div>
         ) : null}
       </div>
+
+      {/* F5c — Deliver confirmation modal. Surfaces the recipient count
+          before sending so a stray click can't email an entire job. */}
+      {deliverConfirmOpen ? (
+        <DeliverConfirmModal
+          jobName={job.name}
+          count={deliverableCount ?? 0}
+          delivering={delivering}
+          onCancel={() => setDeliverConfirmOpen(false)}
+          onConfirm={async () => {
+            await handleDeliver();
+            setDeliverConfirmOpen(false);
+          }}
+        />
+      ) : null}
+
+      {/* F5c — Inline result toast (sits at the top of the page after a
+          Deliver run so the photographer sees what actually happened). */}
+      {deliverResult ? (
+        <DeliverResultToast
+          result={deliverResult}
+          onDismiss={() => setDeliverResult(null)}
+        />
+      ) : null}
 
       {/* Whole Job overview (stepper + stat tiles + metadata/hero/signup
           grid) wrapped in a CollapsibleSection so the photographer can
@@ -240,6 +334,115 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
         {label}
       </dt>
       <dd className="mt-1 text-sm text-ink">{value}</dd>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// F5c — Deliver confirmation + result components
+// ----------------------------------------------------------------------------
+
+function DeliverConfirmModal({
+  jobName,
+  count,
+  delivering,
+  onCancel,
+  onConfirm,
+}: {
+  jobName: string;
+  count: number;
+  delivering: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-md rounded-dialog bg-paper p-6 shadow-xl">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Deliver galleries?
+        </h2>
+        <p className="mt-2 text-sm text-muted-600">
+          {count === 1
+            ? `Email 1 participant on ${jobName} with their gallery link.`
+            : `Email ${count} participants on ${jobName} with their gallery link.`}{" "}
+          Already-delivered participants are skipped.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={delivering}
+            className="text-sm font-medium text-muted-600 hover:text-ink px-3 py-2 rounded-md transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={delivering}
+            className="btn-primary text-sm disabled:opacity-60"
+          >
+            {delivering ? "Sending…" : "Send"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeliverResultToast({
+  result,
+  onDismiss,
+}: {
+  result: DeliveryResult;
+  onDismiss: () => void;
+}) {
+  const hasErrors = result.errors.length > 0;
+  const summary = (() => {
+    const parts: string[] = [];
+    if (result.sent === 1) parts.push("Sent 1 email");
+    else if (result.sent > 0) parts.push(`Sent ${result.sent} emails`);
+    if (result.skipped_already_delivered > 0)
+      parts.push(`${result.skipped_already_delivered} already delivered`);
+    if (result.skipped_no_photos > 0)
+      parts.push(`${result.skipped_no_photos} skipped (no photos)`);
+    if (result.skipped_no_email > 0)
+      parts.push(`${result.skipped_no_email} skipped (no email)`);
+    return parts.length > 0 ? parts.join(" · ") : "Nothing to send.";
+  })();
+
+  return (
+    <div
+      className={
+        "mt-4 rounded-card border px-4 py-3 text-sm flex items-start justify-between gap-3 " +
+        (hasErrors
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-green-200 bg-green-50 text-green-700")
+      }
+      role="status"
+    >
+      <div>
+        <p className="font-medium">{summary}</p>
+        {hasErrors ? (
+          <ul className="mt-1 list-disc ml-5">
+            {result.errors.map((err, i) => (
+              <li key={i}>{err}</li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="text-xs text-muted-600 hover:text-ink"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
     </div>
   );
 }

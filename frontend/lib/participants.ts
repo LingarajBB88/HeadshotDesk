@@ -19,6 +19,10 @@ export type Participant = {
   // F5b.1: token for the participant's public /g/{token} gallery URL.
   // The photographer uses this to build the link to share.
   gallery_token: string;
+  // F5c: ISO timestamp the gallery delivery email was last sent. Null means
+  // the participant hasn't been emailed yet. Used by the bulk Deliver button
+  // (skip already-delivered) and surfaced on the row as a "Delivered" pill.
+  gallery_sent_at: string | null;
   created_at: string;
 };
 
@@ -88,6 +92,15 @@ export async function resetShot(participantId: string): Promise<Participant> {
     method: "POST",
     token: authToken(),
   });
+}
+
+// F5c — per-row Resend gallery email. Force-sends regardless of
+// gallery_sent_at; the bulk Deliver button skips already-delivered.
+export async function resendGallery(participantId: string): Promise<Participant> {
+  return api<Participant>(
+    `/api/v1/participants/${participantId}/resend-gallery`,
+    { method: "POST", token: authToken() },
+  );
 }
 
 export async function importCsv(

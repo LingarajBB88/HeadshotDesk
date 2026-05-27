@@ -71,6 +71,49 @@ export default function PublicGalleryPage() {
     };
   }, [token]);
 
+  // Live sync — poll the gallery endpoint so newly-uploaded photos appear
+  // without a manual refresh. Pauses when the tab is hidden (Page Visibility
+  // API) and re-fetches immediately on focus/visibility-restore so the user
+  // sees the latest state the moment they come back. 20s interval is plenty
+  // fast for headshot photos (uploads take minutes), and is light on the
+  // backend. Selection state survives because it's separate React state.
+  useEffect(() => {
+    let cancelled = false;
+    const POLL_MS = 20_000;
+
+    async function silentRefetch() {
+      if (cancelled) return;
+      try {
+        const g = await getGallery(token);
+        if (!cancelled) setGallery(g);
+      } catch {
+        // Stay silent on background polls — don't surface a transient
+        // network blip as a banner mid-session.
+      }
+    }
+
+    const interval = window.setInterval(() => {
+      if (document.hidden) return;
+      void silentRefetch();
+    }, POLL_MS);
+
+    function onVisibility() {
+      if (!document.hidden) void silentRefetch();
+    }
+    function onFocus() {
+      void silentRefetch();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [token]);
+
   // Derived counts. `newPicksSelected` is the subset of the user's selection
   // that would consume cap (i.e., not already saved).
   const { newPicksSelected, remaining, atCap } = useMemo(() => {

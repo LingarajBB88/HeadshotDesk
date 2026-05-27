@@ -1,5 +1,6 @@
 """Jobs API routes — all auth-required, all account-scoped."""
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_account, get_current_user
@@ -13,6 +14,16 @@ from app.schemas.job import (
     JobUpdate,
 )
 from app.services import job_service
+
+
+class DeliveryResult(BaseModel):
+    """Result of the F5c Deliver button — counts surfaced to the UI so the
+    photographer sees how many emails actually went out."""
+    sent: int
+    skipped_already_delivered: int
+    skipped_no_photos: int
+    skipped_no_email: int
+    errors: list[str]
 
 router = APIRouter()
 
@@ -87,3 +98,17 @@ def archive(
 ) -> JobOut:
     job = job_service.archive_job(db, account=account, job_id=job_id)
     return JobOut.model_validate(job)
+
+
+@router.post("/{job_id}/deliver", response_model=DeliveryResult)
+def deliver(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> DeliveryResult:
+    """F5c — Bulk send the gallery delivery email to every eligible participant
+    on this job. Idempotent: re-clicking only emails participants who weren't
+    reached on the first pass.
+    """
+    result = job_service.deliver_galleries(db, account=account, job_id=job_id)
+    return DeliveryResult(**result)

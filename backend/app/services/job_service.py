@@ -12,9 +12,11 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.core.ids import new_id
 from app.core.slugs import generate_named_slug
-from app.models import Account, Job, User
+from app.models import Account, File, Job, Participant, User
+from app.services import email_service
 
 # Maximum attempts to find an unused slug before giving up.
 # Collisions are astronomically unlikely with our alphabet/length but we still
@@ -148,6 +150,126 @@ _STATUS_ORDER = {
     "in_progress": 2,
     "delivered": 3,
 }
+
+
+# ============================================================================
+# F5c — Gallery delivery
+# ============================================================================
+
+def deliver_galleries(
+    db: Session,
+    *,
+    account: Account,
+    job_id: str,
+) -> dict:
+    """
+    Bulk-send the gallery delivery email to every eligible participant on a
+    job. Idempotent: participants who already have `gallery_sent_at` are
+    skipped, so re-clicking the button is safe.
+
+    Eligibility:
+      • Must have at least one assigned photo (don't deliver empty galleries).
+      • Must have an email address on file.
+      • `gallery_sent_at` must be null.
+
+    Side effects:
+      • `gallery_sent_at` set on each delivered participant.
+      • Job status advances to `delivered` when, after this batch, every
+        photographed participant who has photos has been emailed at least once.
+        A job that still has un-photographed participants left can also reach
+        `delivered` once all *deliverable* participants are sent — the queue
+        is just considered "wrapped up for the photos we have."
+
+    Returns a result dict for the API:
+      {
+        "sent": int,         # how many emails were dispatched this call
+        "skipped_already_delivered": int,
+        "skipped_no_photos": int,
+        "skipped_no_email": int,
+        "errors": list[str],  # per-participant failures (rare)
+      }
+    """
+    job = get_job(db, account=account, job_id=job_id)
+    creator = db.get(User, job.created_by) if job.created_by else None
+    photographer_name = (
+        creator.name if creator and creator.name else account.name or "HeadshotDesk"
+    )
+
+    # Pull all participants on this job in one query plus their photo counts so
+    # we can decide eligibility without an N+1.
+    participants = list(
+        db.scalars(
+            select(Participant)
+            .where(Participant.job_id == job_id)
+            .order_by(Participant.created_at.asc())
+        ).all()
+    )
+    photo_counts: dict[str, int] = {}
+    if participants:
+        rows = db.execute(
+            select(File.participant_id, func.count())
+            .where(
+                File.job_id == job_id,
+                File.deleted_at.is_(None),
+                File.variant == "original",
+                File.participant_id.is_not(None),
+            )
+            .group_by(File.participant_id)
+        ).all()
+        photo_counts = {pid: int(c) for pid, c in rows}
+
+    sent = 0
+    skipped_already_delivered = 0
+    skipped_no_photos = 0
+    skipped_no_email = 0
+    errors: list[str] = []
+
+    for p in participants:
+        if p.gallery_sent_at is not None:
+            skipped_already_delivered += 1
+            continue
+        if photo_counts.get(p.id, 0) == 0:
+            skipped_no_photos += 1
+            continue
+        if not p.email:
+            skipped_no_email += 1
+            continue
+
+        gallery_url = f"{settings.frontend_url}/g/{p.gallery_token}"
+        try:
+            email_service.send_gallery_delivery_email(
+                to_email=p.email,
+                participant_name=p.name,
+                photographer_name=photographer_name,
+                job_name=job.name,
+                gallery_url=gallery_url,
+            )
+        except Exception as exc:  # noqa: BLE001 — log + report, don't abort batch
+            errors.append(f"{p.name}: {exc}")
+            continue
+
+        p.gallery_sent_at = _utcnow()
+        sent += 1
+
+    # Promote the job to `delivered` as soon as anything's been delivered AND
+    # no eligible participant is left unsent. "Eligible" = has-photos + has-email.
+    eligible_unsent_remaining = any(
+        p.gallery_sent_at is None
+        and photo_counts.get(p.id, 0) > 0
+        and p.email
+        for p in participants
+    )
+    if sent > 0 and not eligible_unsent_remaining:
+        maybe_advance_status(job, "delivered")
+
+    db.commit()
+    return {
+        "sent": sent,
+        "skipped_already_delivered": skipped_already_delivered,
+        "skipped_no_photos": skipped_no_photos,
+        "skipped_no_email": skipped_no_email,
+        "errors": errors,
+    }
 
 
 def maybe_advance_status(job: Job, target: str) -> bool:

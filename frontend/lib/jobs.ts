@@ -111,6 +111,23 @@ export async function archiveJob(id: string): Promise<Job> {
   });
 }
 
+// --- F5c: Bulk gallery delivery ---
+
+export type DeliveryResult = {
+  sent: number;
+  skipped_already_delivered: number;
+  skipped_no_photos: number;
+  skipped_no_email: number;
+  errors: string[];
+};
+
+export async function deliverJob(id: string): Promise<DeliveryResult> {
+  return api<DeliveryResult>(`/api/v1/jobs/${id}/deliver`, {
+    method: "POST",
+    token: authToken(),
+  });
+}
+
 // --- Display helpers ---
 
 export const STATUS_LABELS: Record<JobStatus, string> = {

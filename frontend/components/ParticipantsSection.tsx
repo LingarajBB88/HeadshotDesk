@@ -9,6 +9,7 @@ import {
   deleteParticipant,
   importCsv,
   listParticipants,
+  resendGallery,
   type CsvImportResult,
   type Participant,
 } from "@/lib/participants";
@@ -17,6 +18,80 @@ import { CollapsibleSection } from "./CollapsibleSection";
 import { FormField } from "./FormField";
 import { ParticipantStatusPill } from "./ParticipantStatusPill";
 import { SearchInput } from "./SearchInput";
+
+// F5c — per-row gallery resend link. Calls the backend's force-send endpoint;
+// disabled (with a tooltip) when the participant has no email or no photos so
+// the photographer understands why the action is unavailable.
+function ResendGalleryButton({
+  participant,
+  onResent,
+}: {
+  participant: Participant;
+  onResent: () => Promise<void>;
+}) {
+  const [sending, setSending] = useState(false);
+  const [justSent, setJustSent] = useState(false);
+  const blocked = !participant.email
+    ? "No email on file"
+    : participant.photo_count === 0
+      ? "No photos uploaded for this participant yet"
+      : null;
+  const label = participant.gallery_sent_at ? "Resend" : "Email";
+
+  async function onClick() {
+    setSending(true);
+    try {
+      await resendGallery(participant.id);
+      setJustSent(true);
+      await onResent();
+      window.setTimeout(() => setJustSent(false), 1500);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Could not send.";
+      alert(msg);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!!blocked || sending}
+      title={blocked ?? undefined}
+      className="text-xs text-accent hover:underline transition disabled:text-muted-400 disabled:cursor-not-allowed disabled:no-underline"
+      aria-label={`${label} gallery to ${participant.name}`}
+    >
+      {sending ? "Sending…" : justSent ? "Sent!" : label}
+    </button>
+  );
+}
+
+// Small "Delivered Xh ago" indicator — keeps the photographer aware of which
+// participants have already been emailed. Pairs with ResendGalleryButton.
+function DeliveredIndicator({ sentAt }: { sentAt: string }) {
+  const relative = (() => {
+    const ms = Date.now() - new Date(sentAt).getTime();
+    const mins = Math.round(ms / 60_000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.round(hours / 24);
+    return `${days}d ago`;
+  })();
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-[11px] text-muted-600"
+      title={`Delivered ${new Date(sentAt).toLocaleString()}`}
+    >
+      <svg viewBox="0 0 16 16" className="h-3 w-3 text-green-600" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <polyline points="3 8 7 12 13 4" />
+      </svg>
+      Delivered {relative}
+    </span>
+  );
+}
 
 // Shared button for "Copy gallery link" — used in both the mobile card list
 // and the desktop table. Briefly shows "Copied!" after a successful copy.
@@ -182,9 +257,15 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                       {p.email ?? "—"}
                       {p.title ? ` · ${p.title}` : ""}
                     </p>
+                    {p.gallery_sent_at ? (
+                      <div className="mt-1">
+                        <DeliveredIndicator sentAt={p.gallery_sent_at} />
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <CopyGalleryLinkButton token={p.gallery_token} />
+                    <ResendGalleryButton participant={p} onResent={refresh} />
                     <button
                       onClick={() => handleDelete(p)}
                       className="text-xs text-muted-600 hover:text-red-600 transition"
@@ -222,11 +303,20 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                         {p.title ?? "—"}
                       </td>
                       <td className="px-5 py-3">
-                        <ParticipantStatusPill p={p} />
+                        <div className="flex flex-col gap-1">
+                          <ParticipantStatusPill p={p} />
+                          {p.gallery_sent_at ? (
+                            <DeliveredIndicator sentAt={p.gallery_sent_at} />
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="inline-flex items-center gap-4">
                           <CopyGalleryLinkButton token={p.gallery_token} />
+                          <ResendGalleryButton
+                            participant={p}
+                            onResent={refresh}
+                          />
                           <button
                             onClick={() => handleDelete(p)}
                             className="text-xs text-muted-600 hover:text-red-600 transition"

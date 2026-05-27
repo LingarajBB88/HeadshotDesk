@@ -142,3 +142,24 @@ def reset_shot(
         db, account=account, participant_id=participant_id
     )
     return ParticipantOut.model_validate(p)
+
+
+# F5c — gallery delivery (per-participant resend) ---------------------------
+
+@router.post(
+    "/participants/{participant_id}/resend-gallery",
+    response_model=ParticipantOut,
+)
+def resend_gallery(
+    participant_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    """Force-resend the gallery delivery email to one participant. Overrides
+    the idempotent skip used by the bulk Deliver button. Useful when more
+    photos have been uploaded for a participant after they were initially
+    delivered."""
+    p = participant_service.resend_gallery_email(
+        db, account=account, participant_id=participant_id
+    )
+    return ParticipantOut.model_validate(p)

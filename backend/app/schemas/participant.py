@@ -56,6 +56,11 @@ class ParticipantOut(BaseModel):
     email: EmailStr | None
     title: str | None
     shot_at: datetime | None
+    # F5c: timestamp the gallery delivery email was last sent to this
+    # participant (null = never sent). The Deliver button on Job detail uses
+    # this to skip already-delivered participants. Surface on the participant
+    # row so the photographer sees "Delivered 5 May" pills.
+    gallery_sent_at: datetime | None = None
     photo_count: int = 0  # how many uploaded files are assigned to them
     # Round-2 polish: how many UNIQUE files this participant has pulled from
     # their gallery. Counts ParticipantDownload rows (caps enforce uniqueness
