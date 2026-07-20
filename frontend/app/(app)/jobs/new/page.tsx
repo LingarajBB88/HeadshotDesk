@@ -46,7 +46,7 @@ export default function NewJobPage() {
   }
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-4xl">
       <Link href="/jobs" className="text-sm text-muted-600 hover:text-ink transition">
         &larr; Back to jobs
       </Link>
@@ -58,52 +58,85 @@ export default function NewJobPage() {
       </p>
 
       <form onSubmit={onSubmit} className="mt-8" noValidate>
-        <FormField
-          label="Job name"
-          name="name"
-          required
-          hint="e.g. “Acme HQ team headshots”"
-          error={fieldErrors.name}
-        />
-        <FormField
-          label="Client name"
-          name="client_name"
-          hint="The company or contact you're shooting for. Optional."
-          error={fieldErrors.client_name}
-        />
-        <FormField
-          label="Client email"
-          name="client_email"
-          type="email"
-          hint="Optional — only used if you want to CC the client on delivery."
-          error={fieldErrors.client_email}
-        />
-        <FormField
-          label="Shoot date"
-          name="shoot_date"
-          type="date"
-          required
-          min={new Date().toISOString().slice(0, 10)}
-          hint="Today or later."
-          error={fieldErrors.shoot_date}
-        />
-        <FormField
-          label="Location"
-          name="location"
-          required
-          hint="Where the shoot is happening. Shows on participant emails."
-          error={fieldErrors.location}
-        />
-        <FormField
-          label="Headshots per participant"
-          name="download_cap"
-          type="number"
-          min={0}
-          max={1000}
-          defaultValue={1}
-          hint="How many headshots each participant can download from their gallery. Defaults to 1 — change later if the package is different."
-          error={fieldErrors.download_cap}
-        />
+        {/* Two-column split: shoot details (what/where/when) on the left,
+            client block (who it's for) on the right. Groups related fields
+            and pre-shapes the form for HSD-36 — when the Client entity
+            ships, the right column becomes a client picker + logo. Columns
+            stack on mobile. */}
+        <div className="grid grid-cols-1 gap-x-10 md:grid-cols-2">
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-600 mb-4">
+              Shoot details
+            </h2>
+            <FormField
+              label="Job name"
+              name="name"
+              required
+              hint="e.g. “Acme HQ team headshots”"
+              error={fieldErrors.name}
+            />
+            <FormField
+              label="Shoot date"
+              name="shoot_date"
+              type="date"
+              required
+              min={new Date().toISOString().slice(0, 10)}
+              hint="Today or later."
+              error={fieldErrors.shoot_date}
+            />
+            <FormField
+              label="Location"
+              name="location"
+              required
+              hint="Where the shoot is happening. Shows on participant emails."
+              error={fieldErrors.location}
+            />
+            <FormField
+              label="Headshots per participant"
+              name="download_cap"
+              type="number"
+              min={0}
+              max={1000}
+              defaultValue={1}
+              hint="How many headshots each participant can download from their gallery. Defaults to 1 — change later if the package is different."
+              error={fieldErrors.download_cap}
+            />
+          </section>
+
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-600 mb-4">
+              Client
+            </h2>
+            <FormField
+              label="Client name"
+              name="client_name"
+              hint="The company or contact you're shooting for. Optional."
+              error={fieldErrors.client_name}
+            />
+            <FormField
+              label="Client email"
+              name="client_email"
+              type="email"
+              hint="Optional — only used if you want to CC the client on delivery."
+              error={fieldErrors.client_email}
+            />
+
+            {/* Client logo — coming with the Client entity (HSD-36). Show a
+                disabled placeholder so the photographer knows it's on the
+                way; keeps this form pre-shaped for that work. */}
+            <div className="mb-4">
+              <span className="block text-sm font-medium text-ink mb-1.5">
+                Client logo
+              </span>
+              <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
+                <p className="text-xs text-muted-600">
+                  Coming soon — upload your client&apos;s logo once and it&apos;ll
+                  appear on their signup page and galleries.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
 
         {formError ? (
           <p className="mb-4 text-sm text-red-600" role="alert">
