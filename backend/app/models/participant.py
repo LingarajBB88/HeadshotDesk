@@ -36,6 +36,13 @@ class Participant(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Compliance: when the participant accepted the privacy terms on the
+    # public signup form. NULL for photographer-added / CSV rows (they never
+    # saw the form — the photographer is the controller for those).
+    consented_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

@@ -45,6 +45,11 @@ class PublicParticipantSignup(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     email: StrictEmail
     title: str | None = Field(default=None, max_length=200)
+    # Compliance: must be explicitly true — the signup form's privacy-consent
+    # checkbox. Rejected at the API level so a client can't skip it.
+    consent: bool = Field(
+        description="Participant accepted the privacy terms."
+    )
 
 
 # --- Responses ---

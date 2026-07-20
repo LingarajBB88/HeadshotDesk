@@ -1,0 +1,57 @@
+# Render Blueprint — HeadshotDesk backend (api.headshotdesk.com)
+#
+# Frontend deploys separately on Vercel; this file covers the FastAPI
+# service + managed Postgres, both in Frankfurt so participant data stays
+# in the EU. Redis intentionally omitted — configured in code but unused
+# in v0.1; add a `keyvalue` service here when background jobs land.
+#
+# First-time setup: Render dashboard → New → Blueprint → point at this
+# repo. Render reads this file and provisions everything. Secrets marked
+# sync: false must be pasted in the dashboard (see docs/DEPLOY.md).
+
+services:
+  - type: web
+    name: headshotdesk-api
+    runtime: docker
+    repo: https://github.com/pantherstudios/headshotdesk # adjust if repo URL differs
+    rootDir: backend
+    region: frankfurt
+    plan: starter
+    healthCheckPath: /health
+    # Run migrations before the app boots. Alembic is idempotent; a deploy
+    # with no new migrations is a no-op.
+    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    envVars:
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: BASE_URL
+        value: https://api.headshotdesk.com
+      - key: FRONTEND_URL
+        value: https://headshotdesk.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: headshotdesk-db
+          property: connectionString
+      # --- Secrets: set these in the Render dashboard, never in git ---
+      - key: JWT_SECRET
+        sync: false
+      - key: POSTMARK_SERVER_TOKEN
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        value: headshotdesk-prod
+      - key: EMAIL_FROM
+        value: "HeadshotDesk <hello@headshotdesk.com>"
+
+databases:
+  - name: headshotdesk-db
+    region: frankfurt
+    plan: basic-256mb
+    postgresMajorVersion: "16"

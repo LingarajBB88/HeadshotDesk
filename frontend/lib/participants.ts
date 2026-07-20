@@ -138,9 +138,13 @@ export type PublicSignupResult = {
 
 export async function publicSignup(
   slug: string,
-  input: { name: string; email: string; title?: string | null },
+  input: { name: string; email: string; title?: string | null; consent: boolean },
 ): Promise<PublicSignupResult> {
-  const body: Record<string, unknown> = { name: input.name, email: input.email };
+  const body: Record<string, unknown> = {
+    name: input.name,
+    email: input.email,
+    consent: input.consent,
+  };
   if (input.title) body.title = input.title;
   return api<PublicSignupResult>(`/api/v1/public/jobs/${slug}/signup`, {
     method: "POST",

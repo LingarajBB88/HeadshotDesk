@@ -2,7 +2,7 @@
 Public API — no auth required. Used by participants signing up via the
 shareable signup link `/s/{slug}`.
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -40,6 +40,14 @@ def signup(
     payload: PublicParticipantSignup,
     db: Session = Depends(get_db),
 ) -> PublicSignupResult:
+    # Compliance: explicit consent is required to process the participant's
+    # data. The frontend blocks submission client-side; this is the server
+    # backstop so a raw API call can't skip it.
+    if not payload.consent:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must accept the privacy terms to sign up.",
+        )
     p, created = participant_service.public_signup(
         db,
         slug=slug,

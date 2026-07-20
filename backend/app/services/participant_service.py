@@ -474,6 +474,9 @@ def public_signup(
         email=email,
         title=title.strip() if title else None,
         gallery_token=generate_refresh_token(),
+        # Public signups always come through the consent checkbox (enforced
+        # at the API layer) — record when.
+        consented_at=datetime.now(timezone.utc),
     )
     db.add(participant)
     job_service.maybe_advance_status(job, "open_for_signup")

@@ -20,6 +20,10 @@ export default function PublicSignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Compliance: privacy-consent checkbox. Required — the backend also
+  // rejects signups without it, this is just the friendly layer.
+  const [consent, setConsent] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +61,12 @@ export default function PublicSignupPage() {
         setSubmitting(false);
         return;
       }
+      if (!consent) {
+        setConsentError("Please accept the privacy terms to sign up.");
+        setSubmitting(false);
+        return;
+      }
+      setConsentError(null);
 
       // Backend stores a single `name` field; combine on the way out.
       // Keeps UI flexible without forcing a data model change.
@@ -66,6 +76,7 @@ export default function PublicSignupPage() {
         name: fullName,
         email: String(data.get("email") ?? "").trim(),
         title: (String(data.get("title") ?? "").trim()) || null,
+        consent: true,
       });
       setWasNewSignup(result.created);
       setSubmitted(true);
@@ -192,6 +203,38 @@ export default function PublicSignupPage() {
                   hint="Optional — shown alongside your photos."
                   error={fieldErrors.title}
                 />
+
+                {/* Compliance: explicit consent before we process the
+                    participant's name, email, and photos. */}
+                <label className="mb-4 flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => {
+                      setConsent(e.target.checked);
+                      if (e.target.checked) setConsentError(null);
+                    }}
+                    className="mt-0.5 h-4 w-4 accent-accent cursor-pointer"
+                  />
+                  <span className="text-xs text-muted-600">
+                    I agree that my name, email, and photos are processed to
+                    deliver my headshots, as described in the{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      privacy policy
+                    </a>
+                    .
+                  </span>
+                </label>
+                {consentError ? (
+                  <p className="mb-3 -mt-2 text-xs text-red-600" role="alert">
+                    {consentError}
+                  </p>
+                ) : null}
 
                 {formError ? (
                   <p className="mb-4 text-sm text-red-600" role="alert">

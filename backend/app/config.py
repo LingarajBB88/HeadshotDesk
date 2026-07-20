@@ -3,7 +3,7 @@ Application configuration. All values come from environment variables.
 Never hardcode secrets. See .env.example for the full list.
 """
 from functools import lru_cache
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,6 +25,18 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql+psycopg://headshotdesk:headshotdesk@localhost:5432/headshotdesk"
     )
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        """Managed hosts (Render, Heroku-style) hand out postgres:// or
+        postgresql:// URLs. SQLAlchemy would route those to psycopg2; we use
+        psycopg3, so rewrite the scheme to the explicit driver form."""
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+psycopg://", 1)
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+psycopg://", 1)
+        return v
 
     # --- Redis (for RQ background jobs) ---
     redis_url: str = Field(default="redis://localhost:6379/0")
