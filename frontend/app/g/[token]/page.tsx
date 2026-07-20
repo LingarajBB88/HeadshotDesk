@@ -228,7 +228,14 @@ export default function PublicGalleryPage() {
     setNotice(null);
     const fileIds = Array.from(selected);
     try {
-      await downloadZip(token, fileIds);
+      // A single selected photo downloads as a plain JPEG — zipping one
+      // file just adds an unzip step for the participant. Two or more
+      // bundle into a zip as before.
+      if (fileIds.length === 1) {
+        await downloadFile(token, fileIds[0]);
+      } else {
+        await downloadZip(token, fileIds);
+      }
       // Mark all selected as saved + bump used by the count of NEW picks.
       setGallery((prev) => {
         if (!prev) return prev;
@@ -253,7 +260,7 @@ export default function PublicGalleryPage() {
       if (err instanceof ApiError && err.status === 403) {
         setNotice({ type: "err", text: err.message });
       } else {
-        setNotice({ type: "err", text: "Couldn't build your zip. Try again?" });
+        setNotice({ type: "err", text: "Didn't go through. Try again?" });
       }
     } finally {
       setZipping(false);
@@ -539,8 +546,10 @@ export default function PublicGalleryPage() {
                 className="btn-primary text-sm px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {zipping
-                  ? "Zipping…"
-                  : `Save ${selected.size} as .zip`}
+                  ? "Saving…"
+                  : selected.size === 1
+                    ? "Save photo"
+                    : `Save ${selected.size} as .zip`}
               </button>
             </div>
           </div>
