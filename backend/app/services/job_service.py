@@ -161,11 +161,17 @@ def deliver_galleries(
     *,
     account: Account,
     job_id: str,
+    include_already_delivered: bool = False,
 ) -> dict:
     """
     Bulk-send the gallery delivery email to every eligible participant on a
-    job. Idempotent: participants who already have `gallery_sent_at` are
-    skipped, so re-clicking the button is safe.
+    job. Idempotent by default: participants who already have
+    `gallery_sent_at` are skipped, so re-clicking the button is safe.
+
+    With `include_already_delivered=True` the skip is bypassed and every
+    participant with photos + email gets (re)sent — the "resend to all"
+    path from the Deliver modal's checkbox. Still refuses no-photo and
+    no-email participants.
 
     Eligibility:
       • Must have at least one assigned photo (don't deliver empty galleries).
@@ -225,7 +231,7 @@ def deliver_galleries(
     errors: list[str] = []
 
     for p in participants:
-        if p.gallery_sent_at is not None:
+        if p.gallery_sent_at is not None and not include_already_delivered:
             skipped_already_delivered += 1
             continue
         if photo_counts.get(p.id, 0) == 0:

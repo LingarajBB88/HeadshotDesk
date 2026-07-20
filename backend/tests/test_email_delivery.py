@@ -302,6 +302,50 @@ class TestBulkDeliver:
         r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
         assert r.json()["status"] != "delivered"
 
+    def test_include_already_delivered_resends_to_everyone(
+        self, client: TestClient
+    ):
+        """The resend-to-all checkbox path: include_already_delivered=True
+        bypasses the idempotent skip and re-emails everyone with photos +
+        email. No-photo / no-email participants are still refused."""
+        a = _signup(client)
+        photographer = a["tokens"]["access_token"]
+        job = _create_job(client, photographer)
+        _add_participant(client, photographer, job["id"], "Alice", "alice@example.com")
+        _add_participant(client, photographer, job["id"], "Bob", "bob@example.com")
+        _add_participant(client, photographer, job["id"], "No Photos Pat", "pat@example.com")
+        _upload_for(client, photographer, job["id"], "Alice_001.jpg")
+        _upload_for(client, photographer, job["id"], "Bob_001.jpg")
+
+        with patch(
+            "app.services.email_service.send_gallery_delivery_email"
+        ) as send:
+            # First pass: normal deliver reaches Alice + Bob.
+            r1 = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
+            )
+            assert r1.json()["sent"] == 2
+
+            # Second pass without the flag: idempotent no-op.
+            r2 = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer)
+            )
+            assert r2.json()["sent"] == 0
+            assert r2.json()["skipped_already_delivered"] == 2
+
+            # Third pass WITH the flag: resends to both delivered
+            # participants; Pat (no photos) still skipped.
+            r3 = client.post(
+                f"/api/v1/jobs/{job['id']}/deliver",
+                json={"include_already_delivered": True},
+                headers=_auth(photographer),
+            )
+            body3 = r3.json()
+            assert body3["sent"] == 2
+            assert body3["skipped_already_delivered"] == 0
+            assert body3["skipped_no_photos"] == 1
+            assert send.call_count == 4  # 2 initial + 2 resends
+
     def test_cross_account_isolation(self, client: TestClient):
         """One photographer can't deliver another's job."""
         a = _signup(client)

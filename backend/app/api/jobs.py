@@ -25,6 +25,13 @@ class DeliveryResult(BaseModel):
     skipped_no_email: int
     errors: list[str]
 
+
+class DeliverRequest(BaseModel):
+    """Optional body for the Deliver endpoint. include_already_delivered=True
+    bypasses the idempotent skip — the 'resend to all' checkbox in the
+    Deliver modal."""
+    include_already_delivered: bool = False
+
 router = APIRouter()
 
 
@@ -103,12 +110,21 @@ def archive(
 @router.post("/{job_id}/deliver", response_model=DeliveryResult)
 def deliver(
     job_id: str,
+    payload: DeliverRequest | None = None,
     account: Account = Depends(get_current_account),
     db: Session = Depends(get_db),
 ) -> DeliveryResult:
     """F5c — Bulk send the gallery delivery email to every eligible participant
-    on this job. Idempotent: re-clicking only emails participants who weren't
-    reached on the first pass.
+    on this job. Idempotent by default: re-clicking only emails participants
+    who weren't reached on the first pass. Pass include_already_delivered=true
+    to resend to everyone with photos + email.
     """
-    result = job_service.deliver_galleries(db, account=account, job_id=job_id)
+    result = job_service.deliver_galleries(
+        db,
+        account=account,
+        job_id=job_id,
+        include_already_delivered=bool(
+            payload and payload.include_already_delivered
+        ),
+    )
     return DeliveryResult(**result)

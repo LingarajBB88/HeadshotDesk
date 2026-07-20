@@ -41,6 +41,9 @@ export default function JobDetailPage() {
   // Surfaced from the participants fetch below so the Deliver button can
   // show "Deliver to N" and disable itself when there's no one to send to.
   const [deliverableCount, setDeliverableCount] = useState<number | null>(null);
+  // Everyone with photos + email regardless of delivery state — the pool the
+  // "resend to all" checkbox in the Deliver modal addresses.
+  const [resendableCount, setResendableCount] = useState<number | null>(null);
   const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
   const [delivering, setDelivering] = useState(false);
   const [deliverResult, setDeliverResult] = useState<DeliveryResult | null>(null);
@@ -114,15 +117,17 @@ export default function JobDetailPage() {
           null,
       });
 
-      // F5c: eligibility count for the Deliver button — participants who
-      // have at least one photo, an email on file, and haven't been
-      // delivered yet. Mirrors the backend's deliver_galleries filter.
+      // F5c: eligibility counts for the Deliver button/modal. Deliverable =
+      // photo + email + not yet sent (mirrors the backend's default filter).
+      // Resendable = photo + email regardless of sent state (the pool the
+      // resend-to-all checkbox addresses).
+      const withPhotoAndEmail =
+        participants?.filter((p) => p.photo_count > 0 && !!p.email) ?? null;
       setDeliverableCount(
-        participants?.filter(
-          (p) =>
-            p.gallery_sent_at == null && p.photo_count > 0 && !!p.email,
-        ).length ?? null,
+        withPhotoAndEmail?.filter((p) => p.gallery_sent_at == null).length ??
+          null,
       );
+      setResendableCount(withPhotoAndEmail?.length ?? null);
     })();
     return () => {
       cancelled = true;
@@ -143,12 +148,12 @@ export default function JobDetailPage() {
     }
   }
 
-  async function handleDeliver() {
+  async function handleDeliver(includeAlreadyDelivered: boolean) {
     if (!job) return;
     setDelivering(true);
     setDeliverResult(null);
     try {
-      const result = await deliverJob(job.id);
+      const result = await deliverJob(job.id, { includeAlreadyDelivered });
       setDeliverResult(result);
       // Pull the latest job (status may have flipped to delivered) and
       // bump the refresh key so participant gallery_sent_at re-fetches.
@@ -206,15 +211,15 @@ export default function JobDetailPage() {
             <Link href={`/jobs/${job.id}/shoot`} className="btn-primary">
               Start shooting
             </Link>
-            {/* F5c Deliver button — only visible when there's actually
-                someone to email. Disabled with a tooltip when the count
-                is 0 so the photographer understands why. */}
+            {/* F5c Deliver button — enabled whenever anyone is emailable
+                (photos + email), even if all have been delivered already:
+                the modal's resend-to-all checkbox covers that case. */}
             <button
               type="button"
               onClick={() => setDeliverConfirmOpen(true)}
-              disabled={!deliverableCount || delivering}
+              disabled={!resendableCount || delivering}
               title={
-                deliverableCount === 0
+                resendableCount === 0
                   ? "No one to deliver to yet — participants need a photo and an email."
                   : undefined
               }
@@ -263,11 +268,12 @@ export default function JobDetailPage() {
       {deliverConfirmOpen ? (
         <DeliverConfirmModal
           jobName={job.name}
-          count={deliverableCount ?? 0}
+          unsentCount={deliverableCount ?? 0}
+          totalCount={resendableCount ?? 0}
           delivering={delivering}
           onCancel={() => setDeliverConfirmOpen(false)}
-          onConfirm={async () => {
-            await handleDeliver();
+          onConfirm={async (includeAll) => {
+            await handleDeliver(includeAll);
             setDeliverConfirmOpen(false);
           }}
         />
@@ -369,17 +375,28 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 
 function DeliverConfirmModal({
   jobName,
-  count,
+  unsentCount,
+  totalCount,
   delivering,
   onCancel,
   onConfirm,
 }: {
   jobName: string;
-  count: number;
+  /** Participants with photos + email who haven't been delivered yet. */
+  unsentCount: number;
+  /** Everyone with photos + email, regardless of delivery state. */
+  totalCount: number;
   delivering: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: (includeAlreadyDelivered: boolean) => void;
 }) {
+  const alreadyDelivered = Math.max(totalCount - unsentCount, 0);
+  // Resend-to-all checkbox. Default ON when there's no one new to send to —
+  // in that case a resend is the only reason to be in this modal.
+  const [includeAll, setIncludeAll] = useState(unsentCount === 0);
+
+  const effectiveCount = includeAll ? totalCount : unsentCount;
+
   return (
     <div
       className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-4"
@@ -391,11 +408,33 @@ function DeliverConfirmModal({
           Deliver galleries?
         </h2>
         <p className="mt-2 text-sm text-muted-600">
-          {count === 1
+          {effectiveCount === 1
             ? `Email 1 participant on ${jobName} with their gallery link.`
-            : `Email ${count} participants on ${jobName} with their gallery link.`}{" "}
-          Already-delivered participants are skipped.
+            : `Email ${effectiveCount} participants on ${jobName} with their gallery link.`}
         </p>
+
+        {alreadyDelivered > 0 ? (
+          <label className="mt-4 flex items-start gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeAll}
+              onChange={(e) => setIncludeAll(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-accent cursor-pointer"
+            />
+            <span className="text-sm text-muted-600">
+              Also resend to the{" "}
+              {alreadyDelivered === 1
+                ? "1 participant who already got"
+                : `${alreadyDelivered} participants who already got`}{" "}
+              their gallery email.
+            </span>
+          </label>
+        ) : (
+          <p className="mt-2 text-xs text-muted-400">
+            Already-delivered participants are skipped.
+          </p>
+        )}
+
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
@@ -407,8 +446,8 @@ function DeliverConfirmModal({
           </button>
           <button
             type="button"
-            onClick={onConfirm}
-            disabled={delivering}
+            onClick={() => onConfirm(includeAll)}
+            disabled={delivering || effectiveCount === 0}
             className="btn-primary text-sm disabled:opacity-60"
           >
             {delivering ? "Sending…" : "Send"}

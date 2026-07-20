@@ -121,10 +121,16 @@ export type DeliveryResult = {
   errors: string[];
 };
 
-export async function deliverJob(id: string): Promise<DeliveryResult> {
+export async function deliverJob(
+  id: string,
+  opts: { includeAlreadyDelivered?: boolean } = {},
+): Promise<DeliveryResult> {
   return api<DeliveryResult>(`/api/v1/jobs/${id}/deliver`, {
     method: "POST",
     token: authToken(),
+    body: JSON.stringify({
+      include_already_delivered: opts.includeAlreadyDelivered ?? false,
+    }),
   });
 }
 
