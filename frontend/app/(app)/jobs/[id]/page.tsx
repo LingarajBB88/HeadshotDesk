@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { CollapsibleSection } from "@/components/CollapsibleSection";
+import { FormField } from "@/components/FormField";
 import {
   JobProgressStepper,
   JobStatTiles,
@@ -43,6 +44,9 @@ export default function JobDetailPage() {
   const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
   const [delivering, setDelivering] = useState(false);
   const [deliverResult, setDeliverResult] = useState<DeliveryResult | null>(null);
+  // Edit-job modal (name, shoot date, location, client details). The cap has
+  // its own inline editor in the metadata block; not duplicated here.
+  const [editOpen, setEditOpen] = useState(false);
   // Bumped whenever Photos changes — drives ParticipantsSection to refetch so
   // the photo-count status pills stay in sync without a hard refresh.
   const [participantsRefreshKey, setParticipantsRefreshKey] = useState(0);
@@ -223,6 +227,13 @@ export default function JobDetailPage() {
                   : "Deliver"}
             </button>
             <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="btn-secondary"
+            >
+              Edit
+            </button>
+            <button
               onClick={handleArchive}
               disabled={archiving}
               className="btn-secondary disabled:opacity-60"
@@ -232,6 +243,20 @@ export default function JobDetailPage() {
           </div>
         ) : null}
       </div>
+
+      {/* Edit-job modal — name, shoot date, location, client name/email.
+          PATCHes via the existing update endpoint; cap editing stays in the
+          metadata block's inline editor. */}
+      {editOpen && job ? (
+        <EditJobModal
+          job={job}
+          onClose={() => setEditOpen(false)}
+          onSaved={(updated) => {
+            setJob(updated);
+            setEditOpen(false);
+          }}
+        />
+      ) : null}
 
       {/* F5c — Deliver confirmation modal. Surfaces the recipient count
           before sending so a stray click can't email an entire job. */}
@@ -341,6 +366,139 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
 // ----------------------------------------------------------------------------
 // F5c — Deliver confirmation + result components
 // ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// Edit-job modal — mirrors the New Job form's two-column split (shoot details
+// left, client right) with values prefilled. Sparse-PATCHes only what the
+// backend accepts; empty strings become null so optional fields can be
+// cleared.
+// ----------------------------------------------------------------------------
+
+function EditJobModal({
+  job,
+  onClose,
+  onSaved,
+}: {
+  job: Job;
+  onClose: () => void;
+  onSaved: (updated: Job) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setFormError(null);
+    setFieldErrors({});
+    setSaving(true);
+    try {
+      const data = new FormData(e.currentTarget);
+      const name = String(data.get("name") ?? "").trim();
+      if (!name) {
+        setFieldErrors({ name: "Job name is required." });
+        setSaving(false);
+        return;
+      }
+      const updated = await updateJob(job.id, {
+        name,
+        shoot_date: (String(data.get("shoot_date") ?? "").trim()) || null,
+        location: (String(data.get("location") ?? "").trim()) || null,
+        client_name: (String(data.get("client_name") ?? "").trim()) || null,
+        client_email: (String(data.get("client_email") ?? "").trim()) || null,
+      });
+      onSaved(updated);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 422) {
+        setFormError("One of the fields isn't valid — check the values.");
+      } else {
+        setFormError("Couldn't save. Try again?");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-30 flex items-center justify-center bg-ink/40 px-4 py-8 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="w-full max-w-2xl rounded-dialog bg-paper p-6 shadow-xl">
+        <h2 className="font-display text-xl font-semibold tracking-tight">
+          Edit job
+        </h2>
+
+        <form onSubmit={onSubmit} className="mt-5" noValidate>
+          <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
+            <div>
+              <FormField
+                label="Job name"
+                name="name"
+                required
+                defaultValue={job.name}
+                error={fieldErrors.name}
+              />
+              <FormField
+                label="Shoot date"
+                name="shoot_date"
+                type="date"
+                defaultValue={job.shoot_date ?? ""}
+                error={fieldErrors.shoot_date}
+              />
+              <FormField
+                label="Location"
+                name="location"
+                defaultValue={job.location ?? ""}
+                error={fieldErrors.location}
+              />
+            </div>
+            <div>
+              <FormField
+                label="Client name"
+                name="client_name"
+                defaultValue={job.client_name ?? ""}
+                error={fieldErrors.client_name}
+              />
+              <FormField
+                label="Client email"
+                name="client_email"
+                type="email"
+                defaultValue={job.client_email ?? ""}
+                error={fieldErrors.client_email}
+              />
+            </div>
+          </div>
+
+          {formError ? (
+            <p className="mb-3 text-sm text-red-600" role="alert">
+              {formError}
+            </p>
+          ) : null}
+
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="text-sm font-medium text-muted-600 hover:text-ink px-3 py-2 rounded-md transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-primary text-sm disabled:opacity-60"
+            >
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function DeliverConfirmModal({
   jobName,
