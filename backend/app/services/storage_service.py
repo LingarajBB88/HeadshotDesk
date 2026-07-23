@@ -80,9 +80,16 @@ def _r2_client():  # type: ignore[no-untyped-def]
         return _r2
     import boto3
 
+    # Jurisdiction-restricted buckets (prod uses "eu") live behind a
+    # jurisdiction-specific endpoint. Empty jurisdiction = default namespace.
+    host = (
+        f"{settings.r2_account_id}.{settings.r2_jurisdiction}.r2.cloudflarestorage.com"
+        if settings.r2_jurisdiction
+        else f"{settings.r2_account_id}.r2.cloudflarestorage.com"
+    )
     _r2 = boto3.client(
         service_name="s3",
-        endpoint_url=f"https://{settings.r2_account_id}.r2.cloudflarestorage.com",
+        endpoint_url=f"https://{host}",
         aws_access_key_id=settings.r2_access_key_id,
         aws_secret_access_key=settings.r2_secret_access_key,
         region_name="auto",

@@ -47,6 +47,8 @@ services:
         sync: false
       - key: R2_BUCKET
         value: headshotdesk-prod
+      - key: R2_JURISDICTION
+        value: eu
       - key: EMAIL_FROM
         value: "HeadshotDesk <hello@headshotdesk.com>"
 

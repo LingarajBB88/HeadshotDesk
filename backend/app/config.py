@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     r2_secret_access_key: str = Field(default="")
     r2_bucket: str = Field(default="headshotdesk-dev")
     r2_public_base_url: str = Field(default="")  # if using a custom domain
+    # Jurisdiction-restricted buckets (e.g. "eu") use a different endpoint:
+    # {account}.{jurisdiction}.r2.cloudflarestorage.com. Empty = default
+    # namespace. Prod uses "eu" — participant photos stay on EU infra.
+    r2_jurisdiction: str = Field(default="")
 
     # --- Stripe ---
     stripe_secret_key: str = Field(default="")
