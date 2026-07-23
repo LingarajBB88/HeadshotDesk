@@ -13,7 +13,7 @@ services:
   - type: web
     name: headshotdesk-api
     runtime: docker
-    repo: https://github.com/pantherstudios/headshotdesk # adjust if repo URL differs
+    # No repo: field — Render defaults to the repo containing this blueprint.
     rootDir: backend
     region: frankfurt
     plan: starter
