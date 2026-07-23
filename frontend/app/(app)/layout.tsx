@@ -54,16 +54,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           {/* Primary nav — tighter spacing on mobile.
-              "Galleries" tab removed 2026-05-22 — was a stub link to a
-              non-existent /galleries route. Cross-job galleries dashboard
-              is now backlogged as F7 (v0.2). When that ships, restore the
-              link here. */}
+              "Galleries" tab removed 2026-05-22 (F7 backlogged) and
+              "Settings" removed 2026-07-23 — both were stub links to
+              non-existent routes; typedRoutes rightly failed the prod
+              build on them. Restore each when its page ships. */}
           <nav className="flex items-center gap-3 sm:gap-5 text-sm text-muted-600">
             <Link href="/jobs" className="hover:text-ink">
               Jobs
-            </Link>
-            <Link href="/settings" className="hover:text-ink">
-              Settings
             </Link>
           </nav>
 

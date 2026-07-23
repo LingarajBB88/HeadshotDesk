@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -28,7 +29,11 @@ function RowCell({
 }) {
   return (
     <td className="p-0">
-      <Link href={href} className={`block px-5 py-3 ${className}`}>
+      {/* Cast for typedRoutes: the prop stays string so callers can build
+          template URLs; every caller passes /jobs/{id} which is a real
+          route. Next's generated Route union isn't available to standalone
+          tsc, so a plain cast keeps local + Vercel builds consistent. */}
+      <Link href={href as Route} className={`block px-5 py-3 ${className}`}>
         {children}
       </Link>
     </td>
