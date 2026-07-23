@@ -1,39 +1,293 @@
-// Marketing landing page placeholder.
-// We'll flesh this out properly once brand direction and pricing are locked.
+// Marketing landing page (HSD-32).
+//
+// Positioning: clarity. The competing tools make photographers "study the
+// software" (their own testimonials mention watching videos for half a day).
+// This page explains the entire workflow in five concrete steps so a
+// photographer knows exactly what the product does before signing up.
+//
+// Ground rules for this page:
+//   • Every feature listed under "how it works" / "what's included" is
+//     SHIPPED. Pipeline features live only under "On the roadmap", clearly
+//     labeled. Don't move items up until they're live.
+//   • Free during beta — no pricing claims until billing exists.
 
 import Link from "next/link";
 
 import { Logo } from "@/components/Logo";
 
+export const metadata = {
+  title: "HeadshotDesk — team headshot shoots, from signup to delivery",
+  description:
+    "Run team and event headshot shoots without the admin: participant signup links, a shoot-day queue, automatic photo sorting, and private galleries delivered to every inbox. EU-hosted. Free during beta.",
+};
+
+const STEPS: { title: string; body: string }[] = [
+  {
+    title: "Create a job",
+    body: "Name, shoot date, location, and how many headshots each person may keep. Takes about two minutes — everything can be changed later.",
+  },
+  {
+    title: "Share one link",
+    body: "Every job gets its own signup page. Send the link to your contact person or the whole team — participants add themselves. Have a list already? Import the CSV.",
+  },
+  {
+    title: "Shoot with the queue",
+    body: "On shoot day, tap the next name and it's on your clipboard for your tethering tool. Files named like “Jane Doe_001.jpg” match themselves to Jane — no renaming session afterwards.",
+  },
+  {
+    title: "Photos sort themselves",
+    body: "Point HeadshotDesk at your export folder once. Every new frame uploads in the background, skips duplicates, and files itself under the right person while you keep shooting.",
+  },
+  {
+    title: "Click Deliver",
+    body: "Everyone gets an email with a private gallery — each person sees only their own photos, picks within the limit you set, and downloads. You see who's been delivered and who's downloaded, at a glance.",
+  },
+];
+
+const SHIPPED: { title: string; body: string }[] = [
+  {
+    title: "Public signup pages",
+    body: "A shareable signup link per job, with consent handling built in.",
+  },
+  {
+    title: "CSV import",
+    body: "Bring an HR list straight in — delimiter quirks handled.",
+  },
+  {
+    title: "Shoot-day queue",
+    body: "Click-to-copy names for tethered shooting, mark-shot tracking.",
+  },
+  {
+    title: "Watch folder",
+    body: "Map your export folder; new frames upload and sort automatically.",
+  },
+  {
+    title: "Filename auto-match",
+    body: "Shots match to participants by name — including partial matches.",
+  },
+  {
+    title: "Private galleries",
+    body: "Each participant sees only their own photos. Link-only access.",
+  },
+  {
+    title: "Download limits",
+    body: "Set how many headshots each person keeps. Re-downloads are free.",
+  },
+  {
+    title: "One-click delivery",
+    body: "Email every finished participant their gallery at once — resend anytime.",
+  },
+  {
+    title: "Live gallery updates",
+    body: "Upload more photos later; open galleries refresh on their own.",
+  },
+  {
+    title: "EU-hosted, GDPR-aware",
+    body: "Data in Frankfurt, photos on EU storage, participant consent recorded.",
+  },
+];
+
+const ROADMAP: string[] = [
+  "Time-slot self-booking for corporate shoot days",
+  "Your client's logo on signup pages, galleries, and emails",
+  "Participant retouch picks and proofing",
+  "Paid extra downloads for participants",
+  "AI retouching and background swap",
+];
+
 export default function HomePage() {
   return (
     <main className="min-h-dvh">
+      {/* Header */}
       <header className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 h-16 flex items-center justify-between">
         <Link href="/">
           <Logo size="sm" wordmark />
         </Link>
-        <Link href="/login" className="text-sm text-muted-600 hover:text-ink transition">
-          Sign in
-        </Link>
+        <nav className="flex items-center gap-4 sm:gap-6 text-sm">
+          <a href="#how-it-works" className="hidden sm:inline text-muted-600 hover:text-ink transition">
+            How it works
+          </a>
+          <a href="#features" className="hidden sm:inline text-muted-600 hover:text-ink transition">
+            What&apos;s included
+          </a>
+          <Link href="/login" className="text-muted-600 hover:text-ink transition">
+            Sign in
+          </Link>
+          <Link href="/signup" className="btn-primary text-sm">
+            Try it free
+          </Link>
+        </nav>
       </header>
 
-      <section className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 pt-12 sm:pt-16 pb-16">
+      {/* Hero */}
+      <section className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 pt-12 sm:pt-20 pb-12 sm:pb-16">
         <p className="text-xs sm:text-sm font-medium text-accent uppercase tracking-wider">
-          HeadshotDesk · v0.1 in progress
+          For headshot photographers
         </p>
-        <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight">
-          Run team headshot shoots <br className="hidden md:inline" />
-          without the spreadsheet chaos.
+        <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight max-w-3xl">
+          Team headshots, from signup to delivery — one clear flow.
         </h1>
         <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-600">
-          Auto-rename every shot. Auto-deliver branded galleries. AI retouching built in.
-          Pause your subscription during slow seasons — your data stays put.
+          HeadshotDesk handles everything around the camera: participants sign
+          themselves up, shoot-day runs off a queue, photos sort themselves to
+          the right person, and every participant gets a private gallery in
+          their inbox. No manual to study — the whole workflow is on this page.
         </p>
-        <div className="mt-8 sm:mt-10 flex flex-wrap gap-3">
-          <Link className="btn-primary" href="/signup">Start free trial</Link>
-          <Link className="btn-secondary" href="/login">Sign in</Link>
+        <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
+          <Link className="btn-primary" href="/signup">
+            Try it free
+          </Link>
+          <a className="btn-secondary" href="#how-it-works">
+            See how it works
+          </a>
+        </div>
+        <p className="mt-4 text-xs text-muted-600">
+          Free during beta · No credit card · EU-hosted
+        </p>
+      </section>
+
+      {/* How it works — the clarity play. Five concrete steps, no vagueness. */}
+      <section id="how-it-works" className="border-t border-muted-200 bg-muted-50">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
+            How a shoot runs on HeadshotDesk
+          </h2>
+          <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
+            The whole workflow, start to finish. If this looks like your shoot
+            day, you already know how to use the product.
+          </p>
+
+          <ol className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {STEPS.map((step, i) => (
+              <li
+                key={step.title}
+                className="rounded-card border border-muted-200 bg-paper p-6"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-fg text-sm font-semibold">
+                    {i + 1}
+                  </span>
+                  <h3 className="font-display text-lg font-semibold tracking-tight">
+                    {step.title}
+                  </h3>
+                </div>
+                <p className="mt-3 text-sm text-muted-600 leading-relaxed">
+                  {step.body}
+                </p>
+              </li>
+            ))}
+            {/* Closing card — reinforces the outcome */}
+            <li className="rounded-card border border-accent/30 bg-accent-muted p-6">
+              <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
+                That&apos;s the whole job
+              </h3>
+              <p className="mt-3 text-sm text-muted-600 leading-relaxed">
+                No export sessions, no renaming evenings, no zip files over
+                WeTransfer, no &ldquo;which photo was Jane again?&rdquo; The
+                admin happens while you shoot.
+              </p>
+            </li>
+          </ol>
         </div>
       </section>
+
+      {/* What's included — everything here is live today. */}
+      <section id="features" className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
+            What&apos;s included today
+          </h2>
+          <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
+            Everything below is live — not a teaser for a future release.
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8">
+            {SHIPPED.map((f) => (
+              <div key={f.title}>
+                <h3 className="text-sm font-semibold text-ink">{f.title}</h3>
+                <p className="mt-1 text-sm text-muted-600 leading-relaxed">
+                  {f.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Roadmap — honest about what's coming vs. what exists. */}
+      <section className="border-t border-muted-200 bg-muted-50">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
+            On the roadmap
+          </h2>
+          <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
+            Built in the open with our beta photographers. Coming next, in
+            roughly this order:
+          </p>
+          <ul className="mt-8 max-w-2xl space-y-3">
+            {ROADMAP.map((item) => (
+              <li key={item} className="flex items-start gap-3 text-sm text-muted-600">
+                <span
+                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                  aria-hidden
+                />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {/* Beta CTA */}
+      <section className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
+            Free while in beta — help shape it
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
+            HeadshotDesk is in active beta. Everything on this page works today
+            and costs nothing while we polish. Beta photographers get a direct
+            line to the roadmap — the feature list above is largely their
+            requests. Pricing comes later; your jobs and photos stay yours
+            either way.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link className="btn-primary" href="/signup">
+              Create your account
+            </Link>
+            <a
+              className="btn-secondary"
+              href="mailto:info@pantherstudios.nl?subject=HeadshotDesk beta"
+            >
+              Questions? Email us
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <Logo size="sm" wordmark />
+          <nav className="flex items-center gap-5 text-xs text-muted-600">
+            <Link href="/privacy" className="hover:text-ink transition">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-ink transition">
+              Terms
+            </Link>
+            <a
+              href="mailto:info@pantherstudios.nl"
+              className="hover:text-ink transition"
+            >
+              Contact
+            </a>
+          </nav>
+          <p className="text-xs text-muted-400">
+            © {new Date().getFullYear()} Panther Studios, Amsterdam
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }
