@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { FormField } from "@/components/FormField";
-import { createJob } from "@/lib/jobs";
+import { createJob, type ShootMode } from "@/lib/jobs";
 import { classifyFormError } from "@/lib/form-errors";
 
 export default function NewJobPage() {
@@ -13,6 +13,8 @@ export default function NewJobPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // HSD-55: how shoot day runs. Queue is the familiar default.
+  const [shootMode, setShootMode] = useState<ShootMode>("queue");
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -33,6 +35,7 @@ export default function NewJobPage() {
           parsedCap !== null && Number.isFinite(parsedCap) && parsedCap >= 0
             ? Math.floor(parsedCap)
             : null,
+        shoot_mode: shootMode,
       });
       router.push(`/jobs/${job.id}`);
     } catch (err) {
@@ -109,6 +112,66 @@ export default function NewJobPage() {
               hint="How many headshots each participant can download from their gallery. Defaults to 1. Change later if the package is different."
               error={fieldErrors.download_cap}
             />
+
+            {/* HSD-55: shoot-day mode. Radio cards, queue preselected. */}
+            <fieldset className="mb-4">
+              <legend className="block text-sm font-medium text-ink mb-1.5">
+                How does shoot day run?
+              </legend>
+              <div className="space-y-2">
+                <label
+                  className={
+                    "flex items-start gap-2.5 rounded-card border p-3 cursor-pointer transition " +
+                    (shootMode === "queue"
+                      ? "border-accent bg-accent-muted"
+                      : "border-muted-200 bg-paper hover:border-muted-400")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="shoot_mode"
+                    checked={shootMode === "queue"}
+                    onChange={() => setShootMode("queue")}
+                    className="mt-0.5 accent-accent"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-ink">
+                      Walk-up queue
+                    </span>
+                    <span className="block text-xs text-muted-600">
+                      People come when they can; you pick who&apos;s next.
+                      Best for open days and smaller groups.
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={
+                    "flex items-start gap-2.5 rounded-card border p-3 cursor-pointer transition " +
+                    (shootMode === "time_slot"
+                      ? "border-accent bg-accent-muted"
+                      : "border-muted-200 bg-paper hover:border-muted-400")
+                  }
+                >
+                  <input
+                    type="radio"
+                    name="shoot_mode"
+                    checked={shootMode === "time_slot"}
+                    onChange={() => setShootMode("time_slot")}
+                    className="mt-0.5 accent-accent"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-ink">
+                      Time slots
+                    </span>
+                    <span className="block text-xs text-muted-600">
+                      Participants book an appointment while signing up. Best
+                      for corporate days and busy teams. You set the schedule
+                      on the job page after creating.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
           </section>
 
           <section>

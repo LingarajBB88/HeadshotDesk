@@ -14,6 +14,7 @@ import {
 } from "@/components/JobOverview";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
 import { PhotosSection } from "@/components/PhotosSection";
+import { ScheduleSection } from "@/components/ScheduleSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
@@ -337,6 +338,18 @@ export default function JobDetailPage() {
           </div>
         </CollapsibleSection>
       </div>
+
+      {/* HSD-55: schedule section for time-slot jobs — slot settings +
+          who booked what. Queue jobs skip it entirely. */}
+      {job.shoot_mode === "time_slot" ? (
+        <div className="mt-12 border-t border-muted-200 pt-12">
+          <ScheduleSection
+            job={job}
+            refreshKey={participantsRefreshKey}
+            onJobChanged={(updated) => setJob(updated)}
+          />
+        </div>
+      ) : null}
 
       {/* Simple hairline separators between Job details / Participants / Photos.
           Lightweight visual segregation without uppercase zone labels. */}

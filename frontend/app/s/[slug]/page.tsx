@@ -7,7 +7,19 @@ import { FormField } from "@/components/FormField";
 import { Logo } from "@/components/Logo";
 import { ApiError } from "@/lib/api";
 import { classifyFormError } from "@/lib/form-errors";
-import { getPublicJob, publicSignup, type PublicJob } from "@/lib/participants";
+import {
+  bookPublicSlot,
+  getPublicJob,
+  listPublicSlots,
+  publicSignup,
+  type PublicJob,
+  type PublicSlot,
+} from "@/lib/participants";
+
+/** Show a slot's HH:MM. Slots are wall-clock times on the shoot date. */
+function slotTime(iso: string): string {
+  return iso.slice(11, 16);
+}
 
 export default function PublicSignupPage() {
   const params = useParams<{ slug: string }>();
@@ -24,6 +36,42 @@ export default function PublicSignupPage() {
   // rejects signups without it, this is just the friendly layer.
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  // HSD-55: slot picking after signup on time-slot jobs. The gallery token
+  // from the signup response authenticates the booking call.
+  const [galleryToken, setGalleryToken] = useState<string | null>(null);
+  const [slots, setSlots] = useState<PublicSlot[] | null>(null);
+  const [bookedSlot, setBookedSlot] = useState<PublicSlot | null>(null);
+  const [booking, setBooking] = useState<string | null>(null);
+  const [slotError, setSlotError] = useState<string | null>(null);
+
+  const needsSlot = job?.shoot_mode === "time_slot";
+
+  async function refreshSlots() {
+    try {
+      setSlots(await listPublicSlots(slug));
+    } catch {
+      setSlots([]);
+    }
+  }
+
+  async function pickSlot(slot: PublicSlot) {
+    if (!galleryToken) return;
+    setBooking(slot.start);
+    setSlotError(null);
+    try {
+      const booked = await bookPublicSlot(slug, galleryToken, slot.start);
+      setBookedSlot(booked);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setSlotError("That time was just taken. Pick another.");
+        await refreshSlots();
+      } else {
+        setSlotError("Didn't go through. Try again?");
+      }
+    } finally {
+      setBooking(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -79,6 +127,10 @@ export default function PublicSignupPage() {
         consent: true,
       });
       setWasNewSignup(result.created);
+      setGalleryToken(result.participant.gallery_token);
+      if (job?.shoot_mode === "time_slot") {
+        await refreshSlots();
+      }
       setSubmitted(true);
     } catch (err) {
       const c = classifyFormError(err);
@@ -109,13 +161,74 @@ export default function PublicSignupPage() {
             <p className="text-sm text-red-600">{loadError}</p>
           ) : !job ? (
             <p className="text-sm text-muted-600">Loading…</p>
+          ) : submitted && needsSlot && !bookedSlot ? (
+            <>
+              <h1 className="font-display text-2xl font-semibold tracking-tight">
+                Pick your time
+              </h1>
+              <p className="mt-2 text-sm text-muted-600">
+                You&apos;re on the list for{" "}
+                <strong className="text-ink">{job.name}</strong>. Choose the
+                slot that suits you
+                {job.shoot_date ? <> on {job.shoot_date}</> : null}.
+              </p>
+              {slotError ? (
+                <p className="mt-3 text-sm text-red-600" role="alert">
+                  {slotError}
+                </p>
+              ) : null}
+              {slots === null ? (
+                <p className="mt-4 text-sm text-muted-600">Loading times…</p>
+              ) : slots.length === 0 ? (
+                <p className="mt-4 text-sm text-muted-600">
+                  The schedule isn&apos;t set up yet. You&apos;re signed up;
+                  your photographer will share times separately.
+                </p>
+              ) : (
+                <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {slots.map((s) => (
+                    <button
+                      key={s.start}
+                      type="button"
+                      disabled={!s.available || booking !== null}
+                      onClick={() => pickSlot(s)}
+                      className={
+                        "rounded-md border px-2 py-2 text-sm font-medium transition " +
+                        (!s.available
+                          ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
+                          : booking === s.start
+                            ? "border-accent bg-accent text-accent-fg"
+                            : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+                      }
+                    >
+                      {booking === s.start ? "…" : slotTime(s.start)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           ) : submitted ? (
             <>
               <h1 className="font-display text-2xl font-semibold tracking-tight">
-                {wasNewSignup ? "You're on the list" : "You're already signed up"}
+                {bookedSlot
+                  ? "You're booked"
+                  : wasNewSignup
+                    ? "You're on the list"
+                    : "You're already signed up"}
               </h1>
               <p className="mt-2 text-sm text-muted-600">
-                {wasNewSignup ? (
+                {bookedSlot ? (
+                  <>
+                    Your headshot slot for{" "}
+                    <strong className="text-ink">{job.name}</strong> is{" "}
+                    <strong className="text-ink">
+                      {slotTime(bookedSlot.start)}
+                    </strong>
+                    {job.shoot_date ? <> on {job.shoot_date}</> : null}. You&apos;ll
+                    get an email with your photo gallery once the shoot is
+                    delivered.
+                  </>
+                ) : wasNewSignup ? (
                   <>
                     We&apos;ve added you to{" "}
                     <strong className="text-ink">{job.name}</strong>. You&apos;ll
@@ -137,6 +250,12 @@ export default function PublicSignupPage() {
               {job.location ? (
                 <p className="mt-1 text-sm text-muted-600">
                   <span className="font-medium text-ink">Location:</span> {job.location}
+                </p>
+              ) : null}
+              {bookedSlot ? (
+                <p className="mt-1 text-sm text-muted-600">
+                  <span className="font-medium text-ink">Your time:</span>{" "}
+                  {slotTime(bookedSlot.start)} to {slotTime(bookedSlot.end)}
                 </p>
               ) : null}
             </>

@@ -60,6 +60,10 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Click-to-copy names for tethered shooting, mark-shot tracking.",
   },
   {
+    title: "Time-slot booking",
+    body: "Participants book appointments at signup; shoot day runs on a schedule.",
+  },
+  {
     title: "Watch folder",
     body: "Map your export folder; new frames upload and sort automatically.",
   },
@@ -99,6 +103,11 @@ const ROADMAP_TIMELINE: {
 }[] = [
   {
     status: "shipped",
+    title: "Time-slot self-booking",
+    detail: "Participants book their appointment while signing up; shoot day runs as a schedule.",
+  },
+  {
+    status: "shipped",
     title: "Searchable help center",
     detail: "Every screen and setting explained, with instant search.",
   },
@@ -109,12 +118,6 @@ const ROADMAP_TIMELINE: {
   },
   {
     status: "building",
-    title: "Time-slot self-booking",
-    detail:
-      "Participants pick an appointment while signing up; shoot day runs as a schedule instead of a line.",
-  },
-  {
-    status: "next",
     title: "Your client's logo on signup pages and galleries",
     detail: "Branded delivery that looks like it came from the client's team.",
   },

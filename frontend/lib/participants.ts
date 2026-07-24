@@ -42,7 +42,15 @@ export type PublicJob = {
   client_name: string | null;
   shoot_date: string | null;
   location: string | null;
+  // HSD-55: signals the signup page to show the slot picker.
+  shoot_mode: "queue" | "time_slot";
   branding: Record<string, unknown> | null;
+};
+
+export type PublicSlot = {
+  start: string;
+  end: string;
+  available: boolean;
 };
 
 function authToken(): string {
@@ -129,6 +137,24 @@ export async function importCsv(
 
 export async function getPublicJob(slug: string): Promise<PublicJob> {
   return api<PublicJob>(`/api/v1/public/jobs/${slug}`);
+}
+
+export async function listPublicSlots(slug: string): Promise<PublicSlot[]> {
+  const res = await api<{ slots: PublicSlot[] }>(
+    `/api/v1/public/jobs/${slug}/slots`,
+  );
+  return res.slots;
+}
+
+export async function bookPublicSlot(
+  slug: string,
+  galleryToken: string,
+  slotStart: string,
+): Promise<PublicSlot> {
+  return api<PublicSlot>(`/api/v1/public/jobs/${slug}/book-slot`, {
+    method: "POST",
+    body: JSON.stringify({ gallery_token: galleryToken, slot_start: slotStart }),
+  });
 }
 
 export type PublicSignupResult = {

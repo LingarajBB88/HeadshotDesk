@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { getJob, type Job } from "@/lib/jobs";
+import { getJob, getSchedule, type Job, type ScheduleEntry } from "@/lib/jobs";
 import {
   listParticipants,
   markShot,
@@ -33,6 +33,11 @@ export default function ShootQueuePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // HSD-55: booked slot per participant on time-slot jobs. Used to order
+  // the pending list by appointment and show the time next to each name.
+  const [slotByParticipant, setSlotByParticipant] = useState<
+    Record<string, ScheduleEntry>
+  >({});
 
   async function loadParticipants() {
     if (!id) return;
@@ -51,6 +56,14 @@ export default function ShootQueuePage() {
       try {
         const [j] = await Promise.all([getJob(id), loadParticipants()]);
         if (!cancelled) setJob(j);
+        if (j.shoot_mode === "time_slot") {
+          const entries = await getSchedule(id);
+          if (!cancelled) {
+            setSlotByParticipant(
+              Object.fromEntries(entries.map((e) => [e.participant_id, e])),
+            );
+          }
+        }
       } catch {
         if (!cancelled) setError("Could not load job.");
       }
@@ -110,7 +123,18 @@ export default function ShootQueuePage() {
     return <p className="text-sm text-muted-600">Loading…</p>;
   }
 
-  const pending = participants.filter((p) => !p.shot_at);
+  // Time-slot jobs: pending ordered by appointment (unbooked people sink
+  // to the bottom alphabetically). Queue jobs keep signup order.
+  const slotTimeOf = (p: Participant) =>
+    slotByParticipant[p.id]?.slot_start ?? "9999";
+  const pending = participants
+    .filter((p) => !p.shot_at)
+    .sort((a, b) =>
+      job.shoot_mode === "time_slot"
+        ? slotTimeOf(a).localeCompare(slotTimeOf(b)) ||
+          a.name.localeCompare(b.name)
+        : 0,
+    );
   const shot = participants.filter((p) => p.shot_at);
 
   return (
@@ -175,6 +199,11 @@ export default function ShootQueuePage() {
                 <li key={p.id}>
                   <ShootCard
                     participant={p}
+                    slotTime={
+                      slotByParticipant[p.id]
+                        ? slotByParticipant[p.id].slot_start.slice(11, 16)
+                        : null
+                    }
                     active={activeId === p.id}
                     busy={busy === p.id}
                     onSelect={() => handleSelect(p)}
@@ -244,12 +273,15 @@ export default function ShootQueuePage() {
 
 function ShootCard({
   participant: p,
+  slotTime,
   active,
   busy,
   onSelect,
   onMarkShot,
 }: {
   participant: Participant;
+  /** HSD-55: booked appointment (HH:MM) on time-slot jobs, null otherwise. */
+  slotTime?: string | null;
   active: boolean;
   busy: boolean;
   onSelect: () => void;
@@ -270,6 +302,11 @@ function ShootCard({
         aria-label={`Select ${p.name}`}
       >
         <p className="font-display text-2xl sm:text-3xl font-semibold tracking-tight text-ink truncate">
+          {slotTime ? (
+            <span className="mr-2 align-middle inline-block rounded-md bg-accent-muted px-2 py-0.5 font-mono text-base font-semibold text-accent">
+              {slotTime}
+            </span>
+          ) : null}
           {p.name}
         </p>
         <p className="mt-0.5 text-sm text-muted-600 truncate">

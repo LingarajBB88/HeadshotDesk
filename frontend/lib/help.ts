@@ -139,6 +139,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "Shoot date", def: "Shown on the signup page and used for the countdown on your job page. Today or later." },
           { term: "Location", def: "Shown on the signup page so participants know where to be." },
           { term: "Headshots per participant", def: "How many photos each person may download from their gallery. Defaults to 1. Set 0 to disable downloads. Change it anytime, even after delivery." },
+          { term: "How does shoot day run", def: "Walk-up queue (you pick who is next) or time slots (participants book an appointment while signing up). See the time-slot booking topic for the full picture." },
         ],
       },
       {
@@ -318,6 +319,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         body: [
           "The job name, client name, date, and location, plus a short form: first and last name, email, and an optional title. They also tick a privacy consent box; the signup is refused without it, and the moment of consent is recorded.",
           "If someone signs up twice with the same email, they get a friendly already-signed-up message instead of a duplicate entry.",
+          "On time-slot jobs, a time picker follows the form so people book their appointment in the same visit.",
         ],
       },
       {
@@ -369,6 +371,57 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     related: ["filename-matching", "watch-folder", "job-statuses"],
+  },
+  {
+    slug: "time-slot-booking",
+    title: "Time-slot booking",
+    category: "Shoot day",
+    summary: "Let participants book an appointment while signing up, and run shoot day as a schedule.",
+    intro: [
+      "For corporate shoot days, a walk-up line wastes everyone's time. In time-slot mode, participants pick an appointment while signing up, and your shoot day becomes a schedule: you always know who is next and when.",
+      "Time slots are a per-job choice. Your other jobs can keep the walk-up queue; both modes use the same shoot screen, photos, and delivery.",
+    ],
+    keywords: [
+      "time slots", "booking", "appointments", "schedule", "slot", "book",
+      "corporate", "shoot mode", "queue mode", "breaks", "buffer",
+    ],
+    sections: [
+      {
+        id: "choose-mode",
+        heading: "Choosing the mode",
+        body: [
+          "Pick the mode when creating the job: walk-up queue or time slots. You can change it on the job page until shooting starts; after the first person is marked shot, the mode is locked for the day.",
+          "Switching a time-slot job back to queue removes all existing bookings, so the app asks you to confirm first.",
+        ],
+      },
+      {
+        id: "slot-settings",
+        heading: "Setting up the slots",
+        items: [
+          { term: "Day starts and ends", def: "The bookable window on your shoot date, for example 09:00 to 17:00." },
+          { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots." },
+          { term: "Buffer between slots", def: "Optional breathing room after each appointment, for reviewing frames or resetting." },
+          { term: "Breaks", def: "Blocks nobody can book, like lunch. Slots skip over them automatically." },
+        ],
+      },
+      {
+        id: "participant-side",
+        heading: "What participants see",
+        body: [
+          "After filling in their details on the signup page, participants see the open times and tap one to book it. Taken slots show as unavailable. If two people go for the same slot at the same moment, the second gets a friendly nudge to pick another.",
+          "Signing up again with the same email lets someone pick a different time; their old slot frees up automatically.",
+        ],
+      },
+      {
+        id: "shoot-day",
+        heading: "On shoot day",
+        body: [
+          "The Schedule section on the job page lists every booking in order. The shoot screen sorts the pending list by appointment and shows each person's time next to their name, so the queue works exactly as before, just in schedule order.",
+          "Walk-ins still work: add the person as a participant and shoot them whenever there is room.",
+        ],
+      },
+    ],
+    related: ["shoot-day-queue", "create-a-job", "signup-link"],
   },
 
   // ------------------------------------------------------------------

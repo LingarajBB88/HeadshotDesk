@@ -3,6 +3,26 @@
 import { api } from "./api";
 import { getAccessToken } from "./auth";
 
+export type ShootMode = "queue" | "time_slot";
+
+export type SlotBreak = { start: string; end: string };
+
+export type TimeSlotConfig = {
+  start: string;         // "09:00"
+  end: string;           // "17:00"
+  slot_minutes: number;
+  buffer_minutes: number;
+  breaks: SlotBreak[];
+};
+
+export type ScheduleEntry = {
+  slot_start: string;
+  slot_end: string;
+  participant_id: string;
+  participant_name: string;
+  shot: boolean;
+};
+
 export type JobStatus =
   | "draft"
   | "open_for_signup"
@@ -22,6 +42,9 @@ export type Job = {
   // F5b.1: per-job hard cap on unique photos each participant can download
   // from their /g/{token} gallery. 0 disables downloads entirely.
   download_cap: number;
+  // HSD-55: how shoot day runs.
+  shoot_mode: ShootMode;
+  time_slot_config: TimeSlotConfig | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -64,6 +87,7 @@ export async function createJob(input: {
   shoot_date?: string | null;
   location?: string | null;
   download_cap?: number | null;
+  shoot_mode?: ShootMode;
 }): Promise<Job> {
   // Strip empty strings → null so backend doesn't try to validate them as emails/dates.
   const body: Record<string, unknown> = { name: input.name };
@@ -74,6 +98,7 @@ export async function createJob(input: {
   if (typeof input.download_cap === "number" && Number.isFinite(input.download_cap)) {
     body.download_cap = input.download_cap;
   }
+  if (input.shoot_mode) body.shoot_mode = input.shoot_mode;
 
   return api<Job>("/api/v1/jobs", {
     method: "POST",
@@ -94,6 +119,8 @@ export async function updateJob(
       | "location"
       | "status"
       | "download_cap"
+      | "shoot_mode"
+      | "time_slot_config"
     >
   >,
 ): Promise<Job> {
@@ -102,6 +129,14 @@ export async function updateJob(
     token: authToken(),
     body: JSON.stringify(patch),
   });
+}
+
+export async function getSchedule(id: string): Promise<ScheduleEntry[]> {
+  const res = await api<{ entries: ScheduleEntry[] }>(
+    `/api/v1/jobs/${id}/schedule`,
+    { token: authToken() },
+  );
+  return res.entries;
 }
 
 export async function archiveJob(id: string): Promise<Job> {
