@@ -162,9 +162,22 @@ export default function HelpPage() {
                             {article.title}
                           </a>
                         </h3>
-                        <p className="mt-1 text-sm text-muted-600">
-                          {article.summary}
-                        </p>
+                        {/* Intro: what this is and why it helps, before any
+                            mechanics. Falls back to the one-line summary. */}
+                        {article.intro ? (
+                          article.intro.map((p, i) => (
+                            <p
+                              key={i}
+                              className="mt-3 text-sm sm:text-[15px] text-ink leading-relaxed"
+                            >
+                              {p}
+                            </p>
+                          ))
+                        ) : (
+                          <p className="mt-1 text-sm text-muted-600">
+                            {article.summary}
+                          </p>
+                        )}
 
                         {article.sections.map((section) => {
                           const anchor = helpSectionAnchor(article.slug, section.id);

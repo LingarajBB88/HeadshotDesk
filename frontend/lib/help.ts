@@ -28,6 +28,9 @@ export type HelpArticle = {
   category: (typeof HELP_CATEGORIES)[number];
   /** One-liner shown in the index and under search results. */
   summary: string;
+  /** Opening paragraphs: what this is and how it helps. Shown before the
+   *  sections on the help page. */
+  intro?: string[];
   keywords: string[];
   sections: HelpSection[];
   related?: string[];
@@ -50,6 +53,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "What is HeadshotDesk?",
     category: "Getting started",
     summary: "The product in two minutes: what it does and how a shoot flows through it.",
+    intro: [
+      "HeadshotDesk is built for photographers who shoot headshots for teams, offices, and events. This page gives you the lay of the land: the three things you work with and the five steps every shoot moves through. Five minutes here and the rest of the product should feel familiar.",
+    ],
     keywords: ["overview", "introduction", "start", "workflow", "about"],
     sections: [
       {
@@ -86,6 +92,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Create your account",
     category: "Getting started",
     summary: "Signing up, what the studio name is for, and resetting your password.",
+    intro: [
+      "Your account is where all your jobs, participants, and photos live. Setting it up takes a minute, and the names you enter here appear in the emails participants receive, so it is worth getting them right.",
+    ],
     keywords: ["signup", "register", "password", "reset", "forgot", "studio name", "account"],
     sections: [
       {
@@ -113,6 +122,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Create a job",
     category: "Getting started",
     summary: "Every field on the New Job form, what it controls, and how to change it later.",
+    intro: [
+      "A job is one shoot: one client, one date, one list of people to photograph. Everything else in HeadshotDesk hangs off a job, so this is always the first step.",
+      "The form is a handful of fields, and every one of them can be changed later, so there is no wrong way to start.",
+    ],
     keywords: [
       "new job", "job name", "shoot date", "location", "headshots per participant",
       "download cap", "download limit", "client name", "client email", "client logo", "edit job", "archive",
@@ -161,6 +174,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Job statuses explained",
     category: "Getting started",
     summary: "What Draft, Open for signup, In progress, Delivered, and Archived mean.",
+    intro: [
+      "Every job carries a status so you can see where each shoot stands at a glance, from the jobs list or the stepper on the job page. Statuses advance on their own as you work; there is nothing to maintain by hand.",
+    ],
     keywords: ["status", "draft", "open for signup", "in progress", "delivered", "archived", "stepper", "progress"],
     sections: [
       {
@@ -194,6 +210,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Adding participants",
     category: "Participants",
     summary: "Three ways to build the list, what each field does, and the status pills.",
+    intro: [
+      "Participants are the people you photograph. Getting them into the job early pays off all day: the shoot queue, filename matching, and gallery delivery all run off this list.",
+      "Build the list whichever way suits the job. The three ways combine freely, so a CSV import plus a few walk-ins added by hand is perfectly normal.",
+    ],
     keywords: ["participants", "add", "manual", "email", "title", "remove", "pending", "shot", "status pill"],
     sections: [
       {
@@ -239,6 +259,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "CSV import",
     category: "Participants",
     summary: "The expected file format, and how duplicates and errors are handled.",
+    intro: [
+      "Most corporate clients already have the participant list in a spreadsheet. CSV import takes that file as-is and turns it into your participant list in one upload, instead of you retyping thirty names.",
+      "It is forgiving about file quirks on purpose: exports from Excel, Numbers, and Google Sheets all work without cleanup.",
+    ],
     keywords: ["csv", "import", "excel", "spreadsheet", "columns", "delimiter", "semicolon", "duplicates"],
     sections: [
       {
@@ -275,6 +299,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "The signup link",
     category: "Participants",
     summary: "Where to find it, what participants see, and how consent works.",
+    intro: [
+      "The signup link is the lowest-effort way to build your participant list: share one URL and people enter their own details. Names arrive spelled the way people want them, emails arrive typo-free, and nobody chases a spreadsheet.",
+      "Privacy consent is collected in the same step, so by shoot day everyone on your list has already agreed to have their photos processed.",
+    ],
     keywords: ["signup link", "share", "public page", "consent", "privacy", "register", "self signup"],
     sections: [
       {
@@ -311,6 +339,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "The shoot-day queue",
     category: "Shoot day",
     summary: "Running the day: Pending and Already shot, clipboard names, mark shot.",
+    intro: [
+      "The queue is your shoot-day control panel. It shows who is waiting and who is done, keeps the next name one tap from your tethering tool, and feeds the automation that files photos under the right person.",
+      "Run the day from this screen and the admin happens as a side effect of shooting.",
+    ],
     keywords: ["queue", "shoot day", "tether", "clipboard", "capture one", "mark shot", "reset", "pending"],
     sections: [
       {
@@ -347,6 +379,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Uploading photos",
     category: "Photos",
     summary: "Drag and drop, supported formats, duplicates, search, and reassigning.",
+    intro: [
+      "The Photos section is where every frame of the job lands, already grouped by person. Whether you drag files in after the shoot or let the watch folder stream them in live, the goal is the same: no sorting session, no renaming evening, no folder-per-person on your desktop.",
+    ],
     keywords: ["upload", "photos", "drag", "drop", "jpeg", "png", "webp", "heic", "duplicates", "delete", "reassign", "search"],
     sections: [
       {
@@ -386,6 +421,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "The watch folder",
     category: "Photos",
     summary: "Map your export folder once and let uploads happen while you shoot.",
+    intro: [
+      "The watch folder removes the upload step entirely. Point HeadshotDesk at the folder your tethering tool exports to, and every new frame uploads and files itself while you keep shooting.",
+      "By the time the last person leaves, the job is already sorted online and ready to deliver.",
+    ],
     keywords: ["watch folder", "auto upload", "map folder", "sync", "tether", "export", "pause", "holding back"],
     sections: [
       {
@@ -425,6 +464,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "How filename matching works",
     category: "Photos",
     summary: "The naming pattern that files photos under the right person automatically.",
+    intro: [
+      "Matching is how photos find their person without you lifting a finger. It reads participant names out of your filenames, which your tethering tool writes automatically if you use the queue's clipboard names.",
+      "Understand the pattern once and misfiled photos mostly stop happening. When something cannot be matched safely, it waits for you instead of guessing.",
+    ],
     keywords: ["filename", "matching", "auto match", "naming", "rename", "unassigned", "tokens", "capture one"],
     sections: [
       {
@@ -463,6 +506,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "What participants see in their gallery",
     category: "Galleries & delivery",
     summary: "Private links, the download limit, single photos versus zip, live updates.",
+    intro: [
+      "Each participant gets a personal gallery instead of a shared folder: their photos only, on a private link, with the download allowance you chose.",
+      "This page shows what that experience looks like from their side, so you know exactly what you are sending before you hit Deliver.",
+    ],
     keywords: ["gallery", "participant view", "download", "zip", "limit", "picks", "private link", "live"],
     sections: [
       {
@@ -502,6 +549,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     title: "Delivering galleries by email",
     category: "Galleries & delivery",
     summary: "The Deliver button, who gets emailed, resending, and delivery tracking.",
+    intro: [
+      "Delivery is the payoff step: one click and every finished participant gets an email with a button to their own gallery.",
+      "HeadshotDesk tracks who has been emailed and who has downloaded, so answering did-everyone-get-their-photos is a glance at the job page, not an inbox search.",
+    ],
     keywords: ["deliver", "email", "send", "resend", "delivered", "gallery email", "notify"],
     sections: [
       {
