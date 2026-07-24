@@ -110,6 +110,9 @@ export default function HomePage() {
           <a href="#features" className="hidden sm:inline text-muted-600 hover:text-ink transition">
             What&apos;s included
           </a>
+          <Link href="/help" className="text-muted-600 hover:text-ink transition">
+            Help
+          </Link>
           <Link href="/login" className="text-muted-600 hover:text-ink transition">
             Sign in
           </Link>
