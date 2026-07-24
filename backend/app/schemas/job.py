@@ -4,11 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.schemas.slots import TimeSlotConfig
 from app.schemas.types import StrictEmail
 
 JobStatus = Literal[
     "draft", "open_for_signup", "in_progress", "delivered", "archived"
 ]
+
+ShootMode = Literal["queue", "time_slot"]
 
 
 def _validate_location(v: str | None) -> str | None:
@@ -48,6 +51,8 @@ class JobCreate(BaseModel):
     # F5b.1: optional at create time — falls back to DB default (1) when
     # omitted. Bounded by the same range as JobUpdate.
     download_cap: int | None = Field(default=None, ge=0, le=1000)
+    # HSD-55: how shoot day runs. Omitted = queue (walk-up).
+    shoot_mode: ShootMode | None = None
 
     _validate_location = field_validator("location")(_validate_location)
     _validate_date = field_validator("shoot_date")(_validate_shoot_date_not_past)
@@ -70,6 +75,11 @@ class JobUpdate(BaseModel):
     # in proofing); 1 is the default for a single-headshot package. Max is a
     # soft sanity cap — bigger packages can always raise it.
     download_cap: int | None = Field(default=None, ge=0, le=1000)
+    # HSD-55: shoot mode + slot configuration. Config is validated whole;
+    # sending config implies nothing about mode (photographer can prepare
+    # slots before switching the mode on).
+    shoot_mode: ShootMode | None = None
+    time_slot_config: TimeSlotConfig | None = None
 
     _validate_location = field_validator("location")(_validate_location)
 
@@ -86,6 +96,8 @@ class JobOut(BaseModel):
     location: str | None
     status: JobStatus
     download_cap: int
+    shoot_mode: str
+    time_slot_config: dict | None
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

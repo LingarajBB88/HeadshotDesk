@@ -53,6 +53,7 @@ def create_job(
     shoot_date=None,
     location: str | None = None,
     download_cap: int | None = None,
+    shoot_mode: str | None = None,
 ) -> Job:
     job = Job(
         id=new_id("job"),
@@ -65,8 +66,9 @@ def create_job(
         location=location,
         status="draft",
         created_by=creator.id,
-        # download_cap omitted falls back to the model default (1).
+        # Omitted optionals fall back to model defaults (cap 1, mode queue).
         **({"download_cap": download_cap} if download_cap is not None else {}),
+        **({"shoot_mode": shoot_mode} if shoot_mode is not None else {}),
     )
     db.add(job)
     try:
@@ -116,6 +118,22 @@ def update_job(
     fields: dict,
 ) -> Job:
     job = get_job(db, account=account, job_id=job_id)
+
+    # HSD-55: shoot-mode rules. Mode is locked once the shoot has started
+    # (someone marked shot) — switching mid-day would orphan the running
+    # flow. Switching away from time_slot clears existing bookings; the
+    # frontend confirms with the photographer before sending that.
+    new_mode = fields.get("shoot_mode")
+    if new_mode and new_mode != job.shoot_mode:
+        if job.status in ("in_progress", "delivered"):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Shoot mode is locked once shooting has started.",
+            )
+        if job.shoot_mode == "time_slot" and new_mode == "queue":
+            from app.services import slot_service
+
+            slot_service.clear_bookings(db, job=job)
 
     # Only assign keys that were provided (sparse update). Pydantic's
     # model_dump(exclude_unset=True) at the route layer ensures this.

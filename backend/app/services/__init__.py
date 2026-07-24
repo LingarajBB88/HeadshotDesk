@@ -9,5 +9,6 @@ from app.services import (  # noqa: F401
     file_service,
     job_service,
     participant_service,
+    slot_service,
     storage_service,
 )

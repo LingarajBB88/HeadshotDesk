@@ -20,8 +20,9 @@ from app.schemas.participant import (
     PublicParticipantSignup,
     PublicSignupResult,
 )
+from app.schemas.slots import PublicBookSlotRequest, SlotListOut, SlotOut
 from app.schemas.types import StrictEmail
-from app.services import email_service, participant_service
+from app.services import email_service, participant_service, slot_service
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,7 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
         client_name=job.client_name,
         shoot_date=job.shoot_date,
         location=job.location,
+        shoot_mode=job.shoot_mode,
         branding=None,  # Account-level branding wired up in v0.2
     )
 
@@ -135,3 +137,33 @@ def signup(
         participant=ParticipantOut.model_validate(p),
         created=created,
     )
+
+
+# --- HSD-55: time-slot booking ---------------------------------------------
+
+@router.get("/jobs/{slug}/slots", response_model=SlotListOut)
+def list_slots_for_signup(slug: str, db: Session = Depends(get_db)) -> SlotListOut:
+    """All slots for a time-slot job with availability. Empty for queue mode."""
+    job = participant_service.get_job_by_slug(db, slug=slug)
+    return SlotListOut(
+        slots=[SlotOut(**s) for s in slot_service.list_slots(db, job=job)]
+    )
+
+
+@router.post("/jobs/{slug}/book-slot", response_model=SlotOut)
+def book_slot_public(
+    slug: str,
+    payload: PublicBookSlotRequest,
+    db: Session = Depends(get_db),
+) -> SlotOut:
+    """Book (or rebook) a slot right after signup. The gallery token from the
+    signup response proves the caller is that participant. 409 when the slot
+    was just taken; the UI refreshes availability and asks again."""
+    job = participant_service.get_job_by_slug(db, slug=slug)
+    booking = slot_service.book_slot(
+        db,
+        job=job,
+        gallery_token=payload.gallery_token,
+        slot_start=payload.slot_start,
+    )
+    return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)

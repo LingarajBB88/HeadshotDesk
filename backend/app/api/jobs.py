@@ -13,7 +13,8 @@ from app.schemas.job import (
     JobOut,
     JobUpdate,
 )
-from app.services import job_service
+from app.schemas.slots import ScheduleEntryOut, ScheduleOut
+from app.services import job_service, slot_service
 
 
 class DeliveryResult(BaseModel):
@@ -52,6 +53,7 @@ def create(
         shoot_date=payload.shoot_date,
         location=payload.location,
         download_cap=payload.download_cap,
+        shoot_mode=payload.shoot_mode,
     )
     return JobOut.model_validate(job)
 
@@ -128,3 +130,16 @@ def deliver(
         ),
     )
     return DeliveryResult(**result)
+
+
+@router.get("/{job_id}/schedule", response_model=ScheduleOut)
+def schedule(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ScheduleOut:
+    """HSD-55 — chronological slot bookings for the shoot-day schedule view.
+    Empty list for queue-mode jobs."""
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    entries = slot_service.job_schedule(db, job=job)
+    return ScheduleOut(entries=[ScheduleEntryOut(**e) for e in entries])

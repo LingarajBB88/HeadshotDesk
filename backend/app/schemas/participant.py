@@ -35,6 +35,8 @@ class PublicJobOut(BaseModel):
     client_name: str | None
     shoot_date: date | None
     location: str | None
+    # HSD-55: lets the signup page know whether to show the slot picker.
+    shoot_mode: str = "queue"
     branding: dict | None = None  # account branding overrides
 
     model_config = {"from_attributes": True}
