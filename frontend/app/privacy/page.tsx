@@ -7,7 +7,7 @@ import { Logo } from "@/components/Logo";
 // legal advice. Update the "Last updated" date on every material change.
 
 export const metadata = {
-  title: "Privacy policy — HeadshotDesk",
+  title: "Privacy policy | HeadshotDesk",
 };
 
 export default function PrivacyPage() {
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
             photographer); the photos taken of you; and activity needed to run
             the service, such as when your gallery was emailed, which photos
             you downloaded, and when you accepted these terms. Your
-            photographer decides what happens with the shoot — legally, they
+            photographer decides what happens with the shoot. Legally, they
             are the controller for your shoot data and we process it on their
             behalf.
           </p>

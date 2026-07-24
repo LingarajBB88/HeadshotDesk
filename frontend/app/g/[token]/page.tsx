@@ -350,7 +350,7 @@ export default function PublicGalleryPage() {
                     <strong className="text-ink">
                       {used} of {cap} saved
                     </strong>{" "}
-                    — {remaining} left. Re-downloads are free.
+                    with {remaining} left. Re-downloads are free.
                   </>
                 ) : (
                   <>Picks are final. Re-downloads are free.</>

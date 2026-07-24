@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tight" });
 
 export const metadata: Metadata = {
-  title: "HeadshotDesk — Headshot workflow for photographers",
+  title: "HeadshotDesk | Headshot workflow for photographers",
   description:
     "Run team and event headshot shoots with auto-renaming, branded galleries, and AI retouching built in.",
   icons: {

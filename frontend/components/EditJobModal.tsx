@@ -52,7 +52,7 @@ export function EditJobModal({
       onSaved(updated);
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
-        setFormError("One of the fields isn't valid — check the values.");
+        setFormError("One of the fields isn't valid. Check the values.");
       } else {
         setFormError("Couldn't save. Try again?");
       }

@@ -1,1 +1,1 @@
-Your headshots are ready — {{ job.name }}
+Your headshots from {{ job.name }} are ready

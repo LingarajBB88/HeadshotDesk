@@ -98,7 +98,7 @@ export default function NewJobPage() {
               min={0}
               max={1000}
               defaultValue={1}
-              hint="How many headshots each participant can download from their gallery. Defaults to 1 — change later if the package is different."
+              hint="How many headshots each participant can download from their gallery. Defaults to 1. Change later if the package is different."
               error={fieldErrors.download_cap}
             />
           </section>
@@ -117,7 +117,7 @@ export default function NewJobPage() {
               label="Client email"
               name="client_email"
               type="email"
-              hint="Optional — only used if you want to CC the client on delivery."
+              hint="Optional. Only used if you want to CC the client on delivery."
               error={fieldErrors.client_email}
             />
 
@@ -130,7 +130,7 @@ export default function NewJobPage() {
               </span>
               <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
                 <p className="text-xs text-muted-600">
-                  Coming soon — upload your client&apos;s logo once and it&apos;ll
+                  Coming soon: upload your client&apos;s logo once and it&apos;ll
                   appear on their signup page and galleries.
                 </p>
               </div>

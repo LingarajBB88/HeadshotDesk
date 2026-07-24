@@ -125,7 +125,7 @@ export default function PublicSignupPage() {
                   <>
                     We already had your details for{" "}
                     <strong className="text-ink">{job.name}</strong>. No need to
-                    sign up again — see you on shoot day.
+                    sign up again. See you on shoot day.
                   </>
                 )}
               </p>
@@ -200,7 +200,7 @@ export default function PublicSignupPage() {
                 <FormField
                   label="Title or role"
                   name="title"
-                  hint="Optional — shown alongside your photos."
+                  hint="Optional. Shown alongside your photos."
                   error={fieldErrors.title}
                 />
 

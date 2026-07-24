@@ -220,7 +220,7 @@ export default function JobDetailPage() {
               disabled={!resendableCount || delivering}
               title={
                 resendableCount === 0
-                  ? "No one to deliver to yet — participants need a photo and an email."
+                  ? "No one to deliver to yet. Participants need a photo and an email."
                   : undefined
               }
               className="btn-secondary disabled:opacity-60 disabled:cursor-not-allowed"

@@ -403,8 +403,8 @@ export function FolderWatchSection({
             </p>
           </div>
           <p className="mt-1 text-xs text-muted-600">
-            {busy && "Starting up — this may take a moment if the folder has many files."}
-            {!busy && state === "watching" && "Watching for new photos — checking every 10s."}
+            {busy && "Starting up. This may take a moment if the folder has many files."}
+            {!busy && state === "watching" && "Watching for new photos. Checking every 10s."}
             {!busy && state === "uploading" && "Uploading new photos…"}
             {!busy && state === "idle" && "Not watching. Click Resume to start checking."}
             {!busy && state === "no-permission" && "Browser permission was revoked. Resume to re-grant."}
@@ -422,7 +422,7 @@ export function FolderWatchSection({
                 {duplicatesNotice} duplicate
                 {duplicatesNotice === 1 ? "" : "s"} merged
               </span>{" "}
-              with existing photos — same image bytes were already in this
+              with existing photos: same image bytes were already in this
               job, so no new entry was created.{" "}
               <button
                 onClick={() => setDuplicatesNotice(0)}
@@ -441,7 +441,7 @@ export function FolderWatchSection({
           {skipped.length > 0 ? (
             <div className="mt-1 text-xs text-amber-700">
               <p className="font-medium">
-                Holding back ({skipped.length}) — will upload when ready.{" "}
+                Holding back ({skipped.length}). Will upload when ready.{" "}
                 <button
                   onClick={() => setSkipped([])}
                   className="ml-1 text-muted-600 hover:text-ink underline font-normal"
@@ -453,7 +453,7 @@ export function FolderWatchSection({
                 {skipped.map((s) => (
                   <li key={s.name}>
                     <span className="italic">{s.name}</span>
-                    {" — "}
+                    {": "}
                     <span className="text-muted-600">
                       {s.reason === "no-match"
                         ? "no matching participant"

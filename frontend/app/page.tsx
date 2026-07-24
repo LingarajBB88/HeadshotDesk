@@ -16,7 +16,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 
 export const metadata = {
-  title: "HeadshotDesk — team headshot shoots, from signup to delivery",
+  title: "HeadshotDesk | Team headshot shoots, from signup to delivery",
   description:
     "Run team and event headshot shoots without the admin: participant signup links, a shoot-day queue, automatic photo sorting, and private galleries delivered to every inbox. EU-hosted. Free during beta.",
 };
@@ -24,15 +24,15 @@ export const metadata = {
 const STEPS: { title: string; body: string }[] = [
   {
     title: "Create a job",
-    body: "Name, shoot date, location, and how many headshots each person may keep. Takes about two minutes — everything can be changed later.",
+    body: "Name, shoot date, location, and how many headshots each person may keep. Takes about two minutes, and everything can be changed later.",
   },
   {
     title: "Share one link",
-    body: "Every job gets its own signup page. Send the link to your contact person or the whole team — participants add themselves. Have a list already? Import the CSV.",
+    body: "Every job gets its own signup page. Send the link to your contact person or the whole team, and participants add themselves. Have a list already? Import the CSV.",
   },
   {
     title: "Shoot with the queue",
-    body: "On shoot day, tap the next name and it's on your clipboard for your tethering tool. Files named like “Jane Doe_001.jpg” match themselves to Jane — no renaming session afterwards.",
+    body: "On shoot day, tap the next name and it's on your clipboard for your tethering tool. Files named like “Jane Doe_001.jpg” match themselves to Jane. No renaming session afterwards.",
   },
   {
     title: "Photos sort themselves",
@@ -40,7 +40,7 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Click Deliver",
-    body: "Everyone gets an email with a private gallery — each person sees only their own photos, picks within the limit you set, and downloads. You see who's been delivered and who's downloaded, at a glance.",
+    body: "Everyone gets an email with a private gallery. Each person sees only their own photos, picks within the limit you set, and downloads. You see who's been delivered and who's downloaded, at a glance.",
   },
 ];
 
@@ -51,7 +51,7 @@ const SHIPPED: { title: string; body: string }[] = [
   },
   {
     title: "CSV import",
-    body: "Bring an HR list straight in — delimiter quirks handled.",
+    body: "Bring an HR list straight in. Delimiter quirks are handled.",
   },
   {
     title: "Shoot-day queue",
@@ -63,7 +63,7 @@ const SHIPPED: { title: string; body: string }[] = [
   },
   {
     title: "Filename auto-match",
-    body: "Shots match to participants by name — including partial matches.",
+    body: "Shots match to participants by name, including partial matches.",
   },
   {
     title: "Private galleries",
@@ -75,7 +75,7 @@ const SHIPPED: { title: string; body: string }[] = [
   },
   {
     title: "One-click delivery",
-    body: "Email every finished participant their gallery at once — resend anytime.",
+    body: "Email every finished participant their gallery at once. Resend anytime.",
   },
   {
     title: "Live gallery updates",
@@ -125,14 +125,14 @@ export default function HomePage() {
           For headshot photographers
         </p>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight max-w-3xl">
-          Team headshots, from signup to delivery — one clear flow.
+          Team headshots, from signup to delivery, in one clear flow.
         </h1>
         <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-600">
           HeadshotDesk is a web app for photographers who shoot headshots for
           teams, offices, and events. It takes over the admin around the
-          camera — who&apos;s coming, who&apos;s been shot, which photo belongs
-          to whom, and getting every person their own photos — so a
-          thirty-person shoot feels like a one-person shoot.
+          camera: who&apos;s coming, who&apos;s been shot, which photo belongs
+          to whom, and getting every person their own photos. A
+          thirty-person shoot ends up feeling like a one-person shoot.
         </p>
         <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
           <Link className="btn-primary" href="/signup">
@@ -153,7 +153,7 @@ export default function HomePage() {
       <section className="border-t border-muted-200">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
-            A 30-person shoot is one hour of photography — and a week of admin
+            A 30-person shoot is one hour of photography and a week of admin
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
             If you&apos;ve shot team headshots, you know the photography is the
@@ -171,7 +171,7 @@ export default function HomePage() {
                   spreadsheet someone keeps &ldquo;improving&rdquo;.
                 </li>
                 <li>
-                  Shoot day off a printed list — guessing who&apos;s in front
+                  Shoot day off a printed list, guessing who&apos;s in front
                   of the camera and scribbling frame numbers next to names.
                 </li>
                 <li>
@@ -197,7 +197,7 @@ export default function HomePage() {
               <ul className="mt-4 space-y-3 text-sm text-ink leading-relaxed">
                 <li>People add themselves through one signup link.</li>
                 <li>
-                  Shoot day runs off a live queue — tap a name, shoot, mark
+                  Shoot day runs off a live queue: tap a name, shoot, mark
                   done.
                 </li>
                 <li>
@@ -270,7 +270,7 @@ export default function HomePage() {
             What&apos;s included today
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
-            Everything below is live — not a teaser for a future release.
+            Everything below is live today, not a teaser for a future release.
           </p>
 
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8">
@@ -314,12 +314,12 @@ export default function HomePage() {
       <section className="border-t border-muted-200">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
-            Free while in beta — help shape it
+            Free while in beta. Help shape it
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
             HeadshotDesk is in active beta. Everything on this page works today
             and costs nothing while we polish. Beta photographers get a direct
-            line to the roadmap — the feature list above is largely their
+            line to the roadmap. The feature list above is largely their
             requests. Pricing comes later; your jobs and photos stay yours
             either way.
           </p>

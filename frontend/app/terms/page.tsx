@@ -6,7 +6,7 @@ import { Logo } from "@/components/Logo";
 // Lingaraj before launch — plain-language terms, not legal advice.
 
 export const metadata = {
-  title: "Terms of service — HeadshotDesk",
+  title: "Terms of service | HeadshotDesk",
 };
 
 export default function TermsPage() {
@@ -45,7 +45,7 @@ export default function TermsPage() {
           </h2>
           <p className="mt-2">
             Photos and participant data belong to you (the photographer) and
-            the people in the photos — not to us. Rights between photographer
+            the people in the photos, not to us. Rights between photographer
             and participants are governed by their own agreement; HeadshotDesk
             just stores and delivers. We only use your content to operate the
             service, as described in the{" "}
@@ -67,7 +67,7 @@ export default function TermsPage() {
 
           <h2 className="mt-8 font-display text-lg font-semibold">Accounts</h2>
           <p className="mt-2">
-            Keep your credentials secure — you are responsible for activity on
+            Keep your credentials secure. You are responsible for activity on
             your account. We may suspend accounts that violate these terms or
             put the service or other users at risk.
           </p>
