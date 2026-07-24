@@ -4,8 +4,10 @@ shareable signup link `/s/{slug}`, and by the landing page's feature
 request form.
 """
 import logging
+import time
+from collections import defaultdict
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -32,14 +34,50 @@ class FeatureRequestCreate(BaseModel):
     email: StrictEmail | None = None
 
 
+# Flood guard for the public form. In-memory sliding window per client IP:
+# fine for a single instance (current deployment); swap for a Redis-backed
+# limiter if we ever scale out. Not a security boundary, an abuse damper:
+# the goal is keeping a bot from filling the table and the team inbox.
+_FR_WINDOW_SECONDS = 3600
+_FR_MAX_PER_WINDOW = 5
+_fr_hits: dict[str, list[float]] = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    """Client IP behind Render's proxy: first hop of X-Forwarded-For, falling
+    back to the socket address."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _feature_request_rate_ok(ip: str) -> bool:
+    now = time.monotonic()
+    hits = _fr_hits[ip]
+    # Drop entries outside the window; also keeps the dict from growing
+    # unboundedly for active IPs.
+    hits[:] = [t for t in hits if now - t < _FR_WINDOW_SECONDS]
+    if len(hits) >= _FR_MAX_PER_WINDOW:
+        return False
+    hits.append(now)
+    return True
+
+
 @router.post("/feature-requests", status_code=status.HTTP_204_NO_CONTENT)
 def submit_feature_request(
     payload: FeatureRequestCreate,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> None:
     """Store a feature request and forward it to the team inbox. The email
     forward is best-effort: a mail hiccup must not lose the stored request
     or fail the submission."""
+    if not _feature_request_rate_ok(_client_ip(request)):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many requests. Try again in a while.",
+        )
     fr = FeatureRequest(
         id=new_id("freq"),
         message=payload.message.strip(),
