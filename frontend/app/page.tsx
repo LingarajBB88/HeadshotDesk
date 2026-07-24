@@ -82,8 +82,8 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Upload more photos later; open galleries refresh on their own.",
   },
   {
-    title: "EU-hosted, GDPR-aware",
-    body: "Data in Frankfurt, photos on EU storage, participant consent recorded.",
+    title: "Privacy your clients can sign off on",
+    body: "Consent collected at signup, photos stored in the EU. When a client's HR team asks, the answer is yes.",
   },
 ];
 
@@ -143,7 +143,7 @@ export default function HomePage() {
           </a>
         </div>
         <p className="mt-4 text-xs text-muted-600">
-          Free during beta · No credit card · EU-hosted
+          Free during beta · No credit card
         </p>
       </section>
 
