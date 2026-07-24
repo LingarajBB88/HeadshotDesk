@@ -54,7 +54,15 @@ export default function NewJobPage() {
         New job
       </h1>
       <p className="mt-1 text-sm text-muted-600">
-        Set up a new shoot. You can edit any of these later.
+        Set up a new shoot. You can edit any of these later.{" "}
+        <a
+          href="/help/create-a-job"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent hover:underline"
+        >
+          What does each field do?
+        </a>
       </p>
 
       <form onSubmit={onSubmit} className="mt-8" noValidate>

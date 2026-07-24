@@ -1,0 +1,624 @@
+// Help center content and search.
+//
+// Articles are structured data, not markdown files: predictable rendering,
+// type-checked links, and section-level anchors for deep linking (both from
+// app screens and from search results).
+//
+// Writing rules for this file (style guide):
+//   • Crisp. Short sentences. Every setting gets a definition, not an essay.
+//   • No em dashes in copy (product style rule).
+//   • Only describe SHIPPED behavior. Roadmap items don't belong in help.
+//   • Keep keywords generous: they feed search.
+
+export type HelpItem = { term: string; def: string };
+
+export type HelpSection = {
+  /** Anchor id, stable once published (deep links depend on it). */
+  id: string;
+  heading: string;
+  /** Paragraphs. */
+  body?: string[];
+  /** Definition list, used for settings and fields. */
+  items?: HelpItem[];
+};
+
+export type HelpArticle = {
+  slug: string;
+  title: string;
+  category: (typeof HELP_CATEGORIES)[number];
+  /** One-liner shown in the index and under search results. */
+  summary: string;
+  keywords: string[];
+  sections: HelpSection[];
+  related?: string[];
+};
+
+export const HELP_CATEGORIES = [
+  "Getting started",
+  "Participants",
+  "Shoot day",
+  "Photos",
+  "Galleries & delivery",
+] as const;
+
+export const HELP_ARTICLES: HelpArticle[] = [
+  // ------------------------------------------------------------------
+  // Getting started
+  // ------------------------------------------------------------------
+  {
+    slug: "what-is-headshotdesk",
+    title: "What is HeadshotDesk?",
+    category: "Getting started",
+    summary: "The product in two minutes: what it does and how a shoot flows through it.",
+    keywords: ["overview", "introduction", "start", "workflow", "about"],
+    sections: [
+      {
+        id: "overview",
+        heading: "The short version",
+        body: [
+          "HeadshotDesk runs the admin around a team headshot shoot. People sign themselves up, shoot day runs off a queue, photos file themselves under the right person, and every participant gets a private gallery by email.",
+          "You work with three things: a job (one shoot), its participants (the people photographed), and their photos.",
+        ],
+      },
+      {
+        id: "flow",
+        heading: "The flow",
+        items: [
+          { term: "1. Create a job", def: "Name, date, location, and how many headshots each person may keep." },
+          { term: "2. Add participants", def: "Share the signup link, import a CSV, or add people by hand." },
+          { term: "3. Shoot", def: "Work through the queue. Tap a name to copy it for your tethering tool." },
+          { term: "4. Photos sort themselves", def: "Upload or map a watch folder. Files match to participants by filename." },
+          { term: "5. Deliver", def: "One click emails everyone a private gallery of their own photos." },
+        ],
+      },
+      {
+        id: "beta",
+        heading: "Beta",
+        body: [
+          "HeadshotDesk is in beta and free while we polish. Found something confusing or broken? Email info@pantherstudios.nl. Beta feedback steers the roadmap directly.",
+        ],
+      },
+    ],
+    related: ["create-a-job", "add-participants", "deliver-emails"],
+  },
+  {
+    slug: "create-your-account",
+    title: "Create your account",
+    category: "Getting started",
+    summary: "Signing up, what the studio name is for, and resetting your password.",
+    keywords: ["signup", "register", "password", "reset", "forgot", "studio name", "account"],
+    sections: [
+      {
+        id: "signup",
+        heading: "Signing up",
+        items: [
+          { term: "Your name", def: "Used to sign gallery emails to participants." },
+          { term: "Studio or business name", def: "Shown on participant-facing emails. Change it anytime." },
+          { term: "Email", def: "Your login. Password resets go here." },
+          { term: "Password", def: "At least 8 characters. You confirm it once to catch typos." },
+        ],
+      },
+      {
+        id: "reset-password",
+        heading: "Forgot your password?",
+        body: [
+          "Use the reset link on the sign-in page. We email you a link that works for one hour. If it does not arrive, check spam, then request a new one.",
+        ],
+      },
+    ],
+    related: ["what-is-headshotdesk"],
+  },
+  {
+    slug: "create-a-job",
+    title: "Create a job",
+    category: "Getting started",
+    summary: "Every field on the New Job form, what it controls, and how to change it later.",
+    keywords: [
+      "new job", "job name", "shoot date", "location", "headshots per participant",
+      "download cap", "download limit", "client name", "client email", "client logo", "edit job", "archive",
+    ],
+    sections: [
+      {
+        id: "fields",
+        heading: "Shoot details",
+        items: [
+          { term: "Job name", def: "How the shoot appears everywhere: your job list, the signup page, galleries, and delivery emails. Example: Acme HQ team headshots." },
+          { term: "Shoot date", def: "Shown on the signup page and used for the countdown on your job page. Today or later." },
+          { term: "Location", def: "Shown on the signup page so participants know where to be." },
+          { term: "Headshots per participant", def: "How many photos each person may download from their gallery. Defaults to 1. Set 0 to disable downloads. Change it anytime, even after delivery." },
+        ],
+      },
+      {
+        id: "headshots-per-participant",
+        heading: "How the download limit works",
+        body: [
+          "The limit counts unique photos, not download clicks. If someone saves the same photo twice, it counts once. Downloads they have already made stay available forever, at no cost against the limit.",
+          "Raising the limit later gives everyone more picks immediately. Lowering it never takes away photos someone already saved.",
+        ],
+      },
+      {
+        id: "client",
+        heading: "Client details",
+        items: [
+          { term: "Client name", def: "Optional. The company you are shooting for. Shown on the participant signup page." },
+          { term: "Client email", def: "Optional. Your booking contact. Reserved for CC on delivery in a future update; not emailed today." },
+          { term: "Client logo", def: "Coming soon. You will upload it once per client and it will appear on signup pages and galleries." },
+        ],
+      },
+      {
+        id: "edit-archive",
+        heading: "Editing and archiving",
+        body: [
+          "Edit any field later with the Edit button on the job page, or the three-dot menu on the jobs list.",
+          "Archive hides a job from your active list and switches off its public pages: the signup link and all galleries stop working. Use it when a job is fully wrapped.",
+        ],
+      },
+    ],
+    related: ["job-statuses", "add-participants", "galleries"],
+  },
+  {
+    slug: "job-statuses",
+    title: "Job statuses explained",
+    category: "Getting started",
+    summary: "What Draft, Open for signup, In progress, Delivered, and Archived mean.",
+    keywords: ["status", "draft", "open for signup", "in progress", "delivered", "archived", "stepper", "progress"],
+    sections: [
+      {
+        id: "statuses",
+        heading: "The five statuses",
+        items: [
+          { term: "Draft", def: "Job created, nothing has happened yet." },
+          { term: "Open for signup", def: "At least one participant is on the list." },
+          { term: "In progress", def: "You marked the first person as shot." },
+          { term: "Delivered", def: "Every deliverable participant has received their gallery email." },
+          { term: "Archived", def: "You closed the job. Hidden from the active list; public pages are off." },
+        ],
+      },
+      {
+        id: "automatic",
+        heading: "Statuses move by themselves",
+        body: [
+          "You never set a status by hand. Adding the first participant, marking the first shot, and completing delivery each advance the job automatically. Archiving is the only manual step.",
+          "The stepper at the top of each job page shows where you are: Setup, Shoot day, Delivery, Done.",
+        ],
+      },
+    ],
+    related: ["create-a-job", "deliver-emails"],
+  },
+
+  // ------------------------------------------------------------------
+  // Participants
+  // ------------------------------------------------------------------
+  {
+    slug: "add-participants",
+    title: "Adding participants",
+    category: "Participants",
+    summary: "Three ways to build the list, what each field does, and the status pills.",
+    keywords: ["participants", "add", "manual", "email", "title", "remove", "pending", "shot", "status pill"],
+    sections: [
+      {
+        id: "three-ways",
+        heading: "Three ways in",
+        items: [
+          { term: "Signup link", def: "Share one link; people add themselves. Least work for you." },
+          { term: "CSV import", def: "Upload the list HR sent you. See the CSV import article for the format." },
+          { term: "Add participant", def: "Type one person in by hand. Good for last-minute walk-ins." },
+        ],
+      },
+      {
+        id: "fields",
+        heading: "Participant fields",
+        items: [
+          { term: "Name", def: "Required. Used for filename matching, so spell it the way your camera files will." },
+          { term: "Email", def: "Optional, but required for gallery delivery. Without it you share their gallery link by hand." },
+          { term: "Title or role", def: "Optional. Display only." },
+        ],
+      },
+      {
+        id: "statuses",
+        heading: "Status pills",
+        items: [
+          { term: "Pending", def: "Not photographed yet." },
+          { term: "Shot", def: "Marked as photographed in the queue, no photos assigned yet." },
+          { term: "N photos", def: "Number of photos currently assigned to them." },
+          { term: "Delivered", def: "They received their gallery email, with how long ago." },
+        ],
+      },
+      {
+        id: "row-actions",
+        heading: "Per-person actions",
+        body: [
+          "Each row has Copy link (their private gallery URL), Email or Resend (send their gallery email), and Remove (deletes the person and their signup data).",
+        ],
+      },
+    ],
+    related: ["csv-import", "signup-link", "deliver-emails"],
+  },
+  {
+    slug: "csv-import",
+    title: "CSV import",
+    category: "Participants",
+    summary: "The expected file format, and how duplicates and errors are handled.",
+    keywords: ["csv", "import", "excel", "spreadsheet", "columns", "delimiter", "semicolon", "duplicates"],
+    sections: [
+      {
+        id: "format",
+        heading: "File format",
+        body: [
+          "A header row plus one row per person. Column names are case-insensitive.",
+        ],
+        items: [
+          { term: "name", def: "Required column." },
+          { term: "email", def: "Optional. Needed later for email delivery." },
+          { term: "title", def: "Optional." },
+        ],
+      },
+      {
+        id: "tolerance",
+        heading: "What just works",
+        body: [
+          "Commas, semicolons, tabs, and pipes are all detected automatically, so European Excel exports import without conversion. Excel's sep= preamble and hidden BOM characters are handled. Blank rows are ignored.",
+        ],
+      },
+      {
+        id: "duplicates-errors",
+        heading: "Duplicates and errors",
+        body: [
+          "Rows with an email already on the job are skipped, not duplicated. Rows with problems (for example an invalid email) are reported one by one with their row number; the rest of the file still imports.",
+        ],
+      },
+    ],
+    related: ["add-participants"],
+  },
+  {
+    slug: "signup-link",
+    title: "The signup link",
+    category: "Participants",
+    summary: "Where to find it, what participants see, and how consent works.",
+    keywords: ["signup link", "share", "public page", "consent", "privacy", "register", "self signup"],
+    sections: [
+      {
+        id: "where",
+        heading: "Where to find it",
+        body: [
+          "On the job page, next to the shoot-day card. Copy it, or open it in a new tab to preview what participants see.",
+        ],
+      },
+      {
+        id: "what-they-see",
+        heading: "What participants see",
+        body: [
+          "The job name, client name, date, and location, plus a short form: first and last name, email, and an optional title. They also tick a privacy consent box; the signup is refused without it, and the moment of consent is recorded.",
+          "If someone signs up twice with the same email, they get a friendly already-signed-up message instead of a duplicate entry.",
+        ],
+      },
+      {
+        id: "lifecycle",
+        heading: "When the link stops working",
+        body: [
+          "The link works until you archive the job. Archived jobs show a not-active message instead of the form.",
+        ],
+      },
+    ],
+    related: ["add-participants", "create-a-job"],
+  },
+
+  // ------------------------------------------------------------------
+  // Shoot day
+  // ------------------------------------------------------------------
+  {
+    slug: "shoot-day-queue",
+    title: "The shoot-day queue",
+    category: "Shoot day",
+    summary: "Running the day: Pending and Already shot, clipboard names, mark shot.",
+    keywords: ["queue", "shoot day", "tether", "clipboard", "capture one", "mark shot", "reset", "pending"],
+    sections: [
+      {
+        id: "start",
+        heading: "Start shooting",
+        body: [
+          "The Start shooting button on the job page opens the queue: Pending on one side, Already shot on the other.",
+        ],
+      },
+      {
+        id: "clipboard",
+        heading: "Names on your clipboard",
+        body: [
+          "Tap a name and it is copied to your clipboard. Paste it as the capture or session name in your tethering tool (Capture One, Smart Shooter, or similar) so files come out named like Jane Doe_0001.jpg. That filename is what makes photos match to the right person automatically.",
+        ],
+      },
+      {
+        id: "mark-shot",
+        heading: "Mark shot and reset",
+        body: [
+          "When you finish someone, mark them shot. They move to Already shot with a timestamp. Made a mistake or need a re-shoot? Reset sends them back to Pending.",
+          "Marking your first person shot moves the job to In progress.",
+        ],
+      },
+    ],
+    related: ["filename-matching", "watch-folder", "job-statuses"],
+  },
+
+  // ------------------------------------------------------------------
+  // Photos
+  // ------------------------------------------------------------------
+  {
+    slug: "upload-photos",
+    title: "Uploading photos",
+    category: "Photos",
+    summary: "Drag and drop, supported formats, duplicates, search, and reassigning.",
+    keywords: ["upload", "photos", "drag", "drop", "jpeg", "png", "webp", "heic", "duplicates", "delete", "reassign", "search"],
+    sections: [
+      {
+        id: "upload",
+        heading: "Two ways to upload",
+        body: [
+          "Drag files into the drop zone (or click choose files), or map a watch folder so uploads happen automatically. JPEG, PNG, WebP, and HEIC are accepted, up to 50 MB each.",
+        ],
+      },
+      {
+        id: "organization",
+        heading: "How photos are organized",
+        body: [
+          "Photos group under the participant they matched to. Groups start collapsed; the count on each group tells you what is inside. Photos that match nobody go to an Unassigned group that stays open until you resolve it.",
+          "Use the dropdown on any photo to move it to a different participant. Your manual choice sticks; automatic matching will not override it.",
+        ],
+      },
+      {
+        id: "duplicates",
+        heading: "Duplicates",
+        body: [
+          "If you upload the same image twice (a re-export, a Finder copy), HeadshotDesk recognizes identical files and merges them instead of creating a copy. You will see a duplicates-merged note after upload.",
+        ],
+      },
+      {
+        id: "search-delete",
+        heading: "Search and bulk delete",
+        body: [
+          "Search covers participant names and filenames. Select photos with their checkboxes, or a whole group at once, and delete in bulk. Deleting removes the photo from galleries too.",
+        ],
+      },
+    ],
+    related: ["watch-folder", "filename-matching"],
+  },
+  {
+    slug: "watch-folder",
+    title: "The watch folder",
+    category: "Photos",
+    summary: "Map your export folder once and let uploads happen while you shoot.",
+    keywords: ["watch folder", "auto upload", "map folder", "sync", "tether", "export", "pause", "holding back"],
+    sections: [
+      {
+        id: "setup",
+        heading: "Setup",
+        body: [
+          "In the Photos section, map the folder your tethering tool exports to. Your browser asks permission once. HeadshotDesk then checks the folder every 10 seconds while the tab is open.",
+          "Keep the tab open during the shoot. Watching stops when the tab closes and resumes when you return.",
+        ],
+      },
+      {
+        id: "what-uploads",
+        heading: "What uploads, and when",
+        body: [
+          "New image files upload automatically once their participant is marked shot in the queue. Files for people not yet marked shot are held back and upload the moment you mark them. Files that match nobody are listed with the reason so you can fix the filename or add the person.",
+        ],
+      },
+      {
+        id: "renames",
+        heading: "Renames and duplicates",
+        body: [
+          "Renaming a file in Finder updates the existing photo instead of uploading a copy. Files with identical content to something already uploaded are merged, not duplicated.",
+        ],
+      },
+      {
+        id: "controls",
+        heading: "Pause and unmap",
+        body: [
+          "Pause stops checking without forgetting the folder. Unmap disconnects it entirely. Both are safe; nothing already uploaded is affected.",
+        ],
+      },
+    ],
+    related: ["upload-photos", "filename-matching", "shoot-day-queue"],
+  },
+  {
+    slug: "filename-matching",
+    title: "How filename matching works",
+    category: "Photos",
+    summary: "The naming pattern that files photos under the right person automatically.",
+    keywords: ["filename", "matching", "auto match", "naming", "rename", "unassigned", "tokens", "capture one"],
+    sections: [
+      {
+        id: "pattern",
+        heading: "The pattern",
+        body: [
+          "Name your files with the participant's name followed by a number: Jane Doe_0001.jpg. Set this once in your tethering tool using the queue's clipboard names and every frame matches automatically.",
+        ],
+      },
+      {
+        id: "rules",
+        heading: "Matching rules",
+        items: [
+          { term: "Case does not matter", def: "jane doe_001.jpg matches Jane Doe." },
+          { term: "Exact name wins", def: "A filename containing the full name always beats partial matches." },
+          { term: "Partial matches need two words", def: "At least two name words must appear. A file called jane_001.jpg will not guess between Jane Doe and Jane Smith." },
+          { term: "No match, no guess", def: "Anything ambiguous goes to Unassigned for you to place by hand." },
+        ],
+      },
+      {
+        id: "manual-wins",
+        heading: "Your corrections stick",
+        body: [
+          "Once you assign a photo manually, matching will not move it, even if the file is renamed later.",
+        ],
+      },
+    ],
+    related: ["upload-photos", "watch-folder", "shoot-day-queue"],
+  },
+
+  // ------------------------------------------------------------------
+  // Galleries & delivery
+  // ------------------------------------------------------------------
+  {
+    slug: "galleries",
+    title: "What participants see in their gallery",
+    category: "Galleries & delivery",
+    summary: "Private links, the download limit, single photos versus zip, live updates.",
+    keywords: ["gallery", "participant view", "download", "zip", "limit", "picks", "private link", "live"],
+    sections: [
+      {
+        id: "access",
+        heading: "Access",
+        body: [
+          "Every participant has their own private gallery link. No account, no password: the link is the key, and it only shows that person's photos. You can copy any participant's link from their row.",
+        ],
+      },
+      {
+        id: "downloads",
+        heading: "Downloading and the limit",
+        body: [
+          "The gallery states the limit up front, for example: keep up to 2 photos. Picks are counted on unique photos. Once picked, a photo can be re-downloaded forever at no extra cost.",
+          "One selected photo saves as a normal JPEG. Two or more save together as a zip.",
+        ],
+      },
+      {
+        id: "live",
+        heading: "Live updates",
+        body: [
+          "Open galleries refresh themselves about every 20 seconds. If you upload more photos after delivering, participants see them without doing anything.",
+        ],
+      },
+      {
+        id: "lifecycle",
+        heading: "When galleries stop working",
+        body: [
+          "Gallery links keep working until you archive the job.",
+        ],
+      },
+    ],
+    related: ["deliver-emails", "create-a-job"],
+  },
+  {
+    slug: "deliver-emails",
+    title: "Delivering galleries by email",
+    category: "Galleries & delivery",
+    summary: "The Deliver button, who gets emailed, resending, and delivery tracking.",
+    keywords: ["deliver", "email", "send", "resend", "delivered", "gallery email", "notify"],
+    sections: [
+      {
+        id: "eligibility",
+        heading: "Who gets emailed",
+        body: [
+          "Deliver emails every participant who has at least one photo and an email address, and has not been emailed before. The button shows the count, for example Deliver to 8. People without photos or without an email are skipped and reported, never half-emailed.",
+        ],
+      },
+      {
+        id: "sending",
+        heading: "Sending",
+        body: [
+          "You confirm before anything sends. The email greets each person by first name, names the job, and has one button: View your gallery. After sending you see a summary of what happened.",
+          "Clicking Deliver again later only emails people who were missed or added since. It never spams people who already got theirs, unless you tick the resend option.",
+        ],
+      },
+      {
+        id: "resending",
+        heading: "Resending",
+        body: [
+          "To resend to everyone, tick the resend box in the Deliver confirmation. To resend to one person (say you added photos for them afterwards), use Resend on their row.",
+        ],
+      },
+      {
+        id: "tracking",
+        heading: "Tracking",
+        body: [
+          "Delivered rows show a check with how long ago the email went out. The Downloads tile on the job page shows how many photos have been picked up against the total allowance. When everyone deliverable has been emailed, the job moves to Delivered.",
+        ],
+      },
+    ],
+    related: ["galleries", "add-participants", "job-statuses"],
+  },
+];
+
+export function getHelpArticle(slug: string): HelpArticle | undefined {
+  return HELP_ARTICLES.find((a) => a.slug === slug);
+}
+
+export type HelpSearchResult = {
+  article: HelpArticle;
+  /** Section anchor when the hit is inside a specific section. */
+  sectionId?: string;
+  sectionHeading?: string;
+  /** Snippet of the matching text. */
+  snippet: string;
+  score: number;
+};
+
+/**
+ * Simple client-side search. Scores: title > keywords > summary > section
+ * heading > section body/items. Returns article-level and section-level hits,
+ * deduplicated so each article appears once with its best-matching section.
+ */
+export function searchHelp(rawQuery: string): HelpSearchResult[] {
+  const q = rawQuery.trim().toLowerCase();
+  if (q.length < 2) return [];
+  const terms = q.split(/\s+/).filter(Boolean);
+
+  const results: HelpSearchResult[] = [];
+
+  for (const article of HELP_ARTICLES) {
+    let best: HelpSearchResult | null = null;
+
+    const consider = (r: HelpSearchResult) => {
+      if (!best || r.score > best.score) best = r;
+    };
+
+    const matchCount = (text: string) =>
+      terms.reduce((n, t) => (text.toLowerCase().includes(t) ? n + 1 : n), 0);
+
+    // Title / keywords / summary → article-level hit.
+    const titleHits = matchCount(article.title);
+    if (titleHits > 0) {
+      consider({ article, snippet: article.summary, score: 100 * titleHits });
+    }
+    const kwHits = matchCount(article.keywords.join(" "));
+    if (kwHits > 0) {
+      consider({ article, snippet: article.summary, score: 60 * kwHits });
+    }
+    const summaryHits = matchCount(article.summary);
+    if (summaryHits > 0) {
+      consider({ article, snippet: article.summary, score: 40 * summaryHits });
+    }
+
+    // Sections → section-level hit with snippet.
+    for (const section of article.sections) {
+      const headingHits = matchCount(section.heading);
+      const bodyText = [
+        ...(section.body ?? []),
+        ...(section.items ?? []).map((i) => `${i.term} ${i.def}`),
+      ].join(" ");
+      const bodyHits = matchCount(bodyText);
+      if (headingHits + bodyHits === 0) continue;
+
+      // Build a snippet around the first matching term.
+      let snippet = section.body?.[0] ?? section.items?.[0]?.def ?? article.summary;
+      const idx = bodyText.toLowerCase().indexOf(terms[0]);
+      if (idx >= 0) {
+        const start = Math.max(0, idx - 60);
+        snippet =
+          (start > 0 ? "…" : "") +
+          bodyText.slice(start, idx + 90) +
+          (idx + 90 < bodyText.length ? "…" : "");
+      }
+      consider({
+        article,
+        sectionId: section.id,
+        sectionHeading: section.heading,
+        snippet,
+        score: 30 * headingHits + 10 * bodyHits,
+      });
+    }
+
+    if (best) results.push(best);
+  }
+
+  return results.sort((a, b) => b.score - a.score).slice(0, 12);
+}

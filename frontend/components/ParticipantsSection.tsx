@@ -179,7 +179,19 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
     <CollapsibleSection
       title="Participants"
       count={participants?.length}
-      description="Add people manually, upload a CSV, or share the signup link."
+      description={
+        <>
+          Add people manually, upload a CSV, or share the signup link.{" "}
+          <a
+            href="/help/add-participants"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:underline"
+          >
+            Learn more
+          </a>
+        </>
+      }
       defaultOpen={false}
       // Auto-open the section while the user is searching, so results aren't
       // hidden behind a collapsed header. Reverts to internal state when the

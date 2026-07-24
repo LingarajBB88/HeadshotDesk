@@ -217,7 +217,20 @@ export function PhotosSection({
     <CollapsibleSection
       title="Photos"
       count={files?.length}
-      description="Drag JPEG/PNG files in or map a folder. Filenames like “Jane Doe_001.jpg” auto-match to participants."
+      description={
+        <>
+          Drag JPEG/PNG files in or map a folder. Filenames like &ldquo;Jane
+          Doe_001.jpg&rdquo; auto-match to participants.{" "}
+          <a
+            href="/help/filename-matching"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:underline"
+          >
+            How matching works
+          </a>
+        </>
+      }
       defaultOpen={false}
       // Auto-open while the user is searching so results aren't hidden behind
       // a collapsed header. Reverts to internal state when the search clears.

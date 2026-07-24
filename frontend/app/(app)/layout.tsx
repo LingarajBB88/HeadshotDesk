@@ -62,6 +62,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/jobs" className="hover:text-ink">
               Jobs
             </Link>
+            {/* Help opens in a new tab so mid-shoot work isn't lost. */}
+            <a
+              href="/help"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-ink"
+            >
+              Help
+            </a>
           </nav>
 
           {/* Account info — name hidden on mobile, sign-out always visible */}

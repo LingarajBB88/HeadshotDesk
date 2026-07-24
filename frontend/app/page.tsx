@@ -342,6 +342,9 @@ export default function HomePage() {
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <Logo size="sm" wordmark />
           <nav className="flex items-center gap-5 text-xs text-muted-600">
+            <Link href="/help" className="hover:text-ink transition">
+              Help
+            </Link>
             <Link href="/privacy" className="hover:text-ink transition">
               Privacy
             </Link>

@@ -18,7 +18,7 @@ export function CollapsibleSection({
 }: {
   title: string;
   count?: number;
-  description?: string;
+  description?: ReactNode;
   actions?: ReactNode;
   defaultOpen?: boolean;
   /** When true, render the section open regardless of internal toggle state.
