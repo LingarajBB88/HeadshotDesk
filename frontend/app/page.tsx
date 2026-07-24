@@ -18,7 +18,7 @@ import { Logo } from "@/components/Logo";
 export const metadata = {
   title: "HeadshotDesk | Team headshot shoots, from signup to delivery",
   description:
-    "Run team and event headshot shoots without the admin: participant signup links, a shoot-day queue, automatic photo sorting, and private galleries delivered to every inbox. EU-hosted. Free during beta.",
+    "Run team and event headshot shoots without the admin: participant signup links, a shoot-day queue, automatic photo sorting, and private galleries delivered to every inbox. Free during beta.",
 };
 
 const STEPS: { title: string; body: string }[] = [
@@ -83,7 +83,7 @@ const SHIPPED: { title: string; body: string }[] = [
   },
   {
     title: "Privacy your clients can sign off on",
-    body: "Consent collected at signup, photos stored in the EU. When a client's HR team asks, the answer is yes.",
+    body: "Consent collected at signup, galleries private and link-only. When a client's HR team asks about data handling, the answer is yes.",
   },
 ];
 
