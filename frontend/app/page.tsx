@@ -128,10 +128,11 @@ export default function HomePage() {
           Team headshots, from signup to delivery — one clear flow.
         </h1>
         <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-600">
-          HeadshotDesk handles everything around the camera: participants sign
-          themselves up, shoot-day runs off a queue, photos sort themselves to
-          the right person, and every participant gets a private gallery in
-          their inbox. No manual to study — the whole workflow is on this page.
+          HeadshotDesk is a web app for photographers who shoot headshots for
+          teams, offices, and events. It takes over the admin around the
+          camera — who&apos;s coming, who&apos;s been shot, which photo belongs
+          to whom, and getting every person their own photos — so a
+          thirty-person shoot feels like a one-person shoot.
         </p>
         <div className="mt-8 sm:mt-10 flex flex-wrap items-center gap-3">
           <Link className="btn-primary" href="/signup">
@@ -144,6 +145,77 @@ export default function HomePage() {
         <p className="mt-4 text-xs text-muted-600">
           Free during beta · No credit card · EU-hosted
         </p>
+      </section>
+
+      {/* The problem — for photographers who've never seen a tool like this.
+          Establishes what a team shoot costs you without software before we
+          explain the product. Before/after framing, concrete pains only. */}
+      <section className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
+            A 30-person shoot is one hour of photography — and a week of admin
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
+            If you&apos;ve shot team headshots, you know the photography is the
+            easy part. It&apos;s everything around it that eats the week:
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-card border border-muted-200 bg-paper p-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-600">
+                Without a tool
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm text-muted-600 leading-relaxed">
+                <li>
+                  Collecting names and emails across reply-all threads and a
+                  spreadsheet someone keeps &ldquo;improving&rdquo;.
+                </li>
+                <li>
+                  Shoot day off a printed list — guessing who&apos;s in front
+                  of the camera and scribbling frame numbers next to names.
+                </li>
+                <li>
+                  An evening (or three) renaming hundreds of files and sorting
+                  them into folders per person.
+                </li>
+                <li>
+                  Zipping folders, uploading to WeTransfer, emailing thirty
+                  links one by one.
+                </li>
+                <li>
+                  Then the follow-ups: &ldquo;which photo was me?&rdquo;,
+                  &ldquo;the link expired&rdquo;, &ldquo;can you resend
+                  mine?&rdquo;
+                </li>
+              </ul>
+            </div>
+
+            <div className="rounded-card border border-accent/30 bg-accent-muted p-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-accent">
+                With HeadshotDesk
+              </h3>
+              <ul className="mt-4 space-y-3 text-sm text-ink leading-relaxed">
+                <li>People add themselves through one signup link.</li>
+                <li>
+                  Shoot day runs off a live queue — tap a name, shoot, mark
+                  done.
+                </li>
+                <li>
+                  Photos upload and file themselves under the right person
+                  while you&apos;re still shooting.
+                </li>
+                <li>
+                  One click emails every person a private gallery of just
+                  their photos.
+                </li>
+                <li>
+                  Links don&apos;t expire, re-downloads are free, and you can
+                  see who&apos;s picked up their photos.
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* How it works — the clarity play. Five concrete steps, no vagueness. */}
