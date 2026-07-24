@@ -542,6 +542,15 @@ export function getHelpArticle(slug: string): HelpArticle | undefined {
   return HELP_ARTICLES.find((a) => a.slug === slug);
 }
 
+/**
+ * Anchor id for a section on the single-page help layout. Prefixed with the
+ * article slug because bare section ids (e.g. "fields") repeat across
+ * articles.
+ */
+export function helpSectionAnchor(articleSlug: string, sectionId: string): string {
+  return `${articleSlug}--${sectionId}`;
+}
+
 export type HelpSearchResult = {
   article: HelpArticle;
   /** Section anchor when the hit is inside a specific section. */
