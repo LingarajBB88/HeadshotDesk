@@ -70,6 +70,8 @@ class Settings(BaseSettings):
     # --- Email (Postmark) ---
     postmark_server_token: str = Field(default="")
     email_from: str = Field(default="HeadshotDesk <noreply@headshotdesk.com>")
+    # Where public feature requests are forwarded.
+    feedback_to_email: str = Field(default="info@pantherstudios.nl")
 
     # --- AI providers (only needed for v0.2) ---
     replicate_api_token: str = Field(default="")

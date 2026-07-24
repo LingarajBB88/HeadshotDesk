@@ -1,20 +1,58 @@
 """
 Public API — no auth required. Used by participants signing up via the
-shareable signup link `/s/{slug}`.
+shareable signup link `/s/{slug}`, and by the landing page's feature
+request form.
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.core.ids import new_id
 from app.db import get_db
+from app.models import FeatureRequest
 from app.schemas.participant import (
     ParticipantOut,
     PublicJobOut,
     PublicParticipantSignup,
     PublicSignupResult,
 )
-from app.services import participant_service
+from app.schemas.types import StrictEmail
+from app.services import email_service, participant_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class FeatureRequestCreate(BaseModel):
+    """Body for the public feature-request form on the landing page."""
+    message: str = Field(min_length=10, max_length=2000)
+    email: StrictEmail | None = None
+
+
+@router.post("/feature-requests", status_code=status.HTTP_204_NO_CONTENT)
+def submit_feature_request(
+    payload: FeatureRequestCreate,
+    db: Session = Depends(get_db),
+) -> None:
+    """Store a feature request and forward it to the team inbox. The email
+    forward is best-effort: a mail hiccup must not lose the stored request
+    or fail the submission."""
+    fr = FeatureRequest(
+        id=new_id("freq"),
+        message=payload.message.strip(),
+        email=payload.email,
+    )
+    db.add(fr)
+    db.commit()
+    try:
+        email_service.send_feature_request_email(
+            message=fr.message, reply_email=fr.email
+        )
+    except Exception:  # noqa: BLE001 — stored is what matters
+        logger.exception("Feature request email forward failed (id=%s)", fr.id)
 
 
 @router.get("/jobs/{slug}", response_model=PublicJobOut)

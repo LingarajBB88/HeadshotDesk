@@ -111,6 +111,36 @@ def send_password_reset_email(*, to_email: str, reset_url: str, user_name: str) 
     )
 
 
+def send_feature_request_email(*, message: str, reply_email: str | None) -> None:
+    """Forward a public feature request to the team inbox
+    (settings.feedback_to_email). Internal notification, not
+    participant-facing."""
+    rendered = render_email(
+        "feature_request",
+        {
+            "request": {"message": message, "email": reply_email or "none"},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Feature request",
+            to_email=settings.feedback_to_email,
+            recipient_name="Team",
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+        )
+        return
+
+    _send_via_postmark(
+        to_email=settings.feedback_to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
 def send_gallery_delivery_email(
     *,
     to_email: str,

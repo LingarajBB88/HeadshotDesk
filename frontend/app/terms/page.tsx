@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandName } from "@/components/BrandName";
 import { Logo } from "@/components/Logo";
 
 // Compliance minimal set (pre-beta). DRAFT written by the team, reviewed by
@@ -26,16 +27,16 @@ export default function TermsPage() {
           <p className="mt-1 text-xs text-muted-600">Last updated: 20 July 2026</p>
 
           <p className="mt-6">
-            HeadshotDesk is operated by Panther Studios, Amsterdam, the
+            <BrandName /> is operated by Panther Studios, Amsterdam, the
             Netherlands. By creating an account or using a signup or gallery
             link, you agree to these terms.
           </p>
 
           <h2 className="mt-8 font-display text-lg font-semibold">The service</h2>
           <p className="mt-2">
-            HeadshotDesk lets photographers organize headshot shoots, collect
+            <BrandName /> lets photographers organize headshot shoots, collect
             participant signups, manage photos, and deliver galleries.
-            HeadshotDesk is currently in beta: features may change, and while
+            <BrandName /> is currently in beta: features may change, and while
             we work hard to keep the service reliable, we can&apos;t guarantee
             uninterrupted availability.
           </p>
@@ -46,7 +47,7 @@ export default function TermsPage() {
           <p className="mt-2">
             Photos and participant data belong to you (the photographer) and
             the people in the photos, not to us. Rights between photographer
-            and participants are governed by their own agreement; HeadshotDesk
+            and participants are governed by their own agreement; <BrandName />
             just stores and delivers. We only use your content to operate the
             service, as described in the{" "}
             <Link href="/privacy" className="text-accent hover:underline">

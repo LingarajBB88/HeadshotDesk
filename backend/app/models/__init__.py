@@ -1,6 +1,7 @@
 """ORM models. Importing here ensures Alembic sees them via Base.metadata."""
 from app.models.account import Account
 from app.models.auth_session import AuthSession
+from app.models.feature_request import FeatureRequest
 from app.models.file import File
 from app.models.job import Job
 from app.models.participant import Participant
@@ -16,5 +17,6 @@ __all__ = [
     "Participant",
     "ParticipantDownload",
     "SlotBooking",
+    "FeatureRequest",
     "File",
 ]

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { renderBrand } from "@/components/BrandName";
 import { Logo } from "@/components/Logo";
 import {
   HELP_ARTICLES,
@@ -210,7 +211,7 @@ export default function HelpPage() {
                               </span>
                               {!isOpen ? (
                                 <span className="mt-0.5 block text-sm text-muted-600">
-                                  {article.summary}
+                                  {renderBrand(article.summary)}
                                 </span>
                               ) : null}
                             </span>
@@ -238,7 +239,7 @@ export default function HelpPage() {
                                   key={i}
                                   className="mt-1 text-sm sm:text-[15px] text-ink leading-relaxed"
                                 >
-                                  {p}
+                                  {renderBrand(p)}
                                 </p>
                               ))}
 
@@ -261,7 +262,7 @@ export default function HelpPage() {
                                         key={i}
                                         className="mt-2 text-sm text-ink leading-relaxed"
                                       >
-                                        {p}
+                                        {renderBrand(p)}
                                       </p>
                                     ))}
                                     {section.items ? (
@@ -272,7 +273,7 @@ export default function HelpPage() {
                                               {item.term}
                                             </dt>
                                             <dd className="mt-0.5 text-sm text-muted-600 leading-relaxed">
-                                              {item.def}
+                                              {renderBrand(item.def)}
                                             </dd>
                                           </div>
                                         ))}

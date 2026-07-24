@@ -13,6 +13,8 @@
 
 import Link from "next/link";
 
+import { BrandName, renderBrand } from "@/components/BrandName";
+import { FeatureRequestForm } from "@/components/FeatureRequestForm";
 import { Logo } from "@/components/Logo";
 
 export const metadata = {
@@ -87,12 +89,50 @@ const SHIPPED: { title: string; body: string }[] = [
   },
 ];
 
-const ROADMAP: string[] = [
-  "Time-slot self-booking for corporate shoot days",
-  "Your client's logo on signup pages, galleries, and emails",
-  "Participant retouch picks and proofing",
-  "Paid extra downloads for participants",
-  "AI retouching and background swap",
+// Roadmap timeline. Keep this honest and current: when a feature ships,
+// move it to "shipped" (newest first); when work starts, move it to
+// "building". The building item is what's actually in progress in the repo.
+const ROADMAP_TIMELINE: {
+  status: "shipped" | "building" | "next";
+  title: string;
+  detail: string;
+}[] = [
+  {
+    status: "shipped",
+    title: "Searchable help center",
+    detail: "Every screen and setting explained, with instant search.",
+  },
+  {
+    status: "shipped",
+    title: "Email gallery delivery",
+    detail: "One click emails every participant their private gallery.",
+  },
+  {
+    status: "building",
+    title: "Time-slot self-booking",
+    detail:
+      "Participants pick an appointment while signing up; shoot day runs as a schedule instead of a line.",
+  },
+  {
+    status: "next",
+    title: "Your client's logo on signup pages and galleries",
+    detail: "Branded delivery that looks like it came from the client's team.",
+  },
+  {
+    status: "next",
+    title: "Participant retouch picks and proofing",
+    detail: "Participants mark favorites; you see exactly what to retouch.",
+  },
+  {
+    status: "next",
+    title: "Paid extra downloads",
+    detail: "Participants can buy photos beyond the included allowance.",
+  },
+  {
+    status: "next",
+    title: "AI retouching and background swap",
+    detail: "Consistent, on-brand headshots without the editing evenings.",
+  },
 ];
 
 export default function HomePage() {
@@ -131,7 +171,7 @@ export default function HomePage() {
           Team headshots, from signup to delivery, in one clear flow.
         </h1>
         <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-600">
-          HeadshotDesk is a web app for photographers who shoot headshots for
+          <BrandName /> is a web app for photographers who shoot headshots for
           teams, offices, and events. It takes over the admin around the
           camera: who&apos;s coming, who&apos;s been shot, which photo belongs
           to whom, and getting every person their own photos. A
@@ -195,7 +235,7 @@ export default function HomePage() {
 
             <div className="rounded-card border border-accent/30 bg-accent-muted p-6">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-accent">
-                With HeadshotDesk
+                With <BrandName />
               </h3>
               <ul className="mt-4 space-y-3 text-sm text-ink leading-relaxed">
                 <li>People add themselves through one signup link.</li>
@@ -225,7 +265,7 @@ export default function HomePage() {
       <section id="how-it-works" className="border-t border-muted-200 bg-muted-50">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
-            How a shoot runs on HeadshotDesk
+            How a shoot runs on <BrandName />
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
             The whole workflow, start to finish. If this looks like your shoot
@@ -247,7 +287,7 @@ export default function HomePage() {
                   </h3>
                 </div>
                 <p className="mt-3 text-sm text-muted-600 leading-relaxed">
-                  {step.body}
+                  {renderBrand(step.body)}
                 </p>
               </li>
             ))}
@@ -281,7 +321,7 @@ export default function HomePage() {
               <div key={f.title}>
                 <h3 className="text-sm font-semibold text-ink">{f.title}</h3>
                 <p className="mt-1 text-sm text-muted-600 leading-relaxed">
-                  {f.body}
+                  {renderBrand(f.body)}
                 </p>
               </div>
             ))}
@@ -293,23 +333,76 @@ export default function HomePage() {
       <section className="border-t border-muted-200 bg-muted-50">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
-            On the roadmap
+            Built in the open
           </h2>
           <p className="mt-2 text-sm sm:text-base text-muted-600 max-w-2xl">
-            Built in the open with our beta photographers. Coming next, in
-            roughly this order:
+            What just shipped, what we&apos;re building right now, and
+            what&apos;s next. Steered by our beta photographers.
           </p>
-          <ul className="mt-8 max-w-2xl space-y-3">
-            {ROADMAP.map((item) => (
-              <li key={item} className="flex items-start gap-3 text-sm text-muted-600">
+
+          {/* Timeline: shipped on top, the in-progress item highlighted,
+              upcoming below. Vertical connector line ties it together. */}
+          <ol className="mt-10 max-w-2xl relative border-l border-muted-200 pl-6 space-y-6">
+            {ROADMAP_TIMELINE.map((item) => (
+              <li key={item.title} className="relative">
                 <span
-                  className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
                   aria-hidden
+                  className={
+                    "absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full " +
+                    (item.status === "shipped"
+                      ? "bg-green-500"
+                      : item.status === "building"
+                        ? "bg-accent ring-4 ring-accent-muted"
+                        : "bg-muted-200")
+                  }
                 />
-                {item}
+                {item.status === "building" ? (
+                  <div className="rounded-card border border-accent/30 bg-accent-muted p-4 -mt-1.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
+                      Building now
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-ink">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-600">{item.detail}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p
+                      className={
+                        "text-[11px] font-semibold uppercase tracking-wider " +
+                        (item.status === "shipped"
+                          ? "text-green-700"
+                          : "text-muted-400")
+                      }
+                    >
+                      {item.status === "shipped" ? "Shipped" : "Up next"}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-ink">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 text-sm text-muted-600">
+                      {item.detail}
+                    </p>
+                  </div>
+                )}
               </li>
             ))}
-          </ul>
+          </ol>
+
+          {/* Feature requests feed the roadmap directly. */}
+          <div className="mt-12 border-t border-muted-200 pt-8">
+            <h3 className="font-display text-lg font-semibold tracking-tight">
+              Missing something?
+            </h3>
+            <p className="mt-1 text-sm text-muted-600 max-w-xl">
+              The list above is largely built from photographer requests. Tell
+              us what would make your shoots easier.
+            </p>
+            <div className="mt-4">
+              <FeatureRequestForm />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -320,7 +413,7 @@ export default function HomePage() {
             Free while in beta. Help shape it
           </h2>
           <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
-            HeadshotDesk is in active beta. Everything on this page works today
+            <BrandName /> is in active beta. Everything on this page works today
             and costs nothing while we polish. Beta photographers get a direct
             line to the roadmap. The feature list above is largely their
             requests. Pricing comes later; your jobs and photos stay yours

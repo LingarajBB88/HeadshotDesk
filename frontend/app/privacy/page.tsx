@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandName } from "@/components/BrandName";
 import { Logo } from "@/components/Logo";
 
 // Compliance minimal set (pre-beta). DRAFT written by the team, reviewed by
@@ -27,7 +28,7 @@ export default function PrivacyPage() {
           <p className="mt-1 text-xs text-muted-600">Last updated: 20 July 2026</p>
 
           <p className="mt-6">
-            HeadshotDesk is a service by Panther Studios, Amsterdam, the
+            <BrandName /> is a service by Panther Studios, Amsterdam, the
             Netherlands (&ldquo;we&rdquo;). It helps photographers organize
             headshot shoots and deliver photos to the people photographed.
             This page explains what personal data we process, why, and what
@@ -42,7 +43,7 @@ export default function PrivacyPage() {
             If you were photographed (participant)
           </h2>
           <p className="mt-2">
-            Your photographer uses HeadshotDesk to run the shoot and deliver
+            Your photographer uses <BrandName /> to run the shoot and deliver
             your photos. For that we process: your name, email address, and
             optional job title (entered by you at signup or by your
             photographer); the photos taken of you; and activity needed to run
@@ -100,7 +101,7 @@ export default function PrivacyPage() {
 
           <h2 className="mt-8 font-display text-lg font-semibold">Cookies</h2>
           <p className="mt-2">
-            HeadshotDesk uses only the storage needed to keep you signed in.
+            <BrandName /> uses only the storage needed to keep you signed in.
             No advertising or cross-site tracking cookies.
           </p>
 

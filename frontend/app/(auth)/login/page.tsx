@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AuthCard } from "@/components/AuthCard";
+import { BrandName } from "@/components/BrandName";
 import { FormField } from "@/components/FormField";
 import { ApiError } from "@/lib/api";
 import { login } from "@/lib/auth";
@@ -49,7 +50,7 @@ export default function LoginPage() {
       subtitle="Welcome back."
       footer={
         <>
-          New to HeadshotDesk?{" "}
+          New to <BrandName />?{" "}
           <Link href="/signup" className="text-accent hover:underline">
             Create an account
           </Link>

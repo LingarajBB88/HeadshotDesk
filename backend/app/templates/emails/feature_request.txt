@@ -1,0 +1,5 @@
+A visitor submitted a feature request on the roadmap section:
+
+{{ request.message }}
+
+Reply-to given: {{ request.email }}
