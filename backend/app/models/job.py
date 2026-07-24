@@ -25,6 +25,11 @@ JOB_STATUSES = (
     "archived",
 )
 
+# HSD-55: how shoot day runs. Queue = walk-up, photographer picks who's next
+# (the original F4 flow). Time slot = participants book an appointment during
+# signup; shoot day is a schedule.
+SHOOT_MODES = ("queue", "time_slot")
+
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -49,6 +54,21 @@ class Job(Base):
     # headshot" package. Photographer can bump this per job. 0 = no downloads
     # allowed (useful while still in proofing).
     download_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # HSD-55: shoot-day mode. "queue" (default, walk-up) or "time_slot"
+    # (participants self-book during signup).
+    shoot_mode: Mapped[str] = mapped_column(
+        String, nullable=False, default="queue", server_default="queue"
+    )
+    # HSD-55: slot configuration when shoot_mode == "time_slot". Shape:
+    #   { "start": "09:00", "end": "17:00", "slot_minutes": 5,
+    #     "buffer_minutes": 0, "breaks": [{"start": "12:00", "end": "12:30"}] }
+    # Times are local to the shoot; the shoot_date column provides the day.
+    # JSONB rather than columns because the shape is read/written whole and
+    # will grow (capacity > 1 is a planned v0.2 extension).
+    time_slot_config: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
 
     created_by: Mapped[str] = mapped_column(
         String, ForeignKey("users.id"), nullable=False

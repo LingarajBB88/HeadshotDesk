@@ -5,6 +5,7 @@ from app.models.file import File
 from app.models.job import Job
 from app.models.participant import Participant
 from app.models.participant_download import ParticipantDownload
+from app.models.slot_booking import SlotBooking
 from app.models.user import User
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "Job",
     "Participant",
     "ParticipantDownload",
+    "SlotBooking",
     "File",
 ]
