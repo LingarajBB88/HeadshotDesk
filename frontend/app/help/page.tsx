@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import {
@@ -11,21 +11,59 @@ import {
   searchHelp,
 } from "@/lib/help";
 
-// Help center: single-page encyclopedia layout (Lingaraj, 2026-07-23).
-// Everything lives on ONE page: a sticky sidebar lists every topic grouped
-// by category, the content column renders all articles in reading order so
-// one topic flows into the next, and search jumps straight to the matching
-// section anchor. No per-article navigation, no dead ends.
+// Help center: single-page encyclopedia with collapsible topics.
+// Topics are CLOSED by default so the page reads as a scannable index;
+// clicking a topic in the sidebar, a search result, or a card header opens
+// it (and only it needs to be open). Deep links (#slug or #slug--section)
+// open the right card on load, which also keeps the old /help/[slug]
+// redirects working.
+
+/** Article slug from any anchor ("slug" or "slug--section"). */
+function slugFromAnchor(anchor: string): string {
+  return anchor.split("--")[0];
+}
 
 export default function HelpPage() {
   const [query, setQuery] = useState("");
   const results = useMemo(() => searchHelp(query), [query]);
   const searching = query.trim().length >= 2;
 
-  function jump(anchor: string) {
+  // Which article cards are expanded. Closed by default.
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  // Anchor waiting to be scrolled to once its card has rendered open.
+  const [pendingScroll, setPendingScroll] = useState<string | null>(null);
+
+  function openAndScroll(anchor: string) {
+    const slug = slugFromAnchor(anchor);
+    setOpen((prev) => ({ ...prev, [slug]: true }));
+    setPendingScroll(anchor);
     setQuery("");
-    // Update the hash so the position is shareable, then scroll.
-    window.location.hash = anchor;
+    // Keep the URL shareable.
+    window.history.replaceState(null, "", `#${anchor}`);
+  }
+
+  // Scroll after the expanded card is in the DOM.
+  useEffect(() => {
+    if (!pendingScroll) return;
+    const el = document.getElementById(pendingScroll);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setPendingScroll(null);
+  }, [pendingScroll, open]);
+
+  // Deep links: open the card the hash points at (covers the /help/[slug]
+  // redirects and links shared with #anchors).
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return;
+    const slug = slugFromAnchor(hash);
+    if (HELP_ARTICLES.some((a) => a.slug === slug)) {
+      setOpen((prev) => ({ ...prev, [slug]: true }));
+      setPendingScroll(hash);
+    }
+  }, []);
+
+  function toggle(slug: string) {
+    setOpen((prev) => ({ ...prev, [slug]: !prev[slug] }));
   }
 
   return (
@@ -40,8 +78,7 @@ export default function HelpPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-16 lg:grid lg:grid-cols-[260px_1fr] lg:gap-10">
-        {/* Sidebar: search + full topic tree. Sticky on desktop so the map
-            of everything stays in view while reading. */}
+        {/* Sidebar: search + full topic tree. */}
         <aside className="lg:sticky lg:top-0 lg:self-start lg:max-h-dvh lg:overflow-y-auto py-6">
           <div className="relative">
             <input
@@ -68,7 +105,7 @@ export default function HelpPage() {
                         <li key={`${r.article.slug}-${r.sectionId ?? "top"}`}>
                           <button
                             type="button"
-                            onClick={() => jump(anchor)}
+                            onClick={() => openAndScroll(anchor)}
                             className="block w-full p-3 text-left hover:bg-muted-50 transition"
                           >
                             <p className="text-xs font-semibold text-ink">
@@ -105,12 +142,13 @@ export default function HelpPage() {
                   <ul className="mt-2 space-y-1">
                     {articles.map((a) => (
                       <li key={a.slug}>
-                        <a
-                          href={`#${a.slug}`}
-                          className="block rounded-md px-2 py-1 text-sm text-muted-600 hover:text-ink hover:bg-muted-100 transition"
+                        <button
+                          type="button"
+                          onClick={() => openAndScroll(a.slug)}
+                          className="block w-full rounded-md px-2 py-1 text-left text-sm text-muted-600 hover:text-ink hover:bg-muted-100 transition"
                         >
                           {a.title}
-                        </a>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -131,14 +169,14 @@ export default function HelpPage() {
           </p>
         </aside>
 
-        {/* Content: every article, in reading order. One long page. */}
+        {/* Content: every topic as a collapsible card, in reading order. */}
         <div className="py-6">
           <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
             Help
           </h1>
           <p className="mt-2 text-sm sm:text-base text-muted-600">
-            Every screen and setting, explained in plain words. Read top to
-            bottom or jump from the list.
+            Every screen and setting, explained in plain words. Open a topic
+            from the list, or expand them here as you read.
           </p>
 
           <div className="mt-8 space-y-10">
@@ -150,75 +188,112 @@ export default function HelpPage() {
                   <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-600">
                     {cat}
                   </h2>
-                  <div className="mt-3 space-y-6">
-                    {articles.map((article) => (
-                      <article
-                        key={article.slug}
-                        id={article.slug}
-                        className="scroll-mt-6 rounded-dialog border border-muted-200 bg-paper p-6 sm:p-8"
-                      >
-                        <h3 className="font-display text-xl sm:text-2xl font-semibold tracking-tight">
-                          <a href={`#${article.slug}`} className="hover:text-accent">
-                            {article.title}
-                          </a>
-                        </h3>
-                        {/* Intro: what this is and why it helps, before any
-                            mechanics. Falls back to the one-line summary. */}
-                        {article.intro ? (
-                          article.intro.map((p, i) => (
-                            <p
-                              key={i}
-                              className="mt-3 text-sm sm:text-[15px] text-ink leading-relaxed"
+                  <div className="mt-3 space-y-3">
+                    {articles.map((article) => {
+                      const isOpen = !!open[article.slug];
+                      return (
+                        <article
+                          key={article.slug}
+                          id={article.slug}
+                          className="scroll-mt-6 rounded-dialog border border-muted-200 bg-paper"
+                        >
+                          {/* Card header: whole row toggles. */}
+                          <button
+                            type="button"
+                            onClick={() => toggle(article.slug)}
+                            aria-expanded={isOpen}
+                            className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left sm:px-8"
+                          >
+                            <span>
+                              <span className="block font-display text-lg sm:text-xl font-semibold tracking-tight">
+                                {article.title}
+                              </span>
+                              {!isOpen ? (
+                                <span className="mt-0.5 block text-sm text-muted-600">
+                                  {article.summary}
+                                </span>
+                              ) : null}
+                            </span>
+                            <svg
+                              className={
+                                "h-4 w-4 shrink-0 text-muted-600 transition-transform " +
+                                (isOpen ? "rotate-180" : "")
+                              }
+                              viewBox="0 0 16 16"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden
                             >
-                              {p}
-                            </p>
-                          ))
-                        ) : (
-                          <p className="mt-1 text-sm text-muted-600">
-                            {article.summary}
-                          </p>
-                        )}
+                              <polyline points="4 6 8 10 12 6" />
+                            </svg>
+                          </button>
 
-                        {article.sections.map((section) => {
-                          const anchor = helpSectionAnchor(article.slug, section.id);
-                          return (
-                            <section
-                              key={anchor}
-                              id={anchor}
-                              className="mt-6 scroll-mt-6"
-                            >
-                              <h4 className="font-display text-base font-semibold tracking-tight">
-                                <a href={`#${anchor}`} className="hover:text-accent">
-                                  {section.heading}
-                                </a>
-                              </h4>
-                              {section.body?.map((p, i) => (
+                          {isOpen ? (
+                            <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+                              {article.intro?.map((p, i) => (
                                 <p
                                   key={i}
-                                  className="mt-2 text-sm text-ink leading-relaxed"
+                                  className="mt-1 text-sm sm:text-[15px] text-ink leading-relaxed"
                                 >
                                   {p}
                                 </p>
                               ))}
-                              {section.items ? (
-                                <dl className="mt-3 space-y-2.5">
-                                  {section.items.map((item) => (
-                                    <div key={item.term}>
-                                      <dt className="text-sm font-semibold text-ink">
-                                        {item.term}
-                                      </dt>
-                                      <dd className="mt-0.5 text-sm text-muted-600 leading-relaxed">
-                                        {item.def}
-                                      </dd>
-                                    </div>
-                                  ))}
-                                </dl>
-                              ) : null}
-                            </section>
-                          );
-                        })}
-                      </article>
-                    ))}
+
+                              {article.sections.map((section) => {
+                                const anchor = helpSectionAnchor(
+                                  article.slug,
+                                  section.id,
+                                );
+                                return (
+                                  <section
+                                    key={anchor}
+                                    id={anchor}
+                                    className="mt-6 scroll-mt-6"
+                                  >
+                                    <h4 className="font-display text-base font-semibold tracking-tight">
+                                      {section.heading}
+                                    </h4>
+                                    {section.body?.map((p, i) => (
+                                      <p
+                                        key={i}
+                                        className="mt-2 text-sm text-ink leading-relaxed"
+                                      >
+                                        {p}
+                                      </p>
+                                    ))}
+                                    {section.items ? (
+                                      <dl className="mt-3 space-y-2.5">
+                                        {section.items.map((item) => (
+                                          <div key={item.term}>
+                                            <dt className="text-sm font-semibold text-ink">
+                                              {item.term}
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-muted-600 leading-relaxed">
+                                              {item.def}
+                                            </dd>
+                                          </div>
+                                        ))}
+                                      </dl>
+                                    ) : null}
+                                  </section>
+                                );
+                              })}
+
+                              <button
+                                type="button"
+                                onClick={() => toggle(article.slug)}
+                                className="mt-6 text-xs text-muted-600 hover:text-ink transition"
+                              >
+                                Minimize this topic
+                              </button>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
                   </div>
                 </section>
               );
