@@ -6,8 +6,15 @@ import { useState } from "react";
 
 import { useEffect } from "react";
 
+import { useRef } from "react";
+
 import { FormField } from "@/components/FormField";
-import { createClient, listClients, type Client } from "@/lib/clients";
+import {
+  createClient,
+  listClients,
+  uploadClientLogo,
+  type Client,
+} from "@/lib/clients";
 import { createJob, type ShootMode } from "@/lib/jobs";
 import { classifyFormError } from "@/lib/form-errors";
 
@@ -26,16 +33,72 @@ export default function NewJobPage() {
   const [newClientName, setNewClientName] = useState("");
 
   useEffect(() => {
-    (async () => {
+    async function refreshClients() {
       try {
         setClients(await listClients());
       } catch {
-        setClients([]);
+        /* keep whatever we have */
       }
-    })();
+    }
+    refreshClients();
+    // Stay in sync with the Clients page: uploading a logo in another tab
+    // shows up here the moment this tab regains focus.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshClients();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  const selectedClient = clients.find((c) => c.id === clientChoice) ?? null;
+  // The client this job will use: the picked one, or (in create mode) an
+  // existing client whose name matches what's being typed — so typing
+  // "Invest NL" immediately shows Invest NL's logo instead of pretending
+  // it's a brand-new company.
+  const typedMatch = creatingClient
+    ? clients.find(
+        (c) =>
+          c.name.trim().toLowerCase() === newClientName.trim().toLowerCase(),
+      ) ?? null
+    : null;
+  const selectedClient = creatingClient
+    ? typedMatch
+    : clients.find((c) => c.id === clientChoice) ?? null;
+
+  // Direct logo upload from this form. In create mode the client is
+  // created first (server dedupes by name), then the logo attaches, then
+  // the picker switches to the real record — both pages stay in sync.
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  async function handleLogoFile(file: File) {
+    setLogoBusy(true);
+    try {
+      let targetId = selectedClient?.id ?? null;
+      if (!targetId && creatingClient && newClientName.trim()) {
+        const created = await createClient(newClientName.trim());
+        targetId = created.id;
+        setClients((cs) =>
+          cs.some((c) => c.id === created.id) ? cs : [...cs, created],
+        );
+      }
+      if (!targetId) return;
+      const updated = await uploadClientLogo(targetId, file);
+      setClients((cs) => {
+        const present = cs.some((c) => c.id === updated.id);
+        return present
+          ? cs.map((c) => (c.id === updated.id ? updated : c))
+          : [...cs, updated];
+      });
+      // Leave create mode: the client now exists and is selected.
+      setCreatingClient(false);
+      setNewClientName("");
+      setClientChoice(updated.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Logo upload failed.");
+    } finally {
+      setLogoBusy(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -271,12 +334,23 @@ export default function NewJobPage() {
               error={fieldErrors.client_email}
             />
 
-            {/* HSD-36: logo preview for the selected client. Uploads live
-                on the Clients page (once per client, every job inherits). */}
+            {/* HSD-36: client logo, uploadable right here. One upload per
+                client — every job for them inherits it, and the Clients
+                page shows the same state. */}
             <div className="mb-4">
               <span className="block text-sm font-medium text-ink mb-1.5">
                 Client logo
               </span>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleLogoFile(f);
+                }}
+              />
               {selectedClient?.logo_url ? (
                 <div className="rounded-md border border-muted-200 bg-paper px-3 py-3 flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -285,25 +359,48 @@ export default function NewJobPage() {
                     alt={`${selectedClient.name} logo`}
                     className="h-10 max-w-[140px] object-contain"
                   />
-                  <span className="text-xs text-muted-600">
+                  <span className="flex-1 text-xs text-muted-600">
                     Shown on the signup page, galleries, and delivery emails.
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoBusy}
+                    className="text-xs text-accent hover:underline disabled:text-muted-400"
+                  >
+                    {logoBusy ? "Uploading…" : "Replace"}
+                  </button>
+                </div>
+              ) : selectedClient || (creatingClient && newClientName.trim()) ? (
+                <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoBusy}
+                    className="btn-secondary text-xs disabled:opacity-60"
+                  >
+                    {logoBusy ? "Uploading…" : "Upload logo"}
+                  </button>
+                  <p className="mt-2 text-xs text-muted-600">
+                    PNG, JPEG, or SVG up to 2 MB. Brands the signup page,
+                    galleries, and delivery emails for every job with{" "}
+                    {selectedClient?.name ?? newClientName.trim()}.
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
                   <p className="text-xs text-muted-600">
-                    {selectedClient
-                      ? `No logo for ${selectedClient.name} yet. `
-                      : "Pick or create a client, then "}
+                    Pick or create a client first, then upload their logo
+                    here or on the{" "}
                     <a
                       href="/clients"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-accent hover:underline"
                     >
-                      upload one on the Clients page
+                      Clients page
                     </a>
-                    . Every job for that client inherits it.
+                    .
                   </p>
                 </div>
               )}
