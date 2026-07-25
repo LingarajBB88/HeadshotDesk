@@ -5,13 +5,21 @@ import { useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { classifyFormError } from "@/lib/form-errors";
 import {
+  bookSlotForParticipant,
+  cancelParticipantBooking,
+  getSchedule,
+  type ScheduleEntry,
+} from "@/lib/jobs";
+import {
   addParticipant,
   deleteParticipant,
   importCsv,
   listParticipants,
+  listPublicSlots,
   resendGallery,
   type CsvImportResult,
   type Participant,
+  type PublicSlot,
 } from "@/lib/participants";
 
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -124,18 +132,103 @@ function CopyGalleryLinkButton({ token }: { token: string }) {
   );
 }
 
+// HSD-55 follow-up — the Time cell on time-slot jobs. Shows the booked time
+// and lets the photographer assign, move, or clear it via a compact select.
+// Options are the free slots plus the participant's current one.
+function TimeSlotCell({
+  jobId,
+  participant,
+  entry,
+  slots,
+  onChanged,
+}: {
+  jobId: string;
+  participant: Participant;
+  entry: ScheduleEntry | undefined;
+  slots: PublicSlot[];
+  onChanged: () => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const current = entry?.slot_start ?? "";
+
+  async function onChange(value: string) {
+    setBusy(true);
+    try {
+      if (value === "") {
+        await cancelParticipantBooking(jobId, participant.id);
+      } else {
+        await bookSlotForParticipant(jobId, participant.id, value);
+      }
+      await onChanged();
+    } catch (err) {
+      alert(
+        err instanceof ApiError && err.status === 409
+          ? "That slot was just taken. Pick another."
+          : "Couldn't update the time. Try again?",
+      );
+      await onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const options = slots.filter((s) => s.available || s.start === current);
+
+  return (
+    <select
+      value={current}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={busy || slots.length === 0}
+      aria-label={`Time slot for ${participant.name}`}
+      title={slots.length === 0 ? "Save the slot settings first" : undefined}
+      className={
+        "rounded-md border px-1.5 py-1 text-xs outline-none focus:border-accent transition disabled:opacity-60 " +
+        (current
+          ? "border-muted-200 bg-paper font-mono text-ink"
+          : "border-dashed border-muted-200 bg-muted-50 text-muted-600")
+      }
+    >
+      <option value="">No time</option>
+      {options.map((s) => (
+        <option key={s.start} value={s.start}>
+          {s.start.slice(11, 16)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 type Props = {
   jobId: string;
   /** Bumped by the parent when something elsewhere changes participant photo counts. */
   refreshKey?: number;
+  /** HSD-55: when "time_slot", the table gains a Time column with an
+      assign/move/clear picker, and the Add form offers a slot. */
+  shootMode?: string;
+  publicSlug?: string;
+  /** Called after a booking changes here, so sibling sections (the Schedule
+      grid) can refetch immediately instead of waiting for the next poll. */
+  onScheduleChanged?: () => void;
 };
 
-export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
+export function ParticipantsSection({
+  jobId,
+  refreshKey = 0,
+  shootMode,
+  publicSlug,
+  onScheduleChanged,
+}: Props) {
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [importResult, setImportResult] = useState<CsvImportResult | null>(null);
   const [search, setSearch] = useState("");
+  const timeSlots = shootMode === "time_slot";
+  const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
+  const [slots, setSlots] = useState<PublicSlot[]>([]);
+  const slotByParticipant = new Map(
+    schedule.map((e) => [e.participant_id, e]),
+  );
 
   // Derived: filtered participants for display. Matches name OR email OR title.
   const filteredParticipants = participants
@@ -158,12 +251,33 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
     } catch {
       setError("Could not load participants.");
     }
+    if (timeSlots) {
+      // Bookings + availability for the Time column. Failures degrade to an
+      // empty picker rather than blocking the participant list.
+      try {
+        setSchedule(await getSchedule(jobId));
+      } catch {
+        setSchedule([]);
+      }
+      if (publicSlug) {
+        try {
+          setSlots(await listPublicSlots(publicSlug));
+        } catch {
+          setSlots([]);
+        }
+      }
+    }
   }
 
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId, refreshKey]);
+  }, [jobId, refreshKey, timeSlots, publicSlug]);
+
+  async function refreshAfterBookingChange() {
+    await refresh();
+    onScheduleChanged?.();
+  }
 
   async function handleDelete(p: Participant) {
     if (!confirm(`Remove ${p.name}? Their info will be deleted.`)) return;
@@ -218,9 +332,10 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
       {adding ? (
         <AddParticipantForm
           jobId={jobId}
+          slots={timeSlots ? slots : null}
           onAdded={async () => {
             setAdding(false);
-            await refresh();
+            await refreshAfterBookingChange();
           }}
           onCancel={() => setAdding(false)}
         />
@@ -269,6 +384,17 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                       {p.email ?? "—"}
                       {p.title ? ` · ${p.title}` : ""}
                     </p>
+                    {timeSlots ? (
+                      <div className="mt-1">
+                        <TimeSlotCell
+                          jobId={jobId}
+                          participant={p}
+                          entry={slotByParticipant.get(p.id)}
+                          slots={slots}
+                          onChanged={refreshAfterBookingChange}
+                        />
+                      </div>
+                    ) : null}
                     {p.gallery_sent_at ? (
                       <div className="mt-1">
                         <DeliveredIndicator sentAt={p.gallery_sent_at} />
@@ -298,6 +424,7 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                     <th className="px-5 py-3">Name</th>
                     <th className="px-5 py-3">Email</th>
                     <th className="px-5 py-3">Title</th>
+                    {timeSlots ? <th className="px-5 py-3">Time</th> : null}
                     <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">
                       <span className="sr-only">Actions</span>
@@ -314,6 +441,17 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
                       <td className="px-5 py-3 text-muted-600">
                         {p.title ?? "—"}
                       </td>
+                      {timeSlots ? (
+                        <td className="px-5 py-3">
+                          <TimeSlotCell
+                            jobId={jobId}
+                            participant={p}
+                            entry={slotByParticipant.get(p.id)}
+                            slots={slots}
+                            onChanged={refreshAfterBookingChange}
+                          />
+                        </td>
+                      ) : null}
                       <td className="px-5 py-3">
                         <div className="flex flex-col gap-1">
                           <ParticipantStatusPill p={p} />
@@ -354,16 +492,22 @@ export function ParticipantsSection({ jobId, refreshKey = 0 }: Props) {
 
 function AddParticipantForm({
   jobId,
+  slots,
   onAdded,
   onCancel,
 }: {
   jobId: string;
+  /** HSD-55: available slots for the optional time picker on time-slot
+      jobs; null hides the picker (queue jobs). */
+  slots: PublicSlot[] | null;
   onAdded: () => Promise<void>;
   onCancel: () => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [slot, setSlot] = useState<string>("");
+  const availableSlots = slots?.filter((s) => s.available) ?? [];
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -372,11 +516,24 @@ function AddParticipantForm({
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
-      await addParticipant(jobId, {
+      const created = await addParticipant(jobId, {
         name: String(data.get("name") ?? "").trim(),
         email: (String(data.get("email") ?? "").trim()) || null,
         title: (String(data.get("title") ?? "").trim()) || null,
       });
+      // Book the chosen time right after the add. A lost race isn't worth
+      // failing the whole add over: the person is in, they just need a
+      // different time from the Time column.
+      if (slot) {
+        try {
+          await bookSlotForParticipant(jobId, created.id, slot);
+        } catch {
+          alert(
+            `${created.name} was added, but that time was just taken. ` +
+              "Assign another from the Time column.",
+          );
+        }
+      }
       await onAdded();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -408,6 +565,30 @@ function AddParticipantForm({
         />
         <FormField label="Title" name="title" error={fieldErrors.title} />
       </div>
+      {slots !== null ? (
+        <label className="block mt-3 mb-3">
+          <span className="block text-xs font-medium text-muted-600">
+            Time slot (optional)
+          </span>
+          <select
+            value={slot}
+            onChange={(e) => setSlot(e.target.value)}
+            disabled={availableSlots.length === 0}
+            className="mt-1 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-60"
+          >
+            <option value="">
+              {availableSlots.length === 0
+                ? "No open slots"
+                : "No time yet (walk-in)"}
+            </option>
+            {availableSlots.map((s) => (
+              <option key={s.start} value={s.start}>
+                {s.start.slice(11, 16)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {formError ? (
         <p className="text-sm text-red-600 mb-2" role="alert">
           {formError}

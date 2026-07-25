@@ -77,6 +77,12 @@ class PublicBookSlotRequest(BaseModel):
     slot_start: datetime
 
 
+class BookSlotForParticipantRequest(BaseModel):
+    """Owner-side slot assignment: the photographer books a time for a
+    participant from the job page. Auth comes from the session; no token."""
+    slot_start: datetime
+
+
 class ScheduleEntryOut(BaseModel):
     slot_start: datetime
     slot_end: datetime

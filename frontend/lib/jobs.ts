@@ -135,6 +135,33 @@ export async function updateJob(
   });
 }
 
+// HSD-55 follow-up: owner-side slot assignment. The photographer books or
+// frees a time for a participant from the job page (manual adds, CSV rows).
+export async function bookSlotForParticipant(
+  jobId: string,
+  participantId: string,
+  slotStart: string,
+): Promise<ScheduleEntry> {
+  return api<ScheduleEntry>(
+    `/api/v1/jobs/${jobId}/participants/${participantId}/book-slot`,
+    {
+      method: "POST",
+      token: authToken(),
+      body: JSON.stringify({ slot_start: slotStart }),
+    },
+  );
+}
+
+export async function cancelParticipantBooking(
+  jobId: string,
+  participantId: string,
+): Promise<void> {
+  await api(`/api/v1/jobs/${jobId}/participants/${participantId}/booking`, {
+    method: "DELETE",
+    token: authToken(),
+  });
+}
+
 export async function getSchedule(id: string): Promise<ScheduleEntry[]> {
   const res = await api<{ entries: ScheduleEntry[] }>(
     `/api/v1/jobs/${id}/schedule`,

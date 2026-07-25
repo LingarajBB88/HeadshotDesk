@@ -382,6 +382,9 @@ export default function JobDetailPage() {
         <ParticipantsSection
           jobId={job.id}
           refreshKey={participantsRefreshKey}
+          shootMode={job.shoot_mode}
+          publicSlug={job.public_slug}
+          onScheduleChanged={() => setParticipantsRefreshKey((k) => k + 1)}
         />
       </div>
 

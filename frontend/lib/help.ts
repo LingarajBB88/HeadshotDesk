@@ -411,13 +411,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
         body: [
           "The signup form shows the open times; participants pick one along with their details and everything is booked the moment they submit. Taken slots show as unavailable. If two people go for the same time at the same moment, the second gets a friendly nudge to pick another.",
           "Signing up again with the same email lets someone pick a different time; their old slot frees up automatically.",
+          "You can also book on someone's behalf. People you add manually or through a CSV get a Time column in the Participants table: pick a slot there to assign, move, or clear their time. Assigning is optional, so walk-ins can stay without one.",
         ],
       },
       {
         id: "shoot-day",
         heading: "On shoot day",
         body: [
-          "The Schedule section on the job page lists every booking in order and refreshes on its own as new bookings come in, so you can leave the page open while invites go out. The shoot screen sorts the pending list by appointment and shows each person's time next to their name, so the queue works exactly as before, just in schedule order.",
+          "The Schedule section on the job page shows the whole day as a grid of slots: booked slots carry the person's name, open ones stay empty, and a counter sums it up (say, 42 of 96 booked). It refreshes on its own as new bookings come in, so you can leave the page open while invites go out. The shoot screen sorts the pending list by appointment and shows each person's time next to their name, so the queue works exactly as before, just in schedule order.",
           "Walk-ins still work: add the person as a participant and shoot them whenever there is room.",
         ],
       },

@@ -351,6 +351,115 @@ class TestConfigChangeWithBookings:
         assert all(s["available"] for s in new_slots)
 
 
+class TestOwnerAssignment:
+    """HSD-55 follow-up: the photographer assigns times to manually added
+    participants from the job page."""
+
+    def _add_participant(self, client, token, job_id, name="Manual Mike"):
+        r = client.post(
+            f"/api/v1/jobs/{job_id}/participants",
+            json={"name": name, "email": "mike@example.com"},
+            headers=_auth(token),
+        )
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    def test_owner_books_slot_for_participant(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)
+        p = self._add_participant(client, token, job["id"])
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+
+        r = client.post(
+            f"/api/v1/jobs/{job['id']}/participants/{p['id']}/book-slot",
+            json={"slot_start": slots[0]["start"]},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["participant_id"] == p["id"]
+        # The slot now shows unavailable publicly, and the schedule lists it.
+        fresh = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert fresh[0]["available"] is False
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert [e["participant_id"] for e in entries] == [p["id"]]
+
+    def test_owner_booking_taken_slot_conflicts(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)
+        jane = _public_signup(client, job["public_slug"], "Jane", "jane@example.com")
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+        p = self._add_participant(client, token, job["id"])
+        r = client.post(
+            f"/api/v1/jobs/{job['id']}/participants/{p['id']}/book-slot",
+            json={"slot_start": slots[0]["start"]},
+            headers=_auth(token),
+        )
+        assert r.status_code == 409
+
+    def test_owner_cancels_booking(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)
+        p = self._add_participant(client, token, job["id"])
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        client.post(
+            f"/api/v1/jobs/{job['id']}/participants/{p['id']}/book-slot",
+            json={"slot_start": slots[0]["start"]},
+            headers=_auth(token),
+        )
+        r = client.delete(
+            f"/api/v1/jobs/{job['id']}/participants/{p['id']}/booking",
+            headers=_auth(token),
+        )
+        assert r.status_code == 204
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert entries == []
+        # Idempotent: cancelling again is still 204.
+        r = client.delete(
+            f"/api/v1/jobs/{job['id']}/participants/{p['id']}/booking",
+            headers=_auth(token),
+        )
+        assert r.status_code == 204
+
+    def test_other_accounts_participant_is_404(self, client: TestClient):
+        a = _signup(client)
+        token_a = a["tokens"]["access_token"]
+        job_a = _create_slot_job(client, token_a)
+        slots = client.get(
+            f"/api/v1/public/jobs/{job_a['public_slug']}/slots"
+        ).json()["slots"]
+        b = _signup(client)
+        token_b = b["tokens"]["access_token"]
+        job_b = _create_slot_job(client, token_b)
+        p_b = self._add_participant(client, token_b, job_b["id"])
+
+        # Account A tries to book A's slot for B's participant.
+        r = client.post(
+            f"/api/v1/jobs/{job_a['id']}/participants/{p_b['id']}/book-slot",
+            json={"slot_start": slots[0]["start"]},
+            headers=_auth(token_a),
+        )
+        assert r.status_code == 404
+
+
 class TestSchedule:
     def test_schedule_lists_bookings_chronologically(self, client: TestClient):
         a = _signup(client)

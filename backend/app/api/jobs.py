@@ -1,5 +1,5 @@
 """Jobs API routes — all auth-required, all account-scoped."""
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -13,8 +13,8 @@ from app.schemas.job import (
     JobOut,
     JobUpdate,
 )
-from app.schemas.slots import ScheduleEntryOut, ScheduleOut
-from app.services import job_service, slot_service
+from app.schemas.slots import BookSlotForParticipantRequest, ScheduleEntryOut, ScheduleOut
+from app.services import job_service, participant_service, slot_service
 
 
 class DeliveryResult(BaseModel):
@@ -143,3 +143,57 @@ def schedule(
     job = job_service.get_job(db, account=account, job_id=job_id)
     entries = slot_service.job_schedule(db, job=job)
     return ScheduleOut(entries=[ScheduleEntryOut(**e) for e in entries])
+
+
+@router.post(
+    "/{job_id}/participants/{participant_id}/book-slot",
+    response_model=ScheduleEntryOut,
+)
+def book_slot_for_participant(
+    job_id: str,
+    participant_id: str,
+    payload: BookSlotForParticipantRequest,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ScheduleEntryOut:
+    """HSD-55 — owner-side slot assignment. The photographer books (or moves)
+    a time for a participant they added manually or via CSV. Same semantics
+    as the public path: rebooking replaces, a taken slot returns 409."""
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    participant = participant_service.get_participant(
+        db, account=account, participant_id=participant_id
+    )
+    if participant.job_id != job.id:
+        # Participant exists in the account but under a different job.
+        raise HTTPException(status_code=404, detail="Participant not found.")
+    booking = slot_service.book_slot_for_participant(
+        db, job=job, participant=participant, slot_start=payload.slot_start
+    )
+    return ScheduleEntryOut(
+        slot_start=booking.slot_start,
+        slot_end=booking.slot_end,
+        participant_id=participant.id,
+        participant_name=participant.name,
+        shot=participant.shot_at is not None,
+    )
+
+
+@router.delete(
+    "/{job_id}/participants/{participant_id}/booking",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def cancel_participant_booking(
+    job_id: str,
+    participant_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> None:
+    """HSD-55 — free a participant's slot; they stay signed up as a walk-in.
+    Idempotent: deleting a non-existent booking is a quiet no-op."""
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    participant = participant_service.get_participant(
+        db, account=account, participant_id=participant_id
+    )
+    if participant.job_id != job.id:
+        raise HTTPException(status_code=404, detail="Participant not found.")
+    slot_service.cancel_participant_booking(db, job=job, participant=participant)

@@ -99,7 +99,21 @@ def book_slot(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Signup not found."
         )
+    return book_slot_for_participant(
+        db, job=job, participant=participant, slot_start=slot_start
+    )
 
+
+def book_slot_for_participant(
+    db: Session,
+    *,
+    job: Job,
+    participant: Participant,
+    slot_start: datetime,
+) -> SlotBooking:
+    """Core booking: assign `slot_start` to `participant`. Shared by the
+    public token-authenticated path and the photographer's owner-side
+    assignment. Same semantics: rebooking replaces, races lose with 409."""
     # Normalize + verify the requested slot exists in the configured grid.
     if slot_start.tzinfo is None:
         slot_start = slot_start.replace(tzinfo=timezone.utc)
@@ -165,6 +179,24 @@ def job_schedule(db: Session, *, job: Job) -> list[dict]:
         }
         for b, p in rows
     ]
+
+
+def cancel_participant_booking(
+    db: Session, *, job: Job, participant: Participant
+) -> bool:
+    """Owner-side: free a participant's slot (they become a walk-in again).
+    Returns True when a booking existed. Commits."""
+    existing = db.scalar(
+        select(SlotBooking).where(
+            SlotBooking.participant_id == participant.id,
+            SlotBooking.job_id == job.id,
+        )
+    )
+    if existing is None:
+        return False
+    db.delete(existing)
+    db.commit()
+    return True
 
 
 def clear_bookings(db: Session, *, job: Job) -> int:

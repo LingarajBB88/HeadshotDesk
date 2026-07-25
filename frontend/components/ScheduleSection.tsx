@@ -12,6 +12,7 @@ import {
   type SlotBreak,
   type TimeSlotConfig,
 } from "@/lib/jobs";
+import { listPublicSlots, type PublicSlot } from "@/lib/participants";
 
 // HSD-55 — Schedule section on the Job detail page, shown only for
 // time-slot jobs. Two halves:
@@ -50,6 +51,7 @@ export function ScheduleSection({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleEntry[] | null>(null);
+  const [slots, setSlots] = useState<PublicSlot[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,11 +62,17 @@ export function ScheduleSection({
       } catch {
         if (!cancelled) setSchedule([]);
       }
+      try {
+        const s = await listPublicSlots(job.public_slug);
+        if (!cancelled) setSlots(s);
+      } catch {
+        if (!cancelled) setSlots([]);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [job.id, refreshKey]);
+  }, [job.id, job.public_slug, job.time_slot_config, refreshKey]);
 
   const savedConfig = job.time_slot_config ?? DEFAULT_CONFIG;
   const dirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
@@ -401,42 +409,82 @@ export function ScheduleSection({
         </div>
       </div>
 
-      {/* --- Booked schedule ------------------------------------------- */}
+      {/* --- Slot grid -------------------------------------------------
+          One chip per slot: booked chips carry the person's name, free
+          chips just the time. Scales to full corporate days (100+ slots)
+          where a chronological list would be a page of scrolling. Names
+          and assignment actions live in the Participants table below. */}
       <div className="mt-4">
-        <h3 className="text-sm font-semibold text-ink">Booked</h3>
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-sm font-semibold text-ink">Bookings</h3>
+          {slots.length > 0 ? (
+            <span className="text-xs text-muted-600">
+              {schedule?.length ?? 0} of {slots.length} slots booked
+            </span>
+          ) : null}
+        </div>
         {schedule === null ? (
           <p className="mt-2 text-sm text-muted-600">Loading…</p>
-        ) : schedule.length === 0 ? (
+        ) : slots.length === 0 ? (
           <p className="mt-2 text-sm text-muted-600">
-            No bookings yet. Slots appear on the signup page as soon as the
-            settings above are saved.
+            No slots yet. They appear here and on the signup page as soon as
+            the settings above are saved.
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-muted-200 rounded-card border border-muted-200 bg-paper">
-            {schedule.map((e) => (
-              <li
-                key={e.participant_id}
-                className="flex items-center gap-3 px-4 py-2.5"
-              >
-                <span className="font-mono text-sm text-ink w-24 shrink-0">
-                  {fmtTime(e.slot_start)}–{fmtTime(e.slot_end)}
-                </span>
-                <span className="text-sm text-ink truncate">
-                  {e.participant_name}
-                </span>
-                {e.shot ? (
-                  <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-green-100 text-green-700">
-                    Shot
-                  </span>
-                ) : (
-                  <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted-100 text-muted-600">
-                    Booked
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          (() => {
+            const bySlot = new Map(
+              (schedule ?? []).map((e) => [e.slot_start, e]),
+            );
+            return (
+              <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+                {slots.map((s) => {
+                  const entry = bySlot.get(s.start);
+                  return (
+                    <div
+                      key={s.start}
+                      title={
+                        entry
+                          ? `${fmtTime(s.start)}–${fmtTime(s.end)} · ${entry.participant_name}${entry.shot ? " · shot" : ""}`
+                          : `${fmtTime(s.start)}–${fmtTime(s.end)} · open`
+                      }
+                      className={
+                        "rounded-md border px-1.5 py-1 min-w-0 " +
+                        (entry
+                          ? entry.shot
+                            ? "border-green-200 bg-green-50"
+                            : "border-accent/40 bg-accent-muted"
+                          : "border-muted-200 bg-paper")
+                      }
+                    >
+                      <span
+                        className={
+                          "block font-mono text-[11px] leading-tight " +
+                          (entry ? "text-ink" : "text-muted-400")
+                        }
+                      >
+                        {fmtTime(s.start)}
+                      </span>
+                      <span
+                        className={
+                          "block text-[11px] leading-tight truncate " +
+                          (entry ? "text-ink font-medium" : "text-muted-400")
+                        }
+                      >
+                        {entry ? entry.participant_name : "open"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()
         )}
+        {schedule && schedule.length > 0 ? (
+          <p className="mt-2 text-xs text-muted-600">
+            Assign, move, or clear times from the Time column in Participants
+            below.
+          </p>
+        ) : null}
       </div>
     </CollapsibleSection>
   );
