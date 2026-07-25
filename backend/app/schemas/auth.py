@@ -77,6 +77,9 @@ class AuthResponse(BaseModel):
 class MeResponse(BaseModel):
     user: UserOut
     account: AccountOut
+    # HSD-66: cosmetic flag so the frontend knows to show the Admin nav
+    # link. Real enforcement is the require_admin dependency server-side.
+    is_admin: bool = False
 
 
 class AccessTokenOnly(BaseModel):

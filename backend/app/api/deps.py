@@ -49,6 +49,19 @@ def get_current_user(
     return user
 
 
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    """HSD-66 — gate for the operator dashboard. Membership comes from the
+    ADMIN_EMAILS env var and is checked server-side on every request; the
+    frontend's is_admin flag is cosmetic only."""
+    from app.config import settings
+
+    if user.email.lower() not in settings.admin_email_set:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required."
+        )
+    return user
+
+
 def get_current_account(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

@@ -7,7 +7,7 @@ Run via tasks: see scripts/dev.sh
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, files, gallery, jobs, participants, public
+from app.api import admin, auth, files, gallery, jobs, participants, public
 from app.config import settings
 
 app = FastAPI(
@@ -42,6 +42,8 @@ app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
 app.include_router(gallery.router, prefix="/api/v1/public/gallery", tags=["gallery"])
 # Files router has nested + direct routes; mount at /api/v1.
 app.include_router(files.router, prefix="/api/v1", tags=["files"])
+# HSD-66 operator dashboard — admin-only, gated in the router's deps.
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 
 # Wired up as features ship:
 # app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])

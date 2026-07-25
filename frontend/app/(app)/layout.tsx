@@ -11,7 +11,11 @@ import { type Account, type User, fetchMe, logout } from "@/lib/auth";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [state, setState] = useState<{ user: User; account: Account } | null>(null);
+  const [state, setState] = useState<{
+    user: User;
+    account: Account;
+    isAdmin: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +27,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         router.replace("/login");
         return;
       }
-      setState({ user: me.user, account: me.account });
+      setState({
+        user: me.user,
+        account: me.account,
+        isAdmin: !!me.is_admin,
+      });
       setLoading(false);
     })();
     return () => {
@@ -71,6 +79,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               Help
             </a>
+            {/* HSD-66: operator dashboard. Link shown only for admins;
+                the API enforces access regardless. */}
+            {state.isAdmin ? (
+              <Link href="/admin" className="hover:text-ink">
+                Admin
+              </Link>
+            ) : null}
           </nav>
 
           {/* Account info — name hidden on mobile, sign-out always visible */}

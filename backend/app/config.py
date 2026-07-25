@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     stripe_price_hibernate: str = Field(default="")
     stripe_price_ai_overage: str = Field(default="")  # metered
 
+    # --- Admin (HSD-66) ---
+    # Comma-separated list of user emails allowed into the operator
+    # dashboard. Enforced server-side on every /admin endpoint.
+    admin_emails: str = Field(default="info@pantherstudios.nl")
+
+    @property
+    def admin_email_set(self) -> frozenset[str]:
+        return frozenset(
+            e.strip().lower() for e in self.admin_emails.split(",") if e.strip()
+        )
+
     # --- Email (Postmark) ---
     postmark_server_token: str = Field(default="")
     email_from: str = Field(default="HeadshotDesk <noreply@headshotdesk.com>")

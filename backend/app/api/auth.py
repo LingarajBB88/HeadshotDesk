@@ -135,7 +135,10 @@ def me(
     account: Account = Depends(get_current_account),
 ) -> MeResponse:
     """Return the current user + account. The frontend uses this to bootstrap auth state."""
+    from app.config import settings
+
     return MeResponse(
         user=UserOut.model_validate(user),
         account=AccountOut.model_validate(account),
+        is_admin=user.email.lower() in settings.admin_email_set,
     )

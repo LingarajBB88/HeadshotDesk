@@ -38,6 +38,8 @@ type AuthResponse = {
 type MeResponse = {
   user: User;
   account: Account;
+  /** HSD-66: cosmetic — the server gates every admin endpoint itself. */
+  is_admin?: boolean;
 };
 
 // --- Token storage ---
