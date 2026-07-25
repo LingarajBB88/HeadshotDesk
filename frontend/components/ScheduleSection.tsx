@@ -95,6 +95,60 @@ export function ScheduleSection({
 
   const configured = !!job.time_slot_config;
 
+  // Live validation: catch impossible configs (end before start, breaks
+  // outside the day, slots that don't fit) as they're typed, before Save.
+  const configProblem = (() => {
+    const mins = (hhmm: string) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    };
+    if (!config.start || !config.end) return "Set a day start and end.";
+    if (mins(config.end) <= mins(config.start)) {
+      return "The day must end after it starts.";
+    }
+    const span = mins(config.end) - mins(config.start);
+    if (config.slot_minutes + config.buffer_minutes > span) {
+      return "One slot plus buffer is longer than the whole day.";
+    }
+    for (const b of config.breaks) {
+      if (!b.start || !b.end) return "Fill in both times for every break.";
+      if (mins(b.end) <= mins(b.start)) {
+        return "Each break must end after it starts.";
+      }
+      if (mins(b.start) < mins(config.start) || mins(b.end) > mins(config.end)) {
+        return "Breaks must fall inside the day.";
+      }
+    }
+    return null;
+  })();
+
+  // Slot calculator: photographers usually get "N people, 9 to 5" from the
+  // client, not a slot length. Given the day window, breaks, buffer, and a
+  // participant count, suggest the minutes per person that fits everyone.
+  const [participantCount, setParticipantCount] = useState<string>("");
+  const suggestion = (() => {
+    const n = Number(participantCount);
+    if (!Number.isFinite(n) || n < 1) return null;
+    const mins = (hhmm: string) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    };
+    if (!config.start || !config.end) return null;
+    const breakTotal = config.breaks.reduce(
+      (sum, b) =>
+        b.start && b.end ? sum + Math.max(mins(b.end) - mins(b.start), 0) : sum,
+      0,
+    );
+    const available = mins(config.end) - mins(config.start) - breakTotal;
+    if (available <= 0) return null;
+    // Each person consumes slot + buffer; the last buffer isn't needed but
+    // keeping it in the division leaves healthy slack for overruns.
+    const perPerson = Math.floor(available / n) - config.buffer_minutes;
+    const clamped = Math.min(Math.max(perPerson, 1), 120);
+    if (perPerson < 1) return { minutes: 1, tight: true };
+    return { minutes: clamped, tight: false };
+  })();
+
   return (
     <CollapsibleSection
       title="Schedule"
@@ -166,6 +220,62 @@ export function ScheduleSection({
           </label>
         </div>
 
+        {/* Slot calculator: enter a headcount, get the slot length that
+            fits everyone in the day window. */}
+        <div className="mt-4 rounded-card bg-muted-50 p-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="block text-xs font-medium text-muted-600">
+                Know the headcount? Let us do the math
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={participantCount}
+                onChange={(e) => setParticipantCount(e.target.value)}
+                placeholder="Number of participants"
+                className="mt-1 w-48 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              />
+            </label>
+            {suggestion ? (
+              <div className="flex items-center gap-2 pb-0.5">
+                <span className="text-sm text-muted-600">
+                  {suggestion.tight ? (
+                    <>
+                      Tight fit: even at 1 minute each, {participantCount}{" "}
+                      people don&apos;t fit this window. Extend the day or
+                      trim breaks.
+                    </>
+                  ) : (
+                    <>
+                      ≈{" "}
+                      <strong className="text-ink">
+                        {suggestion.minutes} minutes
+                      </strong>{" "}
+                      per person fits {participantCount} people in this window.
+                    </>
+                  )}
+                </span>
+                {!suggestion.tight ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((c) => ({
+                        ...c,
+                        slot_minutes: suggestion.minutes,
+                      }))
+                    }
+                    className="text-xs font-medium text-accent hover:underline"
+                  >
+                    Use it
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+
         {/* Breaks */}
         <div className="mt-4">
           <span className="block text-xs font-medium text-muted-600">
@@ -216,7 +326,11 @@ export function ScheduleSection({
           ) : null}
         </div>
 
-        {saveError ? (
+        {configProblem ? (
+          <p className="mt-3 text-xs text-red-600" role="alert">
+            {configProblem}
+          </p>
+        ) : saveError ? (
           <p className="mt-3 text-xs text-red-600" role="alert">
             {saveError}
           </p>
@@ -225,8 +339,8 @@ export function ScheduleSection({
           <button
             type="button"
             onClick={saveConfig}
-            disabled={saving}
-            className="btn-primary text-sm disabled:opacity-60"
+            disabled={saving || !!configProblem}
+            className="btn-primary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : configured ? "Save changes" : "Create slots"}
           </button>

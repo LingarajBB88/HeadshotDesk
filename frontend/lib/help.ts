@@ -319,7 +319,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         body: [
           "The job name, client name, date, and location, plus a short form: first and last name, email, and an optional title. They also tick a privacy consent box; the signup is refused without it, and the moment of consent is recorded.",
           "If someone signs up twice with the same email, they get a friendly already-signed-up message instead of a duplicate entry.",
-          "On time-slot jobs, a time picker follows the form so people book their appointment in the same visit.",
+          "On time-slot jobs, the form includes a time picker so people choose their appointment as part of signing up.",
         ],
       },
       {
@@ -399,7 +399,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "Setting up the slots",
         items: [
           { term: "Day starts and ends", def: "The bookable window on your shoot date, for example 09:00 to 17:00." },
-          { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots." },
+          { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots. Know the headcount but not the slot length? Enter the number of participants and the calculator suggests the minutes per person that fits everyone." },
           { term: "Buffer between slots", def: "Optional breathing room after each appointment, for reviewing frames or resetting." },
           { term: "Breaks", def: "Blocks nobody can book, like lunch. Slots skip over them automatically." },
         ],
@@ -408,7 +408,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "participant-side",
         heading: "What participants see",
         body: [
-          "After filling in their details on the signup page, participants see the open times and tap one to book it. Taken slots show as unavailable. If two people go for the same slot at the same moment, the second gets a friendly nudge to pick another.",
+          "The signup form shows the open times; participants pick one along with their details and everything is booked the moment they submit. Taken slots show as unavailable. If two people go for the same time at the same moment, the second gets a friendly nudge to pick another.",
           "Signing up again with the same email lets someone pick a different time; their old slot frees up automatically.",
         ],
       },

@@ -36,10 +36,13 @@ export default function PublicSignupPage() {
   // rejects signups without it, this is just the friendly layer.
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
-  // HSD-55: slot picking after signup on time-slot jobs. The gallery token
-  // from the signup response authenticates the booking call.
+  // HSD-55: slot picking on time-slot jobs. The participant selects a time
+  // inside the form; the booking itself happens right after signup (the
+  // gallery token from the signup response authenticates it). If the chosen
+  // time is taken in between, the post-signup picker asks for a new one.
   const [galleryToken, setGalleryToken] = useState<string | null>(null);
   const [slots, setSlots] = useState<PublicSlot[] | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [bookedSlot, setBookedSlot] = useState<PublicSlot | null>(null);
   const [booking, setBooking] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
@@ -78,7 +81,18 @@ export default function PublicSignupPage() {
     (async () => {
       try {
         const j = await getPublicJob(slug);
-        if (!cancelled) setJob(j);
+        if (cancelled) return;
+        setJob(j);
+        // Time-slot jobs: load availability up front so the picker sits
+        // inside the form and people choose their time before submitting.
+        if (j.shoot_mode === "time_slot") {
+          try {
+            const s = await listPublicSlots(slug);
+            if (!cancelled) setSlots(s);
+          } catch {
+            if (!cancelled) setSlots([]);
+          }
+        }
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 404) {
@@ -115,6 +129,14 @@ export default function PublicSignupPage() {
         return;
       }
       setConsentError(null);
+      // Time-slot jobs with a configured schedule: a time must be chosen
+      // before submitting.
+      if (needsSlot && slots && slots.length > 0 && !selectedSlot) {
+        setSlotError("Pick a time before signing up.");
+        setSubmitting(false);
+        return;
+      }
+      setSlotError(null);
 
       // Backend stores a single `name` field; combine on the way out.
       // Keeps UI flexible without forcing a data model change.
@@ -128,7 +150,26 @@ export default function PublicSignupPage() {
       });
       setWasNewSignup(result.created);
       setGalleryToken(result.participant.gallery_token);
-      if (job?.shoot_mode === "time_slot") {
+      // Book the chosen slot right after signup. If it was taken in the
+      // meantime, land on the post-signup picker with fresh availability.
+      if (needsSlot && selectedSlot) {
+        try {
+          const booked = await bookPublicSlot(
+            slug,
+            result.participant.gallery_token,
+            selectedSlot,
+          );
+          setBookedSlot(booked);
+        } catch (err) {
+          if (err instanceof ApiError && err.status === 409) {
+            setSlotError("That time was just taken. Pick another.");
+          } else {
+            setSlotError("Your time couldn't be booked. Pick one below.");
+          }
+          setSelectedSlot(null);
+          await refreshSlots();
+        }
+      } else if (needsSlot) {
         await refreshSlots();
       }
       setSubmitted(true);
@@ -322,6 +363,46 @@ export default function PublicSignupPage() {
                   hint="Optional. Shown alongside your photos."
                   error={fieldErrors.title}
                 />
+
+                {/* HSD-55: time picker inside the form on time-slot jobs.
+                    Selection only; the actual booking happens on submit. */}
+                {needsSlot && slots && slots.length > 0 ? (
+                  <div className="mb-4">
+                    <span className="block text-sm font-medium text-ink mb-1.5">
+                      Pick your time
+                    </span>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {slots.map((s) => (
+                        <button
+                          key={s.start}
+                          type="button"
+                          disabled={!s.available}
+                          onClick={() =>
+                            setSelectedSlot(
+                              selectedSlot === s.start ? null : s.start,
+                            )
+                          }
+                          className={
+                            "rounded-md border px-2 py-2 text-sm font-medium transition " +
+                            (!s.available
+                              ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
+                              : selectedSlot === s.start
+                                ? "border-accent bg-accent text-accent-fg"
+                                : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+                          }
+                          aria-pressed={selectedSlot === s.start}
+                        >
+                          {slotTime(s.start)}
+                        </button>
+                      ))}
+                    </div>
+                    {slotError ? (
+                      <p className="mt-2 text-xs text-red-600" role="alert">
+                        {slotError}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {/* Compliance: explicit consent before we process the
                     participant's name, email, and photos. */}
