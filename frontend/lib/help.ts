@@ -566,7 +566,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Each participant gets a personal gallery instead of a shared folder: their photos only, on a private link, with the download allowance you chose.",
       "This page shows what that experience looks like from their side, so you know exactly what you are sending before you hit Deliver.",
     ],
-    keywords: ["gallery", "participant view", "download", "zip", "limit", "picks", "private link", "live"],
+    keywords: ["gallery", "participant view", "download", "zip", "limit", "picks", "favourites", "favorites", "star", "retouch", "private link", "live"],
     sections: [
       {
         id: "access",
@@ -581,6 +581,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
         body: [
           "The gallery states the limit up front, for example: keep up to 2 photos. Picks are counted on unique photos. Once picked, a photo can be re-downloaded forever at no extra cost.",
           "One selected photo saves as a normal JPEG. Two or more save together as a zip.",
+        ],
+      },
+      {
+        id: "favourites",
+        heading: "Starring favourites",
+        body: [
+          "If you turn on participant favourites for the job, each photo in the gallery gets a star. Participants tap the star on the shots they want, up to the limit you set, and can change their mind any time.",
+          "This is separate from downloading: starring says which photo they want you to retouch, downloading is them keeping a file. You see the stars back on the job page, so the retouch list writes itself instead of arriving as an email thread.",
         ],
       },
       {

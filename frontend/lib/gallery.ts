@@ -10,6 +10,8 @@ export type GalleryFile = {
   original_filename: string;
   uploaded_at: string;
   is_downloaded: boolean;
+  /** F5b.2: starred by this participant as a favorite. */
+  is_picked: boolean;
 };
 
 export type GalleryJob = {
@@ -26,10 +28,30 @@ export type Gallery = {
   downloads_used: number;
   /** HSD-36: client branding on the gallery header. */
   client_logo_url?: string | null;
+  /** F5b.2: favorites. Cap 0 = unlimited; disabled hides the UI. */
+  picks_enabled: boolean;
+  pick_cap: number;
+  picks_used: number;
 };
 
 export async function getGallery(token: string): Promise<Gallery> {
   return api<Gallery>(`/api/v1/public/gallery/${encodeURIComponent(token)}`);
+}
+
+/**
+ * F5b.2 — star or un-star a photo. Throws ApiError 409 when the per-job
+ * cap is reached (message is participant-friendly, show it as-is).
+ */
+export async function setPick(
+  token: string,
+  fileId: string,
+  picked: boolean,
+): Promise<{ picked_file_ids: string[]; picks_used: number; pick_cap: number }> {
+  return api(
+    `/api/v1/public/gallery/${encodeURIComponent(token)}` +
+      `/files/${encodeURIComponent(fileId)}/pick`,
+    { method: "POST", body: JSON.stringify({ picked }) },
+  );
 }
 
 // Browser-stable thumbnail URL — embed directly in <img src> so the browser

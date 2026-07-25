@@ -16,6 +16,8 @@ export type Participant = {
   // actual consumption against the cap budget. Only populated on the list
   // endpoint; single-participant endpoints leave it at 0.
   downloads_used: number;
+  /** F5b.2: how many photos this participant starred as favorites. */
+  picks_used?: number;
   // F5b.1: token for the participant's public /g/{token} gallery URL.
   // The photographer uses this to build the link to share.
   gallery_token: string;

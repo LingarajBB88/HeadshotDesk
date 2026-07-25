@@ -15,6 +15,8 @@ export type FileItem = {
   variant: string;
   is_favorite: boolean;
   is_selected: boolean;
+  /** F5b.2: the participant starred this photo — retouch this one. */
+  picked_by_participant?: boolean;
   uploaded_at: string;
 };
 

@@ -470,6 +470,16 @@ export function ParticipantsSection({
                           {p.gallery_sent_at ? (
                             <DeliveredIndicator sentAt={p.gallery_sent_at} />
                           ) : null}
+                          {/* F5b.2: their favourites, so you know whose
+                              retouch set is decided. */}
+                          {p.picks_used ? (
+                            <span
+                              className="text-[11px] text-amber-600"
+                              title="Photos this participant starred"
+                            >
+                              ★ {p.picks_used} starred
+                            </span>
+                          ) : null}
                         </div>
                       </td>
                       <td className="px-5 py-3 text-right">

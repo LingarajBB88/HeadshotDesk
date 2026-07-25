@@ -53,6 +53,9 @@ export type Job = {
   client_token: string | null;
   // HSD-36: linked Client entity (branding owner), when set.
   client_id: string | null;
+  // F5b.2: participant favorites — off by default; cap 0 = unlimited.
+  picks_enabled: boolean;
+  pick_cap: number;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -137,6 +140,8 @@ export async function updateJob(
       | "shoot_mode"
       | "time_slot_config"
       | "client_id"
+      | "picks_enabled"
+      | "pick_cap"
     >
   >,
 ): Promise<Job> {

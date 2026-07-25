@@ -526,7 +526,19 @@ function ParticipantFileGroup({
                 />
                 <ImageThumbnail fileId={f.id} alt={f.original_filename} size={56} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{f.original_filename}</p>
+                  <p className="text-sm font-medium truncate">
+                    {/* F5b.2: the participant starred this one — retouch it. */}
+                    {f.picked_by_participant ? (
+                      <span
+                        className="text-amber-500 mr-1"
+                        title="Starred by the participant"
+                        aria-label="Starred by the participant"
+                      >
+                        ★
+                      </span>
+                    ) : null}
+                    {f.original_filename}
+                  </p>
                   <p className="text-xs text-muted-600">
                     {f.width && f.height ? `${f.width} × ${f.height} · ` : ""}
                     {formatBytes(f.size_bytes)}

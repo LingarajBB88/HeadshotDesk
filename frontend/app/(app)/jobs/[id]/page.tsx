@@ -372,6 +372,11 @@ export default function JobDetailPage() {
                 onChanged={(updated) => setJob(updated)}
                 editable={job.status !== "archived"}
               />
+              <PicksDetail
+                job={job}
+                onChanged={(updated) => setJob(updated)}
+                editable={job.status !== "archived"}
+              />
               <Detail label="Client email" value={job.client_email ?? "—"} />
               <Detail
                 label="Created"
@@ -592,6 +597,130 @@ function DeliverResultToast({
       >
         ×
       </button>
+    </div>
+  );
+}
+
+// F5b.2 — per-job favorites setting: on/off plus how many each person may
+// star ("pick 1", "pick 3", or unlimited). Sits next to the download cap
+// because photographers think of both as package terms.
+function PicksDetail({
+  job,
+  onChanged,
+  editable,
+}: {
+  job: Job;
+  onChanged: (updated: Job) => void;
+  editable: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [enabled, setEnabled] = useState(job.picks_enabled);
+  const [cap, setCap] = useState<string>(String(job.pick_cap));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const summary = !job.picks_enabled
+    ? "Off. Participants just download."
+    : job.pick_cap === 0
+      ? "On, unlimited stars."
+      : `On, ${job.pick_cap} star${job.pick_cap === 1 ? "" : "s"} each.`;
+
+  async function save() {
+    const parsed = Number(cap);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      setError("Enter a number between 0 and 100.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      onChanged(
+        await updateJob(job.id, {
+          picks_enabled: enabled,
+          pick_cap: Math.floor(parsed),
+        }),
+      );
+      setEditing(false);
+    } catch {
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
+        Participant favourites
+      </dt>
+      <dd className="mt-1 text-sm text-ink">
+        {editing ? (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+                className="accent-accent"
+                disabled={saving}
+              />
+              <span className="text-sm">Let participants star favourites</span>
+            </label>
+            {enabled ? (
+              <label className="flex items-center gap-2">
+                <span className="text-xs text-muted-600">Stars each</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={cap}
+                  onChange={(e) => setCap(e.target.value)}
+                  disabled={saving}
+                  className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                />
+                <span className="text-xs text-muted-600">(0 = unlimited)</span>
+              </label>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setEnabled(job.picks_enabled);
+                  setCap(String(job.pick_cap));
+                  setError(null);
+                }}
+                disabled={saving}
+                className="text-xs text-muted-600 hover:text-ink"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-3">
+            <span>{summary}</span>
+            {editable ? (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                Change
+              </button>
+            ) : null}
+          </div>
+        )}
+        {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      </dd>
     </div>
   );
 }

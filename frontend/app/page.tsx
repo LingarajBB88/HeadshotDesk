@@ -76,6 +76,10 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Upload a client's logo once. Their signup page, every gallery, and delivery emails carry their branding.",
   },
   {
+    title: "Participant favourites",
+    body: "Let people star the shots they want kept. Your retouch list builds itself, no email thread required.",
+  },
+  {
     title: "Watch folder",
     body: "Map your export folder; new frames upload and sort automatically.",
   },
@@ -144,9 +148,14 @@ const ROADMAP_TIMELINE: {
     detail: "One click emails every participant their private gallery.",
   },
   {
+    status: "shipped",
+    title: "Participant retouch picks",
+    detail: "Participants star the shots they want; you see exactly what to retouch.",
+  },
+  {
     status: "building",
-    title: "Participant retouch picks and proofing",
-    detail: "Participants mark favorites; you see exactly what to retouch.",
+    title: "Subscriptions and billing",
+    detail: "Solo, Pro, and Studio plans with a one-month trial, no card needed to start.",
   },
   {
     status: "next",

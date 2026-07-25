@@ -9,6 +9,7 @@ import {
   downloadFile,
   downloadZip,
   getGallery,
+  setPick,
   thumbnailUrl,
   type Gallery,
   type GalleryFile,
@@ -48,6 +49,42 @@ export default function PublicGalleryPage() {
   >(null);
   // Set of file_ids currently checked for the bulk-download path.
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // F5b.2: file_id whose star is being toggled (per-star spinner state).
+  const [picking, setPicking] = useState<string | null>(null);
+
+  // F5b.2 — star/un-star a favorite. Optimistic-free: we take the server's
+  // fresh pick list so the cap can never drift out of sync.
+  async function onTogglePick(f: GalleryFile) {
+    if (!gallery || picking) return;
+    setPicking(f.id);
+    setNotice(null);
+    try {
+      const res = await setPick(token, f.id, !f.is_picked);
+      const pickedSet = new Set(res.picked_file_ids);
+      setGallery((g) =>
+        g
+          ? {
+              ...g,
+              picks_used: res.picks_used,
+              files: g.files.map((x) => ({
+                ...x,
+                is_picked: pickedSet.has(x.id),
+              })),
+            }
+          : g,
+      );
+    } catch (err) {
+      setNotice({
+        type: "err",
+        text:
+          err instanceof ApiError
+            ? err.message
+            : "Couldn't save that choice. Try again?",
+      });
+    } finally {
+      setPicking(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -374,6 +411,37 @@ export default function PublicGalleryPage() {
           )}
         </div>
 
+        {/* F5b.2 — favorites. Separate from downloads: picking tells the
+            photographer what to retouch, downloading is what you keep. */}
+        {gallery.picks_enabled && gallery.files.length > 0 ? (
+          <div className="mt-4 rounded-card border border-muted-200 bg-paper p-4">
+            <p className="text-sm font-semibold text-ink">
+              {gallery.pick_cap === 0
+                ? "Star the ones you like"
+                : `Star your favourite${gallery.pick_cap === 1 ? "" : "s"} (up to ${gallery.pick_cap})`}
+            </p>
+            <p className="mt-1 text-sm text-muted-700">
+              Tap the star on a photo to tell your photographer which shots
+              you want. You can change your mind any time.
+              {gallery.pick_cap > 0 ? (
+                <>
+                  {" "}
+                  <strong className="text-ink">
+                    {gallery.picks_used} of {gallery.pick_cap} starred.
+                  </strong>
+                </>
+              ) : gallery.picks_used > 0 ? (
+                <>
+                  {" "}
+                  <strong className="text-ink">
+                    {gallery.picks_used} starred.
+                  </strong>
+                </>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
+
         {/* Selection controls — kept inline, separate from the rules card so
             they don't compete with the headline message. */}
         {totalPhotos > 0 && cap > 0 ? (
@@ -487,11 +555,38 @@ export default function PublicGalleryPage() {
                         ✓
                       </span>
                       {f.is_downloaded ? (
-                        <span className="absolute top-2 right-2 rounded-full bg-ink/80 text-white text-[10px] font-medium px-2 py-0.5">
+                        <span className="absolute bottom-2 right-2 rounded-full bg-ink/80 text-white text-[10px] font-medium px-2 py-0.5">
                           Saved
                         </span>
                       ) : null}
                     </button>
+                    {/* F5b.2: star sits above the tile button so tapping it
+                        marks a favorite instead of toggling selection. */}
+                    {gallery.picks_enabled ? (
+                      <button
+                        type="button"
+                        onClick={() => onTogglePick(f)}
+                        disabled={picking !== null}
+                        aria-pressed={f.is_picked}
+                        aria-label={
+                          f.is_picked
+                            ? `Remove ${f.original_filename} from favourites`
+                            : `Mark ${f.original_filename} as a favourite`
+                        }
+                        title={
+                          f.is_picked ? "Remove from favourites" : "Mark as favourite"
+                        }
+                        className={
+                          "absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center " +
+                          "rounded-full text-base leading-none shadow-sm transition disabled:opacity-60 " +
+                          (f.is_picked
+                            ? "bg-amber-400 text-white"
+                            : "bg-white/90 text-muted-600 hover:text-amber-500")
+                        }
+                      >
+                        {f.is_picked ? "★" : "☆"}
+                      </button>
+                    ) : null}
                   </div>
                   <figcaption className="p-3">
                     <button
