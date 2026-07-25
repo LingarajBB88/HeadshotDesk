@@ -45,6 +45,17 @@ export async function getAdminOverview(): Promise<AdminOverview> {
   return api<AdminOverview>("/api/v1/admin/overview", { token: authToken() });
 }
 
+export async function updateAdminAccount(
+  accountId: string,
+  patch: { name?: string; plan?: string; extend_trial_days?: number },
+): Promise<AdminAccountRow> {
+  return api<AdminAccountRow>(`/api/v1/admin/accounts/${accountId}`, {
+    method: "PATCH",
+    token: authToken(),
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function listAdminAccounts(params: {
   search?: string;
   status?: string;

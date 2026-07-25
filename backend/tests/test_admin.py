@@ -93,6 +93,58 @@ class TestAdminData:
         assert data["mrr_eur"] == 0  # nobody pays yet
         assert len(data["recent_signups"]) >= 2
 
+    def test_admin_edits_account(self, client: TestClient, monkeypatch):
+        admin = _admin_signup(client, monkeypatch)
+        token = admin["tokens"]["access_token"]
+        target = _signup(client)
+        target_id = target["account"]["id"]
+
+        # Change plan to pro: status becomes active, MRR counts it.
+        r = client.patch(
+            f"/api/v1/admin/accounts/{target_id}",
+            json={"plan": "pro", "name": "Renamed Studio"},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        row = r.json()
+        assert row["plan"] == "pro"
+        assert row["status"] == "active"
+        assert row["name"] == "Renamed Studio"
+        overview = client.get(
+            "/api/v1/admin/overview", headers=_auth(token)
+        ).json()
+        assert overview["mrr_eur"] >= 44
+        assert overview["paying_customers"] >= 1
+
+        # Back to trial + extend by 30 days: countdown grows past default.
+        r = client.patch(
+            f"/api/v1/admin/accounts/{target_id}",
+            json={"plan": "trial", "extend_trial_days": 30},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        row = r.json()
+        assert row["status"] == "trial"
+        assert row["trial_days_left"] is not None
+        assert row["trial_days_left"] > 31
+
+        # Bad plan rejected.
+        r = client.patch(
+            f"/api/v1/admin/accounts/{target_id}",
+            json={"plan": "platinum"},
+            headers=_auth(token),
+        )
+        assert r.status_code == 422
+
+    def test_edit_requires_admin(self, client: TestClient):
+        a = _signup(client)
+        r = client.patch(
+            f"/api/v1/admin/accounts/{a['account']['id']}",
+            json={"plan": "pro"},
+            headers=_auth(a["tokens"]["access_token"]),
+        )
+        assert r.status_code == 403
+
     def test_accounts_search_by_email(self, client: TestClient, monkeypatch):
         admin = _admin_signup(client, monkeypatch)
         token = admin["tokens"]["access_token"]

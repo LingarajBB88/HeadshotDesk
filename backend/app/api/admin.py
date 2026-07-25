@@ -40,14 +40,20 @@ def _utcnow() -> datetime:
 
 
 def _derive_status(account: Account) -> tuple[str, int | None]:
-    """Returns (status, trial_days_left). trial_days_left only for trials."""
+    """Returns (status, trial_days_left). trial_days_left only for trials.
+
+    Trial expiry defaults to signup + 31 days; an admin-set
+    plan_renews_at overrides it (the "extend trial" action).
+    """
     if account.plan in ("solo", "pro", "studio"):
         return "active", None
     if account.plan == "hibernate":
         return "hibernating", None
     if account.plan == "cancelled":
         return "cancelled", None
-    expires = account.created_at + timedelta(days=TRIAL_DAYS)
+    expires = account.plan_renews_at or (
+        account.created_at + timedelta(days=TRIAL_DAYS)
+    )
     days_left = (expires - _utcnow()).days
     if days_left < 0:
         return "soft_locked", None
@@ -219,3 +225,68 @@ def accounts(
 ) -> AdminAccountList:
     rows = _account_rows(db, search=search, status_filter=status)
     return AdminAccountList(items=rows, total=len(rows))
+
+
+class AdminAccountUpdate(BaseModel):
+    """Manual admin actions on an account. All optional; only provided
+    fields apply. plan changes take effect immediately (Stripe will become
+    the source of truth for paid plans once billing ships)."""
+    name: str | None = None
+    plan: str | None = None
+    # Extend (or start) the trial window by this many days from whichever
+    # is later: now or the current expiry. Stored in plan_renews_at.
+    extend_trial_days: int | None = None
+
+
+VALID_PLANS = ("trial", "solo", "pro", "studio", "hibernate", "cancelled")
+
+
+@router.patch("/accounts/{account_id}", response_model=AdminAccountRow)
+def update_account(
+    account_id: str,
+    payload: AdminAccountUpdate,
+    db: Session = Depends(get_db),
+) -> AdminAccountRow:
+    from fastapi import HTTPException
+
+    account = db.get(Account, account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail="Account not found.")
+
+    if payload.name is not None:
+        name = payload.name.strip()
+        if not name:
+            raise HTTPException(status_code=422, detail="Name is required.")
+        account.name = name
+
+    if payload.plan is not None:
+        if payload.plan not in VALID_PLANS:
+            raise HTTPException(status_code=422, detail="Unknown plan.")
+        account.plan = payload.plan
+        if payload.plan != "trial":
+            # plan_renews_at is only used as trial-expiry override; clear
+            # it so a later downgrade back to trial starts clean.
+            account.plan_renews_at = None
+
+    if payload.extend_trial_days is not None:
+        if not (1 <= payload.extend_trial_days <= 365):
+            raise HTTPException(
+                status_code=422, detail="Extension must be 1-365 days."
+            )
+        current_expiry = account.plan_renews_at or (
+            account.created_at + timedelta(days=TRIAL_DAYS)
+        )
+        base = max(current_expiry, _utcnow())
+        account.plan_renews_at = base + timedelta(
+            days=payload.extend_trial_days
+        )
+        account.plan = "trial"  # extending revives a soft-locked trial
+
+    db.commit()
+    db.refresh(account)
+
+    # Return the fresh row (with stats) so the UI can swap it in place.
+    for row in _account_rows(db):
+        if row.account_id == account.id:
+            return row
+    raise HTTPException(status_code=404, detail="Account not found.")

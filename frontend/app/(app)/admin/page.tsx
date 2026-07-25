@@ -5,16 +5,128 @@
 // every request; a 403 here bounces the visitor back to /jobs.
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import {
   getAdminOverview,
   listAdminAccounts,
+  updateAdminAccount,
   type AdminAccountRow,
   type AdminOverview,
 } from "@/lib/admin";
 import { SearchInput } from "@/components/SearchInput";
+
+// Inline per-account editor: manual admin actions (rename, change plan,
+// extend trial). Server-gated; this is just the console for it.
+function AccountEditor({
+  row,
+  onSaved,
+  onClose,
+}: {
+  row: AdminAccountRow;
+  onSaved: (updated: AdminAccountRow) => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(row.name);
+  const [plan, setPlan] = useState(row.plan);
+  const [extendDays, setExtendDays] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      const patch: {
+        name?: string;
+        plan?: string;
+        extend_trial_days?: number;
+      } = {};
+      if (name.trim() && name.trim() !== row.name) patch.name = name.trim();
+      if (plan !== row.plan) patch.plan = plan;
+      const days = Number(extendDays);
+      if (Number.isFinite(days) && days >= 1) patch.extend_trial_days = days;
+      if (Object.keys(patch).length === 0) {
+        onClose();
+        return;
+      }
+      onSaved(await updateAdminAccount(row.account_id, patch));
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Couldn't save the changes.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-end gap-3 bg-muted-50 px-4 py-3">
+      <label className="block">
+        <span className="block text-xs font-medium text-muted-600">
+          Studio name
+        </span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1 w-48 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+        />
+      </label>
+      <label className="block">
+        <span className="block text-xs font-medium text-muted-600">Plan</span>
+        <select
+          value={plan}
+          onChange={(e) => setPlan(e.target.value)}
+          className="mt-1 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+        >
+          <option value="trial">Trial</option>
+          <option value="solo">Solo (€29)</option>
+          <option value="pro">Pro (€44)</option>
+          <option value="studio">Studio (€89)</option>
+          <option value="hibernate">Hibernate (€7)</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </label>
+      <label className="block">
+        <span className="block text-xs font-medium text-muted-600">
+          Extend trial (days)
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={365}
+          value={extendDays}
+          onChange={(e) => setExtendDays(e.target.value)}
+          placeholder="e.g. 14"
+          className="mt-1 w-24 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+        />
+      </label>
+      <div className="flex items-center gap-2 pb-0.5">
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className="btn-primary text-xs disabled:opacity-60"
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs text-muted-600 hover:text-ink transition"
+        >
+          Cancel
+        </button>
+      </div>
+      {error ? (
+        <p className="basis-full text-xs text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 const STATUS_LABELS: Record<AdminAccountRow["status"], string> = {
   trial: "Trial",
@@ -62,6 +174,10 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // Bumped to force a refetch of overview + accounts (after edits, and by
+  // the 30s poll so the numbers always reflect current data).
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,13 +191,30 @@ export default function AdminPage() {
           router.replace("/jobs");
           return;
         }
-        setError("Couldn't load the dashboard.");
+        if (!overview) setError("Couldn't load the dashboard.");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, refreshKey]);
+
+  // Live data: poll every 30s while the tab is visible, refresh on tab
+  // return. Signups and usage happen out there; the console keeps up.
+  useEffect(() => {
+    const bump = () => {
+      if (document.visibilityState === "visible") {
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    const timer = window.setInterval(bump, 30000);
+    document.addEventListener("visibilitychange", bump);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", bump);
+    };
+  }, []);
 
   // Accounts list refetches as search/filter change (small dataset, no
   // debounce needed at beta scale).
@@ -101,7 +234,7 @@ export default function AdminPage() {
     return () => {
       cancelled = true;
     };
-  }, [search, statusFilter]);
+  }, [search, statusFilter, refreshKey]);
 
   if (error) {
     return <p className="text-sm text-red-600">{error}</p>;
@@ -176,45 +309,97 @@ export default function AdminPage() {
                 <th className="px-4 py-3 text-right">Photos</th>
                 <th className="px-4 py-3 text-right">Delivered</th>
                 <th className="px-4 py-3 text-right">Downloads</th>
+                <th className="px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-muted-200">
               {accounts === null ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-muted-600">
+                  <td colSpan={11} className="px-4 py-6 text-muted-600">
                     Loading…
                   </td>
                 </tr>
               ) : accounts.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-muted-600">
+                  <td colSpan={11} className="px-4 py-6 text-muted-600">
                     No accounts match.
                   </td>
                 </tr>
               ) : (
                 accounts.map((a) => (
-                  <tr key={a.account_id} className="hover:bg-muted-50 transition">
-                    <td className="px-4 py-3 font-medium text-ink">{a.name}</td>
-                    <td className="px-4 py-3 text-muted-600">
-                      {a.email ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill row={a} />
-                    </td>
-                    <td className="px-4 py-3 text-muted-600">
-                      {new Date(a.signed_up_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-right">{a.jobs_total}</td>
-                    <td className="px-4 py-3 text-right">{a.jobs_this_month}</td>
-                    <td className="px-4 py-3 text-right">
-                      {a.participants_total}
-                    </td>
-                    <td className="px-4 py-3 text-right">{a.photos_uploaded}</td>
-                    <td className="px-4 py-3 text-right">
-                      {a.galleries_delivered}
-                    </td>
-                    <td className="px-4 py-3 text-right">{a.downloads_used}</td>
-                  </tr>
+                  <Fragment key={a.account_id}>
+                    <tr className="hover:bg-muted-50 transition">
+                      <td className="px-4 py-3 font-medium text-ink">
+                        {a.name}
+                      </td>
+                      <td className="px-4 py-3 text-muted-600">
+                        {a.email ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusPill row={a} />
+                      </td>
+                      <td className="px-4 py-3 text-muted-600">
+                        {new Date(a.signed_up_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 text-right">{a.jobs_total}</td>
+                      <td className="px-4 py-3 text-right">
+                        {a.jobs_this_month}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {a.participants_total}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {a.photos_uploaded}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {a.galleries_delivered}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {a.downloads_used}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEditingId(
+                              editingId === a.account_id
+                                ? null
+                                : a.account_id,
+                            )
+                          }
+                          className="text-xs text-accent hover:underline"
+                        >
+                          {editingId === a.account_id ? "Close" : "Edit"}
+                        </button>
+                      </td>
+                    </tr>
+                    {editingId === a.account_id ? (
+                      <tr>
+                        <td colSpan={11} className="p-0">
+                          <AccountEditor
+                            row={a}
+                            onSaved={(updated) => {
+                              setAccounts((rows) =>
+                                rows
+                                  ? rows.map((r) =>
+                                      r.account_id === updated.account_id
+                                        ? updated
+                                        : r,
+                                    )
+                                  : rows,
+                              );
+                              setEditingId(null);
+                              // Metrics (MRR, trial counts) changed too.
+                              setRefreshKey((k) => k + 1);
+                            }}
+                            onClose={() => setEditingId(null)}
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
                 ))
               )}
             </tbody>
