@@ -109,7 +109,11 @@ export async function createJob(input: {
 
 export async function updateJob(
   id: string,
-  patch: Partial<
+  patch: {
+    // HSD-55: acknowledge that a slot-config change cancels existing
+    // bookings. Without it the API refuses (409) when bookings exist.
+    clear_slot_bookings?: boolean;
+  } & Partial<
     Pick<
       Job,
       | "name"

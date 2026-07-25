@@ -402,6 +402,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots. Know the headcount but not the slot length? Enter the number of participants and the calculator suggests the minutes per person that fits everyone." },
           { term: "Buffer between slots", def: "Optional breathing room after each appointment, for reviewing frames or resetting." },
           { term: "Breaks", def: "Blocks nobody can book, like lunch. Slots skip over them automatically." },
+          { term: "Changing the schedule later", def: "Fine while nothing is booked. Once bookings exist, saving a new schedule cancels them: the old times may not exist on the new grid. The app warns you and asks to confirm; those participants stay signed up but need to pick a new time from the signup page. Not sure yet? The Reset button puts the settings back to what was last saved." },
         ],
       },
       {
@@ -416,7 +417,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "shoot-day",
         heading: "On shoot day",
         body: [
-          "The Schedule section on the job page lists every booking in order. The shoot screen sorts the pending list by appointment and shows each person's time next to their name, so the queue works exactly as before, just in schedule order.",
+          "The Schedule section on the job page lists every booking in order and refreshes on its own as new bookings come in, so you can leave the page open while invites go out. The shoot screen sorts the pending list by appointment and shows each person's time next to their name, so the queue works exactly as before, just in schedule order.",
           "Walk-ins still work: add the person as a participant and shoot them whenever there is room.",
         ],
       },

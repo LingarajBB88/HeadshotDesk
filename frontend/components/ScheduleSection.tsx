@@ -66,21 +66,53 @@ export function ScheduleSection({
     };
   }, [job.id, refreshKey]);
 
+  const savedConfig = job.time_slot_config ?? DEFAULT_CONFIG;
+  const dirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
+  const bookedCount = schedule?.length ?? 0;
+
   async function saveConfig() {
+    // Changing the grid while people hold slots strands their times. The
+    // backend refuses unless we explicitly confirm the cancellation.
+    if (bookedCount > 0) {
+      const ok = window.confirm(
+        `Saving a new schedule cancels ${bookedCount} booked ${
+          bookedCount === 1 ? "slot" : "slots"
+        }. Those participants stay signed up but lose their time and will ` +
+          "need to book again from the signup page. Continue?",
+      );
+      if (!ok) return;
+    }
     setSaving(true);
     setSaveError(null);
     setSaved(false);
     try {
-      const updated = await updateJob(job.id, { time_slot_config: config });
+      const updated = await updateJob(job.id, {
+        time_slot_config: config,
+        ...(bookedCount > 0 ? { clear_slot_bookings: true } : {}),
+      });
       onJobChanged(updated);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
+      // Bookings were just cancelled server-side; reflect it immediately.
+      try {
+        setSchedule(await getSchedule(job.id));
+      } catch {
+        setSchedule([]);
+      }
     } catch (err) {
       setSaveError(
         err instanceof ApiError && err.status === 422
           ? "Check the times: the day must end after it starts, breaks must fall inside it, and slots must fit."
-          : "Couldn't save. Try again?",
+          : err instanceof ApiError && err.status === 409
+            ? "Someone booked a slot just now. Review the bookings below and save again."
+            : "Couldn't save. Try again?",
       );
+      // A 409 means our booking count was stale; refresh it.
+      try {
+        setSchedule(await getSchedule(job.id));
+      } catch {
+        /* keep the old list */
+      }
     } finally {
       setSaving(false);
     }
@@ -335,15 +367,34 @@ export function ScheduleSection({
             {saveError}
           </p>
         ) : null}
+        {dirty && bookedCount > 0 && !configProblem ? (
+          <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1 inline-block">
+            Heads up: saving a new schedule cancels{" "}
+            {bookedCount === 1 ? "the 1 booked slot" : `all ${bookedCount} booked slots`}
+            . Those participants will need to book again.
+          </p>
+        ) : null}
         <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
             onClick={saveConfig}
-            disabled={saving || !!configProblem}
+            disabled={saving || !!configProblem || (configured && !dirty)}
             className="btn-primary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {saving ? "Saving…" : configured ? "Save changes" : "Create slots"}
           </button>
+          {configured && dirty ? (
+            <button
+              type="button"
+              onClick={() => {
+                setConfig(savedConfig);
+                setSaveError(null);
+              }}
+              className="text-sm font-medium text-muted-600 hover:text-ink transition"
+            >
+              Reset
+            </button>
+          ) : null}
           {saved ? (
             <span className="text-xs text-green-700">Saved.</span>
           ) : null}

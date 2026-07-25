@@ -123,6 +123,7 @@ def update_job(
     # (someone marked shot) — switching mid-day would orphan the running
     # flow. Switching away from time_slot clears existing bookings; the
     # frontend confirms with the photographer before sending that.
+    clear_bookings_requested = bool(fields.pop("clear_slot_bookings", False))
     new_mode = fields.get("shoot_mode")
     if new_mode and new_mode != job.shoot_mode:
         if job.status in ("in_progress", "delivered"):
@@ -133,6 +134,30 @@ def update_job(
         if job.shoot_mode == "time_slot" and new_mode == "queue":
             from app.services import slot_service
 
+            slot_service.clear_bookings(db, job=job)
+
+    # HSD-55: changing the slot config while bookings exist would strand
+    # participants on times that may no longer be on the grid. Refuse
+    # unless the caller explicitly asked to cancel the bookings.
+    if "time_slot_config" in fields:
+        from app.models import SlotBooking
+        from app.services import slot_service
+        from sqlalchemy import func as sa_func, select as sa_select
+
+        booking_count = db.scalar(
+            sa_select(sa_func.count()).select_from(SlotBooking).where(
+                SlotBooking.job_id == job.id
+            )
+        ) or 0
+        if booking_count > 0:
+            if not clear_bookings_requested:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"{booking_count} booked slot(s) exist. Cancel them "
+                        "to change the schedule."
+                    ),
+                )
             slot_service.clear_bookings(db, job=job)
 
     # Only assign keys that were provided (sparse update). Pydantic's

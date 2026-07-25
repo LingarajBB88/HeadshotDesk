@@ -283,6 +283,74 @@ class TestModeRules:
         assert r.status_code == 409
 
 
+class TestConfigChangeWithBookings:
+    def test_config_change_refused_while_bookings_exist(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)
+        jane = _public_signup(client, job["public_slug"], "Jane Doe", "jane@example.com")
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    "start": "10:00",
+                    "end": "12:00",
+                    "slot_minutes": 15,
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 409
+        assert "booked" in r.json()["detail"].lower()
+
+    def test_config_change_with_clear_flag_cancels_bookings(
+        self, client: TestClient
+    ):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)
+        jane = _public_signup(client, job["public_slug"], "Jane Doe", "jane@example.com")
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    "start": "10:00",
+                    "end": "12:00",
+                    "slot_minutes": 15,
+                },
+                "clear_slot_bookings": True,
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200
+        schedule = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()
+        assert schedule["entries"] == []
+        # New grid live: 10:00 start, 15-minute slots.
+        new_slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert new_slots[0]["start"][11:16] == "10:00"
+        assert all(s["available"] for s in new_slots)
+
+
 class TestSchedule:
     def test_schedule_lists_bookings_chronologically(self, client: TestClient):
         a = _signup(client)

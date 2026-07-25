@@ -135,6 +135,31 @@ export default function JobDetailPage() {
     };
   }, [id, participantsRefreshKey]);
 
+  // Live sync: signups and slot bookings happen on the public signup page,
+  // in another tab or on a participant's phone. This page would otherwise
+  // only show what existed when it loaded. Poll while the tab is visible so
+  // Participants, stats, and the Schedule's Booked list stay current —
+  // same pattern as the gallery live sync.
+  useEffect(() => {
+    if (!id) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        setParticipantsRefreshKey((k) => k + 1);
+      }
+    }, 15000);
+    // Also refresh immediately when the photographer comes back to the tab.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        setParticipantsRefreshKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [id]);
+
   async function handleArchive() {
     if (!job) return;
     if (!confirm("Archive this job? It will be hidden from your active list.")) return;

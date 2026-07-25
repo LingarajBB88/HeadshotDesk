@@ -80,6 +80,11 @@ class JobUpdate(BaseModel):
     # slots before switching the mode on).
     shoot_mode: ShootMode | None = None
     time_slot_config: TimeSlotConfig | None = None
+    # Changing the slot config while bookings exist is destructive: booked
+    # times may no longer exist on the new grid. The API refuses (409)
+    # unless this flag is set, in which case existing bookings are
+    # cancelled first. The frontend shows an explicit confirmation.
+    clear_slot_bookings: bool = False
 
     _validate_location = field_validator("location")(_validate_location)
 
