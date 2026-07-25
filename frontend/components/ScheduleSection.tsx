@@ -183,9 +183,11 @@ export function ScheduleSection({
   // Cadence changes (start, slot length, buffer, breaks) shift where slots
   // fall, so per-slot removals from the old grid no longer mean anything.
   // Clear them along with the change. Day-end changes keep removals: the
-  // surviving slots are the same ones.
+  // surviving slots are the same ones. The add-slot minutes override also
+  // resets so it follows the new slot length instead of a stale value.
   function setCadence(patch: Partial<TimeSlotConfig>) {
     setConfig((c) => ({ ...c, ...patch, blocked: [] }));
+    setExtraMinutes("");
   }
 
   function setBreak(i: number, patch: Partial<SlotBreak>) {
@@ -413,12 +415,7 @@ export function ScheduleSection({
                 {!suggestion.tight ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      setConfig((c) => ({
-                        ...c,
-                        slot_minutes: suggestion.minutes,
-                      }))
-                    }
+                    onClick={() => setCadence({ slot_minutes: suggestion.minutes })}
                     className="text-xs font-medium text-accent hover:underline"
                   >
                     Use it
@@ -503,6 +500,34 @@ export function ScheduleSection({
           </p>
         ) : (
           <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+            {/* Breaks render inline as muted chips so the day reads as one
+                continuous timeline: slots, lunch, slots. */}
+            {config.breaks
+              .filter(
+                (b) =>
+                  b.start &&
+                  b.end &&
+                  toMins(b.end) > toMins(b.start) &&
+                  toMins(b.start) >= toMins(config.start) &&
+                  toMins(b.start) < toMins(config.end),
+              )
+              .map((b) => (
+                <div
+                  key={`break-${b.start}`}
+                  title={`${b.start}–${b.end} · break`}
+                  style={{
+                    order: toMins(b.start),
+                  }}
+                  className="rounded-md border border-muted-200 bg-muted-100 px-1.5 py-1 min-w-0"
+                >
+                  <span className="block font-mono text-[11px] leading-tight text-muted-600">
+                    {b.start} ({toMins(b.end) - toMins(b.start)}m)
+                  </span>
+                  <span className="block text-[11px] leading-tight text-muted-600">
+                    break
+                  </span>
+                </div>
+              ))}
             {preview.map((s) => {
               const entry = bookedByTime.get(s.start);
               // A booking only counts as "fitting" if the length matches
@@ -517,6 +542,7 @@ export function ScheduleSection({
                       ? `${s.start}–${s.end} · ${fits.participant_name}${fits.shot ? " · shot" : ""}`
                       : `${s.start}–${s.end} · open${s.isExtra ? " · custom length" : ""}`
                   }
+                  style={{ order: toMins(s.start) }}
                   className={
                     "group relative rounded-md border px-1.5 py-1 min-w-0 " +
                     (fits
@@ -562,7 +588,10 @@ export function ScheduleSection({
               );
             })}
             {/* Add a slot after the last one — custom length allowed. */}
-            <div className="rounded-md border border-dashed border-accent/50 bg-accent-muted/40 px-1.5 py-1 min-w-0">
+            <div
+              style={{ order: 100000 }}
+              className="rounded-md border border-dashed border-accent/50 bg-accent-muted/40 px-1.5 py-1 min-w-0"
+            >
               <button
                 type="button"
                 onClick={addExtraSlot}
@@ -576,9 +605,12 @@ export function ScheduleSection({
                   type="number"
                   min={1}
                   max={120}
-                  value={extraMinutes}
+                  value={
+                    extraMinutes === ""
+                      ? String(config.slot_minutes)
+                      : extraMinutes
+                  }
                   onChange={(e) => setExtraMinutes(e.target.value)}
-                  placeholder={String(config.slot_minutes)}
                   aria-label="Minutes for the added slot"
                   title="Length of the added slot in minutes"
                   className="w-9 bg-transparent outline-none placeholder:text-muted-400"
