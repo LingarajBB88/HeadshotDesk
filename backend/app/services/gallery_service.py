@@ -137,6 +137,17 @@ def get_gallery(db: Session, *, token: str) -> dict:
         for f in files
     ]
 
+    # HSD-36: the client's logo makes the gallery feel like the client's
+    # deliverable, not a tool's.
+    client_logo_url = None
+    if job.client_id:
+        from app.models import Client
+        from app.services import client_service
+
+        client = db.get(Client, job.client_id)
+        if client:
+            client_logo_url = client_service.logo_url(client)
+
     return {
         "participant_name": participant.name,
         "job": {
@@ -147,6 +158,7 @@ def get_gallery(db: Session, *, token: str) -> dict:
         "files": file_entries,
         "download_cap": job.download_cap,
         "downloads_used": len(downloaded_ids),
+        "client_logo_url": client_logo_url,
     }
 
 

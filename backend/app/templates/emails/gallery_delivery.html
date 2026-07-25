@@ -1,3 +1,9 @@
+{% if client.logo_url %}
+<p style="margin-bottom:16px;">
+  <img src="{{ client.logo_url }}" alt="{{ job.client_name or 'Company logo' }}"
+       style="max-width:160px;max-height:64px;height:auto;" />
+</p>
+{% endif %}
 <p>Hi {{ participant.first_name }},</p>
 <p>Your headshots from <strong>{{ job.name }}</strong> are ready to view and download.</p>
 <p>

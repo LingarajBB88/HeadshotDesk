@@ -54,7 +54,18 @@ def create_job(
     location: str | None = None,
     download_cap: int | None = None,
     shoot_mode: str | None = None,
+    client_id: str | None = None,
 ) -> Job:
+    # HSD-36: linking a Client validates ownership and mirrors the client's
+    # name into the legacy display field.
+    if client_id is not None:
+        from app.services import client_service
+
+        client = client_service.get_client(
+            db, account=account, client_id=client_id
+        )
+        client_name = client.name
+
     job = Job(
         id=new_id("job"),
         account_id=account.id,
@@ -66,6 +77,7 @@ def create_job(
         location=location,
         status="draft",
         created_by=creator.id,
+        client_id=client_id,
         # Omitted optionals fall back to model defaults (cap 1, mode queue).
         **({"download_cap": download_cap} if download_cap is not None else {}),
         **({"shoot_mode": shoot_mode} if shoot_mode is not None else {}),
@@ -124,6 +136,17 @@ def update_job(
     # flow. Switching away from time_slot clears existing bookings; the
     # frontend confirms with the photographer before sending that.
     clear_bookings_requested = bool(fields.pop("clear_slot_bookings", False))
+
+    # HSD-36: re-linking to a client validates ownership and syncs the
+    # display name. Explicit None unlinks (client_name stays as-is).
+    if "client_id" in fields and fields["client_id"] is not None:
+        from app.services import client_service
+
+        client = client_service.get_client(
+            db, account=account, client_id=fields["client_id"]
+        )
+        fields.setdefault("client_name", client.name)
+        fields["client_name"] = client.name
     new_mode = fields.get("shoot_mode")
     if new_mode and new_mode != job.shoot_mode:
         if job.status in ("in_progress", "delivered"):
@@ -277,6 +300,15 @@ def deliver_galleries(
         creator.name if creator and creator.name else account.name or "HeadshotDesk"
     )
 
+    # HSD-36: client branding for the email header, resolved once per batch.
+    client_logo_url = None
+    if job.client_id:
+        from app.models import Client
+        from app.services import client_service
+
+        client = db.get(Client, job.client_id)
+        client_logo_url = client_service.logo_url(client) if client else None
+
     # Pull all participants on this job in one query plus their photo counts so
     # we can decide eligibility without an N+1.
     participants = list(
@@ -325,6 +357,8 @@ def deliver_galleries(
                 photographer_name=photographer_name,
                 job_name=job.name,
                 gallery_url=gallery_url,
+                client_logo_url=client_logo_url,
+                client_name=job.client_name,
             )
         except Exception as exc:  # noqa: BLE001 — log + report, don't abort batch
             errors.append(f"{p.name}: {exc}")

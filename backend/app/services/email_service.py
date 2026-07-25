@@ -148,6 +148,8 @@ def send_gallery_delivery_email(
     photographer_name: str,
     job_name: str,
     gallery_url: str,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
 ) -> None:
     """Send (or log) the F5c gallery delivery email — the one-way notification
     that tells a participant their headshots are ready, with a CTA back into
@@ -165,8 +167,10 @@ def send_gallery_delivery_email(
                 "first_name": _first_name(participant_name),
             },
             "photographer": {"display_name": photographer_name},
-            "job": {"name": job_name},
+            "job": {"name": job_name, "client_name": client_name},
             "gallery": {"url": gallery_url},
+            # HSD-36: client branding in the email header, when set.
+            "client": {"logo_url": client_logo_url},
             "app": _APP_CONTEXT,
         },
     )

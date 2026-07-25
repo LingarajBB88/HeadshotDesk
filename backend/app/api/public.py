@@ -105,6 +105,7 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
         location=job.location,
         shoot_mode=job.shoot_mode,
         branding=None,  # Account-level branding wired up in v0.2
+        client_logo_url=_client_logo_url_for_job(db, job),
     )
 
 
@@ -167,6 +168,40 @@ def book_slot_public(
         slot_start=payload.slot_start,
     )
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
+
+
+# --- HSD-36: client logo (public brand asset) --------------------------------
+
+def _client_logo_url_for_job(db: Session, job) -> str | None:  # type: ignore[no-untyped-def]
+    """Logo URL for a job's linked client, or None."""
+    if not job.client_id:
+        return None
+    from app.models import Client
+    from app.services import client_service
+
+    client = db.get(Client, job.client_id)
+    return client_service.logo_url(client) if client else None
+
+
+@router.get("/client-logo/{client_id}")
+def client_logo(client_id: str, db: Session = Depends(get_db)):
+    """Serve a client's logo. Unauthenticated by design: logos appear on
+    public signup pages, galleries, and inside emails. The client id is an
+    unguessable ULID and the response is just a brand image."""
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import client_service
+
+    content, mime = client_service.read_logo(db, client_id=client_id)
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type=mime,
+        # Logos change rarely; an hour of caching keeps emails + galleries
+        # snappy without making logo swaps invisible for long.
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 # --- HSD-67: client dashboard (photographer's client, token-only) -----------

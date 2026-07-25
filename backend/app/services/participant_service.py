@@ -212,6 +212,14 @@ def resend_gallery_email(
     )
 
     gallery_url = f"{settings.frontend_url}/g/{p.gallery_token}"
+    # HSD-36: client branding for the email header.
+    client_logo_url = None
+    if job.client_id:
+        from app.models import Client
+        from app.services import client_service
+
+        client = db.get(Client, job.client_id)
+        client_logo_url = client_service.logo_url(client) if client else None
     try:
         email_service.send_gallery_delivery_email(
             to_email=p.email,
@@ -219,6 +227,8 @@ def resend_gallery_email(
             photographer_name=photographer_name,
             job_name=job.name,
             gallery_url=gallery_url,
+            client_logo_url=client_logo_url,
+            client_name=job.client_name,
         )
     except Exception as exc:  # noqa: BLE001
         # Provider rejection (e.g. Postmark refusing the recipient) should

@@ -38,6 +38,9 @@ class PublicJobOut(BaseModel):
     # HSD-55: lets the signup page know whether to show the slot picker.
     shoot_mode: str = "queue"
     branding: dict | None = None  # account branding overrides
+    # HSD-36: the client's logo, shown above the signup form so people see
+    # their employer's branding at the very first touchpoint.
+    client_logo_url: str | None = None
 
     model_config = {"from_attributes": True}
 

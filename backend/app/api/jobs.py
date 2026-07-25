@@ -54,6 +54,7 @@ def create(
         location=payload.location,
         download_cap=payload.download_cap,
         shoot_mode=payload.shoot_mode,
+        client_id=payload.client_id,
     )
     return JobOut.model_validate(job)
 

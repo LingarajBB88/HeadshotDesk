@@ -53,6 +53,9 @@ class JobCreate(BaseModel):
     download_cap: int | None = Field(default=None, ge=0, le=1000)
     # HSD-55: how shoot day runs. Omitted = queue (walk-up).
     shoot_mode: ShootMode | None = None
+    # HSD-36: link to an existing Client (branding owner). When set, the
+    # job inherits the client's logo and client_name mirrors their name.
+    client_id: str | None = None
 
     _validate_location = field_validator("location")(_validate_location)
     _validate_date = field_validator("shoot_date")(_validate_shoot_date_not_past)
@@ -80,6 +83,8 @@ class JobUpdate(BaseModel):
     # slots before switching the mode on).
     shoot_mode: ShootMode | None = None
     time_slot_config: TimeSlotConfig | None = None
+    # HSD-36: re-link the job to a different client (or None to unlink).
+    client_id: str | None = None
     # Changing the slot config while bookings exist is destructive: booked
     # times may no longer exist on the new grid. The API refuses (409)
     # unless this flag is set, in which case existing bookings are
@@ -105,6 +110,8 @@ class JobOut(BaseModel):
     time_slot_config: dict | None
     # HSD-67: null until the photographer shares the client dashboard.
     client_token: str | None
+    # HSD-36: linked Client entity (branding owner), when set.
+    client_id: str | None
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

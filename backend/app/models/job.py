@@ -42,6 +42,12 @@ class Job(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
 
     client_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    # HSD-36: link to the Client entity (branding owner). Nullable for
+    # legacy jobs; the 0010 migration backfills from client_name. When set,
+    # client_name mirrors the client's name for display back-compat.
+    client_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("clients.id", ondelete="SET NULL"), nullable=True
+    )
     client_email: Mapped[str | None] = mapped_column(CITEXT(), nullable=True)
     shoot_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     location: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -36,6 +36,9 @@ class GalleryOut(BaseModel):
     files: list[GalleryFileOut]
     download_cap: int        # per-job cap set by photographer
     downloads_used: int      # unique photos this participant has downloaded
+    # HSD-36: client branding on the gallery header, when the job's client
+    # has a logo.
+    client_logo_url: str | None = None
 
 
 class GalleryZipRequest(BaseModel):
