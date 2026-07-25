@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.db import get_db
-from app.models import Account, File, Job, Participant, User
+from app.models import Account, File, Job, Participant, ParticipantDownload, User
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -123,18 +123,28 @@ def _account_rows(
         ).all()
     )
     participant_stats = {
-        row[0]: (row[1], row[2], row[3])
+        row[0]: (row[1], row[2])
         for row in db.execute(
             select(
                 Job.account_id,
                 func.count(Participant.id),
                 func.count(Participant.gallery_sent_at),
-                func.coalesce(func.sum(Participant.downloads_used), 0),
             )
             .join(Job, Job.id == Participant.job_id)
             .group_by(Job.account_id)
         ).all()
     }
+    # Unique downloads per account. ParticipantDownload rows are unique per
+    # (participant, file), so a plain count is already unique pulls.
+    downloads = dict(
+        db.execute(
+            select(Job.account_id, func.count())
+            .select_from(ParticipantDownload)
+            .join(Participant, Participant.id == ParticipantDownload.participant_id)
+            .join(Job, Job.id == Participant.job_id)
+            .group_by(Job.account_id)
+        ).all()
+    )
     photos = dict(
         db.execute(
             select(Job.account_id, func.count(File.id))
@@ -154,9 +164,8 @@ def _account_rows(
                 continue
         if status_filter and status != status_filter:
             continue
-        p_total, p_delivered, p_downloads = participant_stats.get(
-            a.id, (0, 0, 0)
-        )
+        p_total, p_delivered = participant_stats.get(a.id, (0, 0))
+        p_downloads = downloads.get(a.id, 0)
         rows.append(
             AdminAccountRow(
                 account_id=a.id,

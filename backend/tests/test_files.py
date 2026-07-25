@@ -352,7 +352,11 @@ class TestDeleteAndReassign:
         assert body["original_filename"] == "Bob_005.jpg"
         assert body["participant_id"] == p_bob["id"]
 
-    def test_rename_to_unmatched_clears_participant(self, client: TestClient):
+    def test_rename_to_unmatched_keeps_assignment(self, client: TestClient):
+        """Sticky-name rule: an assigned file renamed to a name that matches
+        nobody keeps its assignment AND its display name. Protects matched
+        files from being clobbered by Cmd-D'd duplicates arriving through
+        the watch folder ("Alice_001 copy 4.jpg" style)."""
         a = _signup(client)
         token = a["tokens"]["access_token"]
         job = _create_job(client, token)
@@ -372,7 +376,8 @@ class TestDeleteAndReassign:
             headers=_auth(token),
         )
         assert r.status_code == 200
-        assert r.json()["participant_id"] is None
+        assert r.json()["participant_id"] == p_alice["id"]
+        assert r.json()["original_filename"] == "Alice_001.jpg"
 
     def test_rename_rejects_empty_filename(self, client: TestClient):
         a = _signup(client)
