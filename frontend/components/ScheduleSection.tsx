@@ -217,6 +217,16 @@ export function ScheduleSection({
         return "Breaks must fall inside the day.";
       }
     }
+    // Overlapping (or duplicate) breaks: confusing on the grid and always
+    // a mistake — one longer break says the same thing better.
+    const sorted = [...config.breaks]
+      .filter((b) => b.start && b.end)
+      .sort((x, y) => toMins(x.start) - toMins(y.start));
+    for (let i = 1; i < sorted.length; i++) {
+      if (toMins(sorted[i].start) < toMins(sorted[i - 1].end)) {
+        return "Breaks overlap each other. Merge them into one, or adjust the times.";
+      }
+    }
     return null;
   })();
 
@@ -452,6 +462,7 @@ export function ScheduleSection({
                   setConfig((c) => ({
                     ...c,
                     breaks: c.breaks.filter((_, j) => j !== i),
+                    blocked: [],
                   }))
                 }
                 className="text-xs text-muted-600 hover:text-red-600 transition"
@@ -464,10 +475,25 @@ export function ScheduleSection({
             <button
               type="button"
               onClick={() =>
-                setConfig((c) => ({
-                  ...c,
-                  breaks: [...c.breaks, { start: "12:00", end: "12:30" }],
-                }))
+                setConfig((c) => {
+                  // Default the new break after the latest existing one, so
+                  // clicking Add repeatedly never creates duplicates.
+                  const latestEnd = c.breaks
+                    .filter((b) => b.end)
+                    .reduce((max, b) => Math.max(max, toMins(b.end)), 0);
+                  const start = latestEnd > 0 ? latestEnd + 60 : 12 * 60;
+                  return {
+                    ...c,
+                    breaks: [
+                      ...c.breaks,
+                      {
+                        start: toHHMM(Math.min(start, 23 * 60)),
+                        end: toHHMM(Math.min(start + 30, 23 * 60 + 30)),
+                      },
+                    ],
+                    blocked: [],
+                  };
+                })
               }
               className="mt-2 text-xs font-medium text-accent hover:underline"
             >
@@ -500,20 +526,24 @@ export function ScheduleSection({
           </p>
         ) : (
           <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
-            {/* Breaks render inline as muted chips so the day reads as one
-                continuous timeline: slots, lunch, slots. */}
+            {/* Breaks render inline as amber chips so the day reads as one
+                continuous timeline: slots, lunch, slots. Deduped by time
+                window so accidental duplicates never double-render. */}
             {config.breaks
               .filter(
-                (b) =>
+                (b, i, arr) =>
                   b.start &&
                   b.end &&
                   toMins(b.end) > toMins(b.start) &&
                   toMins(b.start) >= toMins(config.start) &&
-                  toMins(b.start) < toMins(config.end),
+                  toMins(b.start) < toMins(config.end) &&
+                  arr.findIndex(
+                    (o) => o.start === b.start && o.end === b.end,
+                  ) === i,
               )
               .map((b) => (
                 <div
-                  key={`break-${b.start}`}
+                  key={`break-${b.start}-${b.end}`}
                   title={`${b.start}–${b.end} · break`}
                   style={{
                     order: toMins(b.start),

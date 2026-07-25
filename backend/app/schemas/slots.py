@@ -85,6 +85,12 @@ class TimeSlotConfig(BaseModel):
         for b in self.breaks:
             if _minutes(b.start) < _minutes(self.start) or _minutes(b.end) > _minutes(self.end):
                 raise ValueError("Breaks must fall within the day.")
+        # Overlapping or duplicate breaks are always a mistake; one merged
+        # break expresses the same thing without ambiguity.
+        ordered = sorted(self.breaks, key=lambda b: _minutes(b.start))
+        for prev, nxt in zip(ordered, ordered[1:]):
+            if _minutes(nxt.start) < _minutes(prev.end):
+                raise ValueError("Breaks must not overlap.")
         return self
 
 
