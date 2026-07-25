@@ -136,29 +136,41 @@ def update_job(
 
             slot_service.clear_bookings(db, job=job)
 
-    # HSD-55: changing the slot config while bookings exist would strand
-    # participants on times that may no longer be on the grid. Refuse
-    # unless the caller explicitly asked to cancel the bookings.
-    if "time_slot_config" in fields:
+    # HSD-55: changing the slot config (or the shoot date) can strand
+    # participants on times that no longer exist. Only bookings that fall
+    # off the NEW grid are at risk — extending the day or adding slots
+    # keeps everything. Refuse (409) when bookings would be cancelled,
+    # unless the caller confirmed; then cancel only the affected ones.
+    if "time_slot_config" in fields or "shoot_date" in fields:
         from app.models import SlotBooking
         from app.services import slot_service
-        from sqlalchemy import func as sa_func, select as sa_select
+        from sqlalchemy import select as sa_select
 
-        booking_count = db.scalar(
-            sa_select(sa_func.count()).select_from(SlotBooking).where(
-                SlotBooking.job_id == job.id
-            )
-        ) or 0
-        if booking_count > 0:
+        new_config = fields.get("time_slot_config", job.time_slot_config)
+        new_date = fields.get("shoot_date", job.shoot_date)
+        new_grid = {
+            (s, e)
+            for s, e in slot_service.slot_times_for(new_config, new_date)
+        }
+        bookings = list(
+            db.scalars(
+                sa_select(SlotBooking).where(SlotBooking.job_id == job.id)
+            ).all()
+        )
+        affected = [
+            b for b in bookings if (b.slot_start, b.slot_end) not in new_grid
+        ]
+        if affected:
             if not clear_bookings_requested:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=(
-                        f"{booking_count} booked slot(s) exist. Cancel them "
-                        "to change the schedule."
+                        f"{len(affected)} booked slot(s) don't fit the new "
+                        "schedule and would be cancelled."
                     ),
                 )
-            slot_service.clear_bookings(db, job=job)
+            for b in affected:
+                db.delete(b)
 
     # Only assign keys that were provided (sparse update). Pydantic's
     # model_dump(exclude_unset=True) at the route layer ensures this.

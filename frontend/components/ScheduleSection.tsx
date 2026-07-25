@@ -79,47 +79,50 @@ export function ScheduleSection({
   const bookedCount = schedule?.length ?? 0;
 
   async function saveConfig() {
-    // Changing the grid while people hold slots strands their times. The
-    // backend refuses unless we explicitly confirm the cancellation.
-    if (bookedCount > 0) {
-      const ok = window.confirm(
-        `Saving a new schedule cancels ${bookedCount} booked ${
-          bookedCount === 1 ? "slot" : "slots"
-        }. Those participants stay signed up but lose their time and will ` +
-          "need to book again from the signup page. Continue?",
-      );
-      if (!ok) return;
-    }
+    // Two-step save: try without cancelling anything. The backend keeps
+    // every booking that still fits the new grid and only 409s when some
+    // would be cancelled — its message says exactly how many. Confirm
+    // with that fresh number, then retry with the cancel flag.
     setSaving(true);
     setSaveError(null);
     setSaved(false);
-    try {
+
+    async function doSave(clear: boolean) {
       const updated = await updateJob(job.id, {
         time_slot_config: config,
-        ...(bookedCount > 0 ? { clear_slot_bookings: true } : {}),
+        ...(clear ? { clear_slot_bookings: true } : {}),
       });
       onJobChanged(updated);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
-      // Bookings were just cancelled server-side; reflect it immediately.
       try {
         setSchedule(await getSchedule(job.id));
       } catch {
         setSchedule([]);
       }
+    }
+
+    try {
+      await doSave(false);
     } catch (err) {
-      setSaveError(
-        err instanceof ApiError && err.status === 422
-          ? "Check the times: the day must end after it starts, breaks must fall inside it, and slots must fit."
-          : err instanceof ApiError && err.status === 409
-            ? "Someone booked a slot just now. Review the bookings below and save again."
+      if (err instanceof ApiError && err.status === 409) {
+        const ok = window.confirm(
+          `${err.message} Those participants stay signed up but lose ` +
+            "their time and will need a new one. Continue?",
+        );
+        if (ok) {
+          try {
+            await doSave(true);
+          } catch {
+            setSaveError("Couldn't save. Try again?");
+          }
+        }
+      } else {
+        setSaveError(
+          err instanceof ApiError && err.status === 422
+            ? "Check the times: the day must end after it starts, breaks must fall inside it, and slots must fit."
             : "Couldn't save. Try again?",
-      );
-      // A 409 means our booking count was stale; refresh it.
-      try {
-        setSchedule(await getSchedule(job.id));
-      } catch {
-        /* keep the old list */
+        );
       }
     } finally {
       setSaving(false);
@@ -161,6 +164,26 @@ export function ScheduleSection({
     }
     return null;
   })();
+
+  // "Add slots" helper: extend the day end by N more slots. Keeps a single
+  // source of truth (the day window) — the grid grows, existing bookings
+  // are untouched because every old slot still exists.
+  const [extraSlots, setExtraSlots] = useState<string>("");
+  function addSlotsToEnd() {
+    const n = Number(extraSlots);
+    if (!Number.isFinite(n) || n < 1) return;
+    const [h, m] = config.end.split(":").map(Number);
+    const total = Math.min(
+      h * 60 + m + n * (config.slot_minutes + config.buffer_minutes),
+      23 * 60 + 59,
+    );
+    const pad = (x: number) => String(x).padStart(2, "0");
+    setConfig((c) => ({
+      ...c,
+      end: `${pad(Math.floor(total / 60))}:${pad(total % 60)}`,
+    }));
+    setExtraSlots("");
+  }
 
   // Slot calculator: photographers usually get "N people, 9 to 5" from the
   // client, not a slot length. Given the day window, breaks, buffer, and a
@@ -261,9 +284,35 @@ export function ScheduleSection({
         </div>
 
         {/* Slot calculator: enter a headcount, get the slot length that
-            fits everyone in the day window. */}
+            fits everyone in the day window. Next to it: grow the day by a
+            number of slots — handy when more people join after the
+            schedule went out. */}
         <div className="mt-4 rounded-card bg-muted-50 p-3">
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div className="flex items-end gap-3">
+              <label className="block">
+                <span className="block text-xs font-medium text-muted-600">
+                  Need more room? Add slots to the end of the day
+                </span>
+                <input
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={extraSlots}
+                  onChange={(e) => setExtraSlots(e.target.value)}
+                  placeholder="Number of slots"
+                  className="mt-1 w-40 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={addSlotsToEnd}
+                disabled={!Number(extraSlots)}
+                className="pb-1.5 text-xs font-medium text-accent hover:underline disabled:text-muted-400 disabled:no-underline"
+              >
+                Add
+              </button>
+            </div>
             <label className="block">
               <span className="block text-xs font-medium text-muted-600">
                 Know the headcount? Let us do the math
@@ -377,9 +426,9 @@ export function ScheduleSection({
         ) : null}
         {dirty && bookedCount > 0 && !configProblem ? (
           <p className="mt-3 text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1 inline-block">
-            Heads up: saving a new schedule cancels{" "}
-            {bookedCount === 1 ? "the 1 booked slot" : `all ${bookedCount} booked slots`}
-            . Those participants will need to book again.
+            Bookings that still fit the new schedule are kept. If any would
+            fall off the grid, you&apos;ll be asked to confirm before they
+            are cancelled.
           </p>
         ) : null}
         <div className="mt-4 flex items-center gap-3">

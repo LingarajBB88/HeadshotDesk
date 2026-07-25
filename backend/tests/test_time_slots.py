@@ -351,6 +351,84 @@ class TestConfigChangeWithBookings:
         assert all(s["available"] for s in new_slots)
 
 
+class TestSmartConfigChange:
+    """Config changes only cancel bookings that fall off the new grid."""
+
+    def _book(self, client, job, name, email, slot_start):
+        p = _public_signup(client, job["public_slug"], name, email)
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": p["gallery_token"], "slot_start": slot_start},
+        )
+        assert r.status_code == 200, r.text
+        return p
+
+    def test_extending_the_day_keeps_bookings(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)  # 09:00–10:00, 10-min slots
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        self._book(client, job, "Jane", "jane@example.com", slots[0]["start"])
+
+        # Extend the day: every existing slot still exists → no 409, no flag.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    "start": "09:00",
+                    "end": "12:00",
+                    "slot_minutes": 10,
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert len(entries) == 1  # booking survived
+        fresh = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert len(fresh) == 18  # 09:00–12:00 in 10-min slots
+        assert fresh[0]["available"] is False
+
+    def test_partial_change_cancels_only_nonfitting(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)  # 09:00–10:00
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        jane = self._book(client, job, "Jane", "jane@example.com", slots[0]["start"])
+        self._book(client, job, "Bob", "bob@example.com", slots[5]["start"])  # 09:50
+
+        # Shrink to 09:00–09:30: Jane (09:00) fits, Bob (09:50) doesn't.
+        new_cfg = {"start": "09:00", "end": "09:30", "slot_minutes": 10}
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": new_cfg},
+            headers=_auth(token),
+        )
+        assert r.status_code == 409
+        assert "1 booked slot" in r.json()["detail"]
+
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": new_cfg, "clear_slot_bookings": True},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert len(entries) == 1
+        assert entries[0]["participant_name"] == "Jane"
+        assert jane  # silence unused warning
+
+
 class TestOwnerAssignment:
     """HSD-55 follow-up: the photographer assigns times to manually added
     participants from the job page."""

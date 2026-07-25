@@ -31,12 +31,25 @@ def _slot_times(job: Job) -> list[tuple[datetime, datetime]]:
     """Materialize the slot list for a job from its config + shoot_date."""
     if job.shoot_mode != "time_slot" or not job.time_slot_config or not job.shoot_date:
         return []
-    cfg = TimeSlotConfig.model_validate(job.time_slot_config)
+    return slot_times_for(job.time_slot_config, job.shoot_date)
+
+
+def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
+    """Materialize slots for an arbitrary (config, date) pair. Used both for
+    a job's live grid and to preview a *proposed* config during updates, so
+    only bookings that fall off the new grid get cancelled."""
+    if not config or not shoot_date:
+        return []
+    cfg = (
+        config
+        if isinstance(config, TimeSlotConfig)
+        else TimeSlotConfig.model_validate(config)
+    )
 
     def at(hhmm: str) -> datetime:
         h, m = (int(x) for x in hhmm.split(":"))
         return datetime(
-            job.shoot_date.year, job.shoot_date.month, job.shoot_date.day,
+            shoot_date.year, shoot_date.month, shoot_date.day,
             h, m, tzinfo=timezone.utc,
         )
 

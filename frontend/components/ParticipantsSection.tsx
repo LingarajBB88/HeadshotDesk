@@ -152,6 +152,18 @@ function TimeSlotCell({
   const current = entry?.slot_start ?? "";
 
   async function onChange(value: string) {
+    // Guard existing bookings: moving or clearing someone's confirmed time
+    // is easy to do by accident from a dropdown, and the participant is
+    // counting on that time. New assignments (no current slot) don't ask.
+    if (current) {
+      const fmt = (iso: string) => iso.slice(11, 16);
+      const ok = window.confirm(
+        value === ""
+          ? `Clear ${participant.name}'s ${fmt(current)} slot? They stay signed up without a time.`
+          : `Move ${participant.name} from ${fmt(current)} to ${fmt(value)}?`,
+      );
+      if (!ok) return;
+    }
     setBusy(true);
     try {
       if (value === "") {

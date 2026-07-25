@@ -402,7 +402,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots. Know the headcount but not the slot length? Enter the number of participants and the calculator suggests the minutes per person that fits everyone." },
           { term: "Buffer between slots", def: "Optional breathing room after each appointment, for reviewing frames or resetting." },
           { term: "Breaks", def: "Blocks nobody can book, like lunch. Slots skip over them automatically." },
-          { term: "Changing the schedule later", def: "Fine while nothing is booked. Once bookings exist, saving a new schedule cancels them: the old times may not exist on the new grid. The app warns you and asks to confirm; those participants stay signed up but need to pick a new time from the signup page. Not sure yet? The Reset button puts the settings back to what was last saved." },
+          { term: "Changing the schedule later", def: "Bookings that still fit the new schedule are kept. Extending the day or adding slots never touches anyone's time; use the add-slots helper to grow the day by a set number of slots. Only when a change would remove a booked time (shrinking the day, moving the grid, changing the date) does the app ask you to confirm, and it cancels just those bookings. The Reset button puts the settings back to what was last saved." },
         ],
       },
       {
@@ -411,7 +411,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         body: [
           "The signup form shows the open times; participants pick one along with their details and everything is booked the moment they submit. Taken slots show as unavailable. If two people go for the same time at the same moment, the second gets a friendly nudge to pick another.",
           "Signing up again with the same email lets someone pick a different time; their old slot frees up automatically.",
-          "You can also book on someone's behalf. People you add manually or through a CSV get a Time column in the Participants table: pick a slot there to assign, move, or clear their time. Assigning is optional, so walk-ins can stay without one.",
+          "You can also book on someone's behalf. People you add manually or through a CSV get a Time column in the Participants table: pick a slot there to assign, move, or clear their time. Assigning is optional, so walk-ins can stay without one. Moving or clearing an already booked time always asks for confirmation first, since the participant is counting on it.",
         ],
       },
       {
