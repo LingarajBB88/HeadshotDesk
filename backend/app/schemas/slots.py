@@ -37,12 +37,24 @@ class TimeSlotConfig(BaseModel):
     slot_minutes: int = Field(ge=1, le=120)
     buffer_minutes: int = Field(default=0, ge=0, le=60)
     breaks: list[SlotBreak] = Field(default_factory=list, max_length=10)
+    # Individually removed slots, as HH:MM start times. Generation skips
+    # them; restoring is just removing the entry. Times that don't land on
+    # the grid are harmless leftovers (e.g. after the grid shifted).
+    blocked: list[str] = Field(default_factory=list, max_length=500)
 
     @field_validator("start", "end")
     @classmethod
     def _valid_time(cls, v: str) -> str:
         if not _TIME_RE.match(v):
             raise ValueError("Times must be HH:MM (24h).")
+        return v
+
+    @field_validator("blocked")
+    @classmethod
+    def _valid_blocked(cls, v: list[str]) -> list[str]:
+        for t in v:
+            if not _TIME_RE.match(t):
+                raise ValueError("Blocked times must be HH:MM (24h).")
         return v
 
     @model_validator(mode="after")

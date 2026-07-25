@@ -58,6 +58,7 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
     step = timedelta(minutes=cfg.slot_minutes + cfg.buffer_minutes)
     length = timedelta(minutes=cfg.slot_minutes)
 
+    blocked = set(cfg.blocked)
     slots: list[tuple[datetime, datetime]] = []
     cursor = at(cfg.start)
     while cursor + length <= day_end:
@@ -67,7 +68,10 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
         if hit:
             cursor = hit[1]
             continue
-        slots.append(slot)
+        # Individually removed slots: skip the slot but keep the cadence,
+        # so the rest of the grid doesn't shift.
+        if slot[0].strftime("%H:%M") not in blocked:
+            slots.append(slot)
         cursor += step
     return slots
 

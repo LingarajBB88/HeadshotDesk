@@ -395,6 +395,59 @@ class TestSmartConfigChange:
         assert len(fresh) == 18  # 09:00–12:00 in 10-min slots
         assert fresh[0]["available"] is False
 
+    def test_block_and_restore_individual_slot(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)  # 09:00–10:00, 6 slots
+        cfg = job["time_slot_config"]
+
+        # Remove 09:20: grid drops to 5 slots, cadence unchanged.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": {**cfg, "blocked": ["09:20"]}},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        starts = [s["start"][11:16] for s in slots]
+        assert starts == ["09:00", "09:10", "09:30", "09:40", "09:50"]
+
+        # A blocked time can't be booked (off-grid → 400).
+        jane = _public_signup(client, job["public_slug"], "Jane", "jane@example.com")
+        blocked_start = slots[0]["start"].replace("09:00", "09:20")
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": blocked_start},
+        )
+        assert r.status_code == 400
+
+        # Removing a BOOKED slot needs the confirm flag (409 first).
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+        assert r.status_code == 200
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": {**cfg, "blocked": ["09:00", "09:20"]}},
+            headers=_auth(token),
+        )
+        assert r.status_code == 409
+
+        # Restore 09:20: back to 6 slots.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": {**cfg, "blocked": []}},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert len(slots) == 6
+
     def test_partial_change_cancels_only_nonfitting(self, client: TestClient):
         a = _signup(client)
         token = a["tokens"]["access_token"]

@@ -13,6 +13,8 @@ export type TimeSlotConfig = {
   slot_minutes: number;
   buffer_minutes: number;
   breaks: SlotBreak[];
+  /** Individually removed slots (HH:MM start times). */
+  blocked?: string[];
 };
 
 export type ScheduleEntry = {

@@ -28,6 +28,7 @@ const DEFAULT_CONFIG: TimeSlotConfig = {
   slot_minutes: 10,
   buffer_minutes: 0,
   breaks: [],
+  blocked: [],
 };
 
 function fmtTime(iso: string): string {
@@ -75,8 +76,41 @@ export function ScheduleSection({
   }, [job.id, job.public_slug, job.time_slot_config, refreshKey]);
 
   const savedConfig = job.time_slot_config ?? DEFAULT_CONFIG;
-  const dirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
   const bookedCount = schedule?.length ?? 0;
+
+  // The settings form never edits `blocked` (slot removal happens on the
+  // grid and saves immediately), so mirror the saved value into the form
+  // state to keep the dirty check honest.
+  useEffect(() => {
+    setConfig((c) => ({ ...c, blocked: savedConfig.blocked ?? [] }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.time_slot_config]);
+
+  const dirty =
+    JSON.stringify({ ...config, blocked: [] }) !==
+    JSON.stringify({ ...savedConfig, blocked: [] });
+
+  // Remove or restore a single slot. Saves immediately against the SAVED
+  // config, so unsaved form edits aren't accidentally committed. Removal
+  // is only offered on open slots, so it can't hit the 409 path.
+  const [togglingSlot, setTogglingSlot] = useState<string | null>(null);
+  async function toggleBlocked(hhmm: string, block: boolean) {
+    setTogglingSlot(hhmm);
+    try {
+      const base = job.time_slot_config ?? DEFAULT_CONFIG;
+      const next = new Set(base.blocked ?? []);
+      if (block) next.add(hhmm);
+      else next.delete(hhmm);
+      const updated = await updateJob(job.id, {
+        time_slot_config: { ...base, blocked: [...next].sort() },
+      });
+      onJobChanged(updated);
+    } catch {
+      alert("Couldn't update that slot. Try again?");
+    } finally {
+      setTogglingSlot(null);
+    }
+  }
 
   async function saveConfig() {
     // Two-step save: try without cancelling anything. The backend keeps
@@ -289,11 +323,11 @@ export function ScheduleSection({
             schedule went out. */}
         <div className="mt-4 rounded-card bg-muted-50 p-3">
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-            <div className="flex items-end gap-3">
-              <label className="block">
-                <span className="block text-xs font-medium text-muted-600">
-                  Need more room? Add slots to the end of the day
-                </span>
+            <div>
+              <span className="block text-xs font-medium text-muted-600">
+                Need more room? Add slots to the end of the day
+              </span>
+              <div className="mt-1 flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
@@ -301,17 +335,18 @@ export function ScheduleSection({
                   value={extraSlots}
                   onChange={(e) => setExtraSlots(e.target.value)}
                   placeholder="Number of slots"
-                  className="mt-1 w-40 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  aria-label="Number of slots to add"
+                  className="w-40 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
                 />
-              </label>
-              <button
-                type="button"
-                onClick={addSlotsToEnd}
-                disabled={!Number(extraSlots)}
-                className="pb-1.5 text-xs font-medium text-accent hover:underline disabled:text-muted-400 disabled:no-underline"
-              >
-                Add
-              </button>
+                <button
+                  type="button"
+                  onClick={addSlotsToEnd}
+                  disabled={!Number(extraSlots)}
+                  className="btn-secondary text-xs disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
             </div>
             <label className="block">
               <span className="block text-xs font-medium text-muted-600">
@@ -497,7 +532,7 @@ export function ScheduleSection({
                           : `${fmtTime(s.start)}–${fmtTime(s.end)} · open`
                       }
                       className={
-                        "rounded-md border px-1.5 py-1 min-w-0 " +
+                        "group relative rounded-md border px-1.5 py-1 min-w-0 " +
                         (entry
                           ? entry.shot
                             ? "border-green-200 bg-green-50"
@@ -521,6 +556,20 @@ export function ScheduleSection({
                       >
                         {entry ? entry.participant_name : "open"}
                       </span>
+                      {/* Remove: open slots only. Booked ones need their
+                          booking moved/cleared first (Participants table). */}
+                      {!entry ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleBlocked(fmtTime(s.start), true)}
+                          disabled={togglingSlot === fmtTime(s.start)}
+                          aria-label={`Remove the ${fmtTime(s.start)} slot`}
+                          title="Remove this slot"
+                          className="absolute top-0.5 right-1 hidden group-hover:block text-muted-400 hover:text-red-600 text-xs leading-none"
+                        >
+                          ×
+                        </button>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -528,6 +577,24 @@ export function ScheduleSection({
             );
           })()
         )}
+        {(savedConfig.blocked ?? []).length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-600">
+            <span>Removed:</span>
+            {(savedConfig.blocked ?? []).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => toggleBlocked(t, false)}
+                disabled={togglingSlot === t}
+                title="Restore this slot"
+                className="rounded-md border border-dashed border-muted-200 px-1.5 py-0.5 font-mono line-through hover:no-underline hover:border-accent hover:text-accent transition"
+              >
+                {t}
+              </button>
+            ))}
+            <span className="text-muted-400">(click to restore)</span>
+          </div>
+        ) : null}
         {schedule && schedule.length > 0 ? (
           <p className="mt-2 text-xs text-muted-600">
             Assign, move, or clear times from the Time column in Participants
