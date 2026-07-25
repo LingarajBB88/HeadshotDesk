@@ -87,6 +87,49 @@ function fmtTime(iso: string): string {
   return iso.slice(11, 16);
 }
 
+// Native type="time" inputs are fiddly (tiny clock widget, per-browser
+// quirks). A dropdown of 15-minute steps is one obvious click; off-grid
+// values (e.g. 18:40 after adding slots) are kept as an extra option so
+// nothing silently shifts.
+const QUARTER_HOURS: string[] = Array.from({ length: 96 }, (_, i) =>
+  toHHMM(i * 15),
+);
+
+function TimeSelect({
+  value,
+  onChange,
+  ariaLabel,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  const options =
+    value && !QUARTER_HOURS.includes(value)
+      ? [...QUARTER_HOURS, value].sort((a, b) => toMins(a) - toMins(b))
+      : QUARTER_HOURS;
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
+      className={
+        className ??
+        "rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+      }
+    >
+      {value === "" ? <option value="">--:--</option> : null}
+      {options.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function ScheduleSection({
   job,
   refreshKey = 0,
@@ -335,10 +378,10 @@ export function ScheduleSection({
             <span className="block text-xs font-medium text-muted-600">
               Day starts
             </span>
-            <input
-              type="time"
+            <TimeSelect
               value={config.start}
-              onChange={(e) => setCadence({ start: e.target.value })}
+              onChange={(v) => setCadence({ start: v })}
+              ariaLabel="Day starts"
               className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
           </label>
@@ -346,10 +389,10 @@ export function ScheduleSection({
             <span className="block text-xs font-medium text-muted-600">
               Day ends
             </span>
-            <input
-              type="time"
+            <TimeSelect
               value={config.end}
-              onChange={(e) => setConfig({ ...config, end: e.target.value })}
+              onChange={(v) => setConfig({ ...config, end: v })}
+              ariaLabel="Day ends"
               className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
           </label>
@@ -443,18 +486,16 @@ export function ScheduleSection({
           </span>
           {config.breaks.map((b, i) => (
             <div key={i} className="mt-2 flex items-center gap-2">
-              <input
-                type="time"
+              <TimeSelect
                 value={b.start}
-                onChange={(e) => setBreak(i, { start: e.target.value })}
-                className="rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+                onChange={(v) => setBreak(i, { start: v })}
+                ariaLabel={`Break ${i + 1} starts`}
               />
               <span className="text-xs text-muted-600">to</span>
-              <input
-                type="time"
+              <TimeSelect
                 value={b.end}
-                onChange={(e) => setBreak(i, { end: e.target.value })}
-                className="rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+                onChange={(v) => setBreak(i, { end: v })}
+                ariaLabel={`Break ${i + 1} ends`}
               />
               <button
                 type="button"
