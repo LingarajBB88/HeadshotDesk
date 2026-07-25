@@ -643,6 +643,49 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     related: ["galleries", "add-participants", "job-statuses"],
   },
+  {
+    slug: "client-dashboard",
+    title: "Sharing a live status page with your client",
+    category: "Galleries & delivery",
+    summary: "The client dashboard link: what your contact sees, sharing, and revoking.",
+    intro: [
+      "Corporate shoots come with a contact person who wants to know how it is going: how many signed up, has everyone booked, have the photos gone out. The client dashboard answers all of that with one link, so those check-in emails stop landing in your inbox.",
+      "Your contact bookmarks the link and sees live progress any time, without an account and without seeing anything private.",
+    ],
+    keywords: ["client", "dashboard", "share", "status", "progress", "HR", "coordinator", "revoke", "live", "link"],
+    sections: [
+      {
+        id: "sharing",
+        heading: "Sharing the link",
+        body: [
+          "On the job page, under the signup link, click Share client dashboard. You get a private link to copy into an email or chat with your contact. The same button shows the existing link afterwards, so you can copy it again any time.",
+        ],
+      },
+      {
+        id: "what-they-see",
+        heading: "What your client sees",
+        body: [
+          "A clean status page with the job name, your studio name, shoot date and location, plus live tiles: how many people signed up, slots booked (on time-slot jobs), how many have been photographed, and how many galleries are delivered. Below that, a per-person list with each name, their booked time, and where they are in the process.",
+          "It refreshes itself every 30 seconds, so during signup week and on shoot day the page is always current.",
+        ],
+      },
+      {
+        id: "privacy",
+        heading: "What they never see",
+        body: [
+          "No email addresses, no gallery links, no photos. Names and progress only. The page is read-only: your client cannot change anything about the job.",
+        ],
+      },
+      {
+        id: "revoking",
+        heading: "Revoking access",
+        body: [
+          "Click Revoke next to the link and it stops working immediately, for everyone holding it. Sharing again creates a fresh link, so a link that leaked or outlived the project is never a risk.",
+        ],
+      },
+    ],
+    related: ["deliver-emails", "time-slot-booking", "create-a-job"],
+  },
 ];
 
 export function getHelpArticle(slug: string): HelpArticle | undefined {

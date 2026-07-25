@@ -64,6 +64,14 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Participants book appointments at signup; shoot day runs on a schedule.",
   },
   {
+    title: "Flexible schedule editing",
+    body: "Preview changes live, remove or add individual slots, custom lengths. Existing bookings stay protected.",
+  },
+  {
+    title: "Client status dashboard",
+    body: "Share a live progress link with your contact: signups, bookings, deliveries. No more status-check emails.",
+  },
+  {
     title: "Watch folder",
     body: "Map your export folder; new frames upload and sort automatically.",
   },
@@ -101,6 +109,16 @@ const ROADMAP_TIMELINE: {
   title: string;
   detail: string;
 }[] = [
+  {
+    status: "shipped",
+    title: "Client status dashboard",
+    detail: "A live link for your client contact: signups, bookings, and delivery progress without asking you.",
+  },
+  {
+    status: "shipped",
+    title: "Full schedule control",
+    detail: "Edit the slot grid with a live preview: remove single slots, add custom-length ones, bookings protected.",
+  },
   {
     status: "shipped",
     title: "Time-slot self-booking",
