@@ -155,7 +155,11 @@ export function ScheduleSection({
         setSaveError(
           err instanceof ApiError && err.status === 422
             ? "Check the times: the day must end after it starts, breaks must fall inside it, and slots must fit."
-            : "Couldn't save. Try again?",
+            : err instanceof ApiError && err.status === 401
+              ? "Your session expired. Log in again and retry."
+              : err instanceof ApiError
+                ? `Couldn't save: ${err.message}`
+                : "Couldn't save. Try again?",
         );
       }
     } finally {
@@ -199,24 +203,34 @@ export function ScheduleSection({
     return null;
   })();
 
-  // "Add slots" helper: extend the day end by N more slots. Keeps a single
-  // source of truth (the day window) — the grid grows, existing bookings
-  // are untouched because every old slot still exists.
-  const [extraSlots, setExtraSlots] = useState<string>("");
-  function addSlotsToEnd() {
-    const n = Number(extraSlots);
-    if (!Number.isFinite(n) || n < 1) return;
-    const [h, m] = config.end.split(":").map(Number);
-    const total = Math.min(
-      h * 60 + m + n * (config.slot_minutes + config.buffer_minutes),
-      23 * 60 + 59,
-    );
+  // "+" chip at the end of the grid: appends one slot by extending the day
+  // end. Saves immediately (like slot removal) — extending never touches a
+  // booking, so there's nothing to confirm. Click it as often as needed.
+  const [appending, setAppending] = useState(false);
+  async function appendSlot() {
+    const base = job.time_slot_config;
+    if (!base) return;
+    const [h, m] = base.end.split(":").map(Number);
+    const total = h * 60 + m + base.slot_minutes + base.buffer_minutes;
+    if (total > 23 * 60 + 59) {
+      alert("The day already runs to midnight.");
+      return;
+    }
     const pad = (x: number) => String(x).padStart(2, "0");
-    setConfig((c) => ({
-      ...c,
-      end: `${pad(Math.floor(total / 60))}:${pad(total % 60)}`,
-    }));
-    setExtraSlots("");
+    const newEnd = `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+    setAppending(true);
+    try {
+      const updated = await updateJob(job.id, {
+        time_slot_config: { ...base, end: newEnd },
+      });
+      onJobChanged(updated);
+      // Keep the form's end in sync unless the photographer had edited it.
+      setConfig((c) => (c.end === base.end ? { ...c, end: newEnd } : c));
+    } catch {
+      alert("Couldn't add a slot. Try again?");
+    } finally {
+      setAppending(false);
+    }
   }
 
   // Slot calculator: photographers usually get "N people, 9 to 5" from the
@@ -323,31 +337,6 @@ export function ScheduleSection({
             schedule went out. */}
         <div className="mt-4 rounded-card bg-muted-50 p-3">
           <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-            <div>
-              <span className="block text-xs font-medium text-muted-600">
-                Need more room? Add slots to the end of the day
-              </span>
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={extraSlots}
-                  onChange={(e) => setExtraSlots(e.target.value)}
-                  placeholder="Number of slots"
-                  aria-label="Number of slots to add"
-                  className="w-40 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                />
-                <button
-                  type="button"
-                  onClick={addSlotsToEnd}
-                  disabled={!Number(extraSlots)}
-                  className="btn-secondary text-xs disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  Add
-                </button>
-              </div>
-            </div>
             <label className="block">
               <span className="block text-xs font-medium text-muted-600">
                 Know the headcount? Let us do the math
@@ -573,6 +562,17 @@ export function ScheduleSection({
                     </div>
                   );
                 })}
+                {/* Append one slot to the end of the day, one click each. */}
+                <button
+                  type="button"
+                  onClick={appendSlot}
+                  disabled={appending}
+                  title="Add one more slot to the end of the day"
+                  aria-label="Add one more slot to the end of the day"
+                  className="rounded-md border border-dashed border-muted-200 px-1.5 py-1 text-base leading-none text-muted-400 hover:border-accent hover:text-accent transition disabled:opacity-60"
+                >
+                  +
+                </button>
               </div>
             );
           })()
@@ -595,10 +595,11 @@ export function ScheduleSection({
             <span className="text-muted-400">(click to restore)</span>
           </div>
         ) : null}
-        {schedule && schedule.length > 0 ? (
+        {slots.length > 0 ? (
           <p className="mt-2 text-xs text-muted-600">
-            Assign, move, or clear times from the Time column in Participants
-            below.
+            Removing (×) or adding (+) slots here saves right away, no Save
+            button needed. Times are assigned from the Time column in
+            Participants below.
           </p>
         ) : null}
       </div>
