@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -60,6 +61,17 @@ class Job(Base):
     # headshot" package. Photographer can bump this per job. 0 = no downloads
     # allowed (useful while still in proofing).
     download_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    # F5b.2: let participants star their favorite photo(s) in the gallery,
+    # so the photographer knows what to retouch. Off by default — some
+    # packages don't want it. pick_cap mirrors how packages are sold
+    # ("pick 1", "pick 3"); 0 means unlimited picks.
+    picks_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    pick_cap: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1"
+    )
 
     # HSD-55: shoot-day mode. "queue" (default, walk-up) or "time_slot"
     # (participants self-book during signup).

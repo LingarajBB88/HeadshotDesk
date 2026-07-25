@@ -39,7 +39,7 @@ def list_participants(
 
     # Local import keeps participant_service.File-free at module load time
     # (avoids circular import risk).
-    from app.models import File, ParticipantDownload
+    from app.models import File, ParticipantDownload, ParticipantPick
 
     stmt = (
         select(Participant)
@@ -53,6 +53,7 @@ def list_participants(
     # inflate the count (they're internal).
     counts: dict[str, int] = {}
     downloads: dict[str, int] = {}
+    picks: dict[str, int] = {}
     if participants:
         rows = db.execute(
             select(File.participant_id, func.count())
@@ -78,11 +79,20 @@ def list_participants(
         ).all()
         downloads = {pid: int(c) for pid, c in dl_rows}
 
+        # F5b.2: favorites per participant, same shape as downloads.
+        pick_rows = db.execute(
+            select(ParticipantPick.participant_id, func.count())
+            .where(ParticipantPick.participant_id.in_(participant_ids))
+            .group_by(ParticipantPick.participant_id)
+        ).all()
+        picks = {pid: int(c) for pid, c in pick_rows}
+
     # Attach as transient attributes so Pydantic from_attributes picks them up.
     for p in participants:
         # mypy: dynamic attributes; harmless and not persisted.
         p.photo_count = counts.get(p.id, 0)  # type: ignore[attr-defined]
         p.downloads_used = downloads.get(p.id, 0)  # type: ignore[attr-defined]
+        p.picks_used = picks.get(p.id, 0)  # type: ignore[attr-defined]
 
     total = len(participants)
     return participants, total

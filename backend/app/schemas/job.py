@@ -56,6 +56,10 @@ class JobCreate(BaseModel):
     # HSD-36: link to an existing Client (branding owner). When set, the
     # job inherits the client's logo and client_name mirrors their name.
     client_id: str | None = None
+    # F5b.2: let participants star favorites; cap mirrors the package
+    # ("pick 1", "pick 3"). 0 = unlimited.
+    picks_enabled: bool | None = None
+    pick_cap: int | None = Field(default=None, ge=0, le=100)
 
     _validate_location = field_validator("location")(_validate_location)
     _validate_date = field_validator("shoot_date")(_validate_shoot_date_not_past)
@@ -85,6 +89,9 @@ class JobUpdate(BaseModel):
     time_slot_config: TimeSlotConfig | None = None
     # HSD-36: re-link the job to a different client (or None to unlink).
     client_id: str | None = None
+    # F5b.2: participant favorites toggle + cap (0 = unlimited).
+    picks_enabled: bool | None = None
+    pick_cap: int | None = Field(default=None, ge=0, le=100)
     # Changing the slot config while bookings exist is destructive: booked
     # times may no longer exist on the new grid. The API refuses (409)
     # unless this flag is set, in which case existing bookings are
@@ -112,6 +119,9 @@ class JobOut(BaseModel):
     client_token: str | None
     # HSD-36: linked Client entity (branding owner), when set.
     client_id: str | None
+    # F5b.2: participant favorites.
+    picks_enabled: bool
+    pick_cap: int
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

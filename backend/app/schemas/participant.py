@@ -80,6 +80,10 @@ class ParticipantOut(BaseModel):
     # single-participant endpoints leave it at 0 since the Downloads tile is
     # job-scoped, not participant-scoped.
     downloads_used: int = 0
+    # F5b.2: how many photos this participant starred as favorites, so the
+    # photographer can see at a glance who has chosen. Populated by
+    # `list_participants` alongside the other counts.
+    picks_used: int = 0
     # F5b.1: token for the public /g/{token} gallery URL. Exposed in this
     # schema so the photographer-facing UI can render a "Copy gallery link"
     # button. It's also returned in the public signup response (the

@@ -24,7 +24,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.ids import new_id
-from app.models import File, Job, Participant, ParticipantDownload
+from app.models import (
+    File,
+    Job,
+    Participant,
+    ParticipantDownload,
+    ParticipantPick,
+)
 from app.services import storage_service
 
 
@@ -127,12 +133,23 @@ def get_gallery(db: Session, *, token: str) -> dict:
         ).all()
     }
 
+    # F5b.2: which photos this participant starred as favorites.
+    picked_ids: set[str] = {
+        fid
+        for (fid,) in db.execute(
+            select(ParticipantPick.file_id).where(
+                ParticipantPick.participant_id == participant.id
+            )
+        ).all()
+    }
+
     file_entries = [
         {
             "id": f.id,
             "original_filename": f.original_filename,
             "uploaded_at": f.uploaded_at,
             "is_downloaded": f.id in downloaded_ids,
+            "is_picked": f.id in picked_ids,
         }
         for f in files
     ]
@@ -159,6 +176,93 @@ def get_gallery(db: Session, *, token: str) -> dict:
         "download_cap": job.download_cap,
         "downloads_used": len(downloaded_ids),
         "client_logo_url": client_logo_url,
+        # F5b.2: picks. 0 cap = unlimited; picks_enabled off hides the UI.
+        "picks_enabled": job.picks_enabled,
+        "pick_cap": job.pick_cap,
+        "picks_used": len(picked_ids),
+    }
+
+
+# ============================================================================
+# F5b.2 — favorites / picks
+# ============================================================================
+
+def set_pick(
+    db: Session, *, token: str, file_id: str, picked: bool
+) -> dict:
+    """Star or un-star a photo. Idempotent: starring twice is a no-op, and
+    un-starring something unpicked is fine. Enforces the per-job cap
+    (pick_cap, 0 = unlimited) and refuses when picks are off for the job.
+
+    Returns the fresh pick state so the UI can update without a refetch.
+    """
+    participant = _resolve_participant(db, token)
+    job = db.get(Job, participant.job_id)
+    if job is None or job.archived_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Gallery not found."
+        )
+    if not job.picks_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Picking favorites isn't enabled for this shoot.",
+        )
+    f = _resolve_file_for_participant(
+        db, participant=participant, file_id=file_id
+    )
+
+    existing = db.scalar(
+        select(ParticipantPick).where(
+            ParticipantPick.participant_id == participant.id,
+            ParticipantPick.file_id == f.id,
+        )
+    )
+
+    if picked and existing is None:
+        used = int(
+            db.scalar(
+                select(func.count())
+                .select_from(ParticipantPick)
+                .where(ParticipantPick.participant_id == participant.id)
+            )
+            or 0
+        )
+        if job.pick_cap and used >= job.pick_cap:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"You can pick {job.pick_cap} photo"
+                    f"{'' if job.pick_cap == 1 else 's'}. "
+                    "Unpick one to choose another."
+                ),
+            )
+        db.add(
+            ParticipantPick(
+                id=new_id("pick"), participant_id=participant.id, file_id=f.id
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            # Double-click race: the row already exists, which is the
+            # desired end state.
+            db.rollback()
+    elif not picked and existing is not None:
+        db.delete(existing)
+        db.commit()
+
+    picked_ids = [
+        fid
+        for (fid,) in db.execute(
+            select(ParticipantPick.file_id).where(
+                ParticipantPick.participant_id == participant.id
+            )
+        ).all()
+    ]
+    return {
+        "picked_file_ids": picked_ids,
+        "picks_used": len(picked_ids),
+        "pick_cap": job.pick_cap,
     }
 
 

@@ -16,6 +16,7 @@ class GalleryFileOut(BaseModel):
     original_filename: str
     uploaded_at: datetime
     is_downloaded: bool  # whether this participant has already downloaded this file
+    is_picked: bool = False  # F5b.2: starred as a favorite
 
     model_config = {"from_attributes": True}
 
@@ -39,6 +40,23 @@ class GalleryOut(BaseModel):
     # HSD-36: client branding on the gallery header, when the job's client
     # has a logo.
     client_logo_url: str | None = None
+    # F5b.2: favorites. picks_enabled off hides the UI entirely;
+    # pick_cap 0 means unlimited.
+    picks_enabled: bool = False
+    pick_cap: int = 1
+    picks_used: int = 0
+
+
+class GalleryPickRequest(BaseModel):
+    """Body for POST /api/v1/public/gallery/{token}/files/{file_id}/pick."""
+
+    picked: bool
+
+
+class GalleryPickResult(BaseModel):
+    picked_file_ids: list[str]
+    picks_used: int
+    pick_cap: int
 
 
 class GalleryZipRequest(BaseModel):

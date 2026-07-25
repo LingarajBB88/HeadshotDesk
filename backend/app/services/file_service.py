@@ -324,6 +324,22 @@ def list_files(
             .order_by(File.uploaded_at.desc())
         ).all()
     )
+    # F5b.2: mark the photos participants starred, so the photographer sees
+    # exactly what to retouch. Transient attribute, same pattern as the
+    # participant counts.
+    from app.models import ParticipantPick
+
+    picked_file_ids = {
+        fid
+        for (fid,) in db.execute(
+            select(ParticipantPick.file_id).where(
+                ParticipantPick.file_id.in_([f.id for f in items])
+            )
+        ).all()
+    } if items else set()
+    for f in items:
+        f.picked_by_participant = f.id in picked_file_ids  # type: ignore[attr-defined]
+
     total = len(items)
     matched = sum(1 for f in items if f.participant_id is not None)
     unmatched = total - matched

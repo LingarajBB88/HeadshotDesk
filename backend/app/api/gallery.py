@@ -11,7 +11,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas.gallery import GalleryOut, GalleryZipRequest
+from app.schemas.gallery import (
+    GalleryOut,
+    GalleryPickRequest,
+    GalleryPickResult,
+    GalleryZipRequest,
+)
 from app.services import gallery_service
 
 router = APIRouter()
@@ -21,6 +26,21 @@ router = APIRouter()
 def get_gallery(token: str, db: Session = Depends(get_db)) -> GalleryOut:
     payload = gallery_service.get_gallery(db, token=token)
     return GalleryOut.model_validate(payload)
+
+
+@router.post("/{token}/files/{file_id}/pick", response_model=GalleryPickResult)
+def set_pick(
+    token: str,
+    file_id: str,
+    payload: GalleryPickRequest,
+    db: Session = Depends(get_db),
+) -> GalleryPickResult:
+    """F5b.2 — star (or un-star) a photo as a favorite. 403 when the job
+    has picks turned off, 409 when the per-job cap is reached."""
+    result = gallery_service.set_pick(
+        db, token=token, file_id=file_id, picked=payload.picked
+    )
+    return GalleryPickResult(**result)
 
 
 @router.get("/{token}/files/{file_id}/thumbnail")

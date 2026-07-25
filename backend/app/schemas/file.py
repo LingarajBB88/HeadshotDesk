@@ -16,6 +16,9 @@ class FileOut(BaseModel):
     variant: str
     is_favorite: bool
     is_selected: bool
+    # F5b.2: the participant starred this photo in their gallery — the
+    # photographer's cue for what to retouch. Only populated by list_files.
+    picked_by_participant: bool = False
     uploaded_at: datetime
 
     model_config = {"from_attributes": True}
