@@ -4,6 +4,8 @@ so it can be reused by background jobs, scripts, or other entrypoints.
 """
 from __future__ import annotations
 
+import logging
+
 from datetime import datetime, timezone
 
 from datetime import timedelta
@@ -25,6 +27,8 @@ from app.core.security import (
 )
 from app.models import Account, AuthSession, User
 from app.services import email_service
+
+logger = logging.getLogger(__name__)
 
 # Password reset tokens are valid for one hour.
 PASSWORD_RESET_TTL = timedelta(hours=1)
@@ -210,11 +214,21 @@ def request_password_reset(db: Session, *, email: str) -> None:
     db.commit()
 
     reset_url = f"{settings.frontend_url}/reset-password?token={raw_token}"
-    email_service.send_password_reset_email(
-        to_email=user.email,
-        reset_url=reset_url,
-        user_name=user.name,
-    )
+    try:
+        email_service.send_password_reset_email(
+            to_email=user.email,
+            reset_url=reset_url,
+            user_name=user.name,
+        )
+    except Exception:  # noqa: BLE001
+        # A provider rejection (e.g. Postmark 412 while the account is
+        # pending approval) must not surface as a 500: the endpoint is
+        # deliberately a quiet 204 either way, and the token stays valid
+        # so a retry after the provider recovers still works. Log with
+        # traceback for the operator.
+        logger.exception(
+            "Password reset email to %s failed to send", user.email
+        )
 
 
 def reset_password(db: Session, *, token: str, new_password: str) -> None:

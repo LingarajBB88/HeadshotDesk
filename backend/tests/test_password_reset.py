@@ -55,6 +55,21 @@ class TestForgotPassword:
         )
         assert r.status_code == 422
 
+    def test_provider_failure_still_returns_204(self, client: TestClient):
+        """A rejected send (e.g. Postmark 412 while the account is pending
+        approval) must not become a 500 — the endpoint stays a quiet 204 and
+        the token remains valid for a later retry."""
+        ctx = _signup(client)
+        with patch(
+            "app.services.email_service.send_password_reset_email",
+            side_effect=RuntimeError("provider said no"),
+        ):
+            r = client.post(
+                "/api/v1/auth/forgot-password",
+                json={"email": ctx["credentials"]["email"]},
+            )
+            assert r.status_code == 204
+
 
 class TestResetPassword:
     def _request_reset_and_get_token(self, client: TestClient, email: str) -> str:

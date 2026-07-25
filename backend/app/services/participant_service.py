@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
@@ -19,6 +20,8 @@ from app.core.security import generate_refresh_token  # reused for opaque tokens
 from app.models import Account, Job, Participant, User
 from app.schemas.participant import ParticipantCreate
 from app.services import email_service, job_service
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -209,13 +212,26 @@ def resend_gallery_email(
     )
 
     gallery_url = f"{settings.frontend_url}/g/{p.gallery_token}"
-    email_service.send_gallery_delivery_email(
-        to_email=p.email,
-        participant_name=p.name,
-        photographer_name=photographer_name,
-        job_name=job.name,
-        gallery_url=gallery_url,
-    )
+    try:
+        email_service.send_gallery_delivery_email(
+            to_email=p.email,
+            participant_name=p.name,
+            photographer_name=photographer_name,
+            job_name=job.name,
+            gallery_url=gallery_url,
+        )
+    except Exception as exc:  # noqa: BLE001
+        # Provider rejection (e.g. Postmark refusing the recipient) should
+        # come back as a clear, actionable error — not a 500 — and must not
+        # mark the participant as delivered.
+        logger.exception("Gallery resend to %s failed", p.email)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "The email provider refused this send. "
+                "Check the delivery logs and try again."
+            ),
+        ) from exc
     p.gallery_sent_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(p)
