@@ -518,12 +518,12 @@ export function ScheduleSection({
                   style={{
                     order: toMins(b.start),
                   }}
-                  className="rounded-md border border-muted-200 bg-muted-100 px-1.5 py-1 min-w-0"
+                  className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 min-w-0"
                 >
-                  <span className="block font-mono text-[11px] leading-tight text-muted-600">
+                  <span className="block font-mono text-[11px] leading-tight text-amber-700">
                     {b.start} ({toMins(b.end) - toMins(b.start)}m)
                   </span>
-                  <span className="block text-[11px] leading-tight text-muted-600">
+                  <span className="block text-[11px] leading-tight text-amber-700">
                     break
                   </span>
                 </div>
