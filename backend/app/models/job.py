@@ -70,6 +70,13 @@ class Job(Base):
         JSONB, nullable=True
     )
 
+    # HSD-67: token for the client-facing live status dashboard (/c/{token}).
+    # Null = not shared. Rotating the token revokes the old link, same
+    # pattern as participant gallery tokens.
+    client_token: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True
+    )
+
     created_by: Mapped[str] = mapped_column(
         String, ForeignKey("users.id"), nullable=False
     )

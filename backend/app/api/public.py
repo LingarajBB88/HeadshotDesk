@@ -167,3 +167,105 @@ def book_slot_public(
         slot_start=payload.slot_start,
     )
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
+
+
+# --- HSD-67: client dashboard (photographer's client, token-only) -----------
+
+class ClientParticipantOut(BaseModel):
+    """One row for the client. Deliberately minimal: names only, no emails
+    or gallery links — the client sees progress, not personal data."""
+    name: str
+    status: str  # signed_up | photographed | delivered
+    slot_time: str | None  # "13:00" when a slot is booked
+
+
+class ClientDashboardOut(BaseModel):
+    job_name: str
+    studio_name: str
+    shoot_date: str | None
+    location: str | None
+    job_status: str
+    participants_total: int
+    photographed: int
+    delivered: int
+    photos_uploaded: int
+    shoot_mode: str
+    slots_total: int | None
+    slots_booked: int | None
+    participants: list[ClientParticipantOut]
+
+
+@router.get("/client/{token}", response_model=ClientDashboardOut)
+def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboardOut:
+    """Live shoot-progress view for the photographer's client (HR contact,
+    event coordinator). Token-only, revocable from the job page. Read-only
+    aggregate data; no participant emails or gallery links leak here."""
+    from sqlalchemy import func as sa_func, select as sa_select
+
+    from app.models import Account, File, Job, Participant
+
+    job = db.scalar(sa_select(Job).where(Job.client_token == token))
+    if job is None or not token:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Dashboard not found."
+        )
+    account = db.get(Account, job.account_id)
+
+    participants = list(
+        db.scalars(
+            sa_select(Participant)
+            .where(Participant.job_id == job.id)
+            .order_by(Participant.created_at.asc())
+        ).all()
+    )
+    photos = db.scalar(
+        sa_select(sa_func.count())
+        .select_from(File)
+        .where(
+            File.job_id == job.id,
+            File.deleted_at.is_(None),
+            File.variant == "original",
+        )
+    ) or 0
+
+    slots_total: int | None = None
+    slots_booked: int | None = None
+    slot_by_participant: dict[str, str] = {}
+    if job.shoot_mode == "time_slot":
+        slots = slot_service.list_slots(db, job=job)
+        slots_total = len(slots)
+        slots_booked = sum(1 for s in slots if not s["available"])
+        for e in slot_service.job_schedule(db, job=job):
+            slot_by_participant[e["participant_id"]] = e[
+                "slot_start"
+            ].strftime("%H:%M")
+
+    def p_status(p: Participant) -> str:
+        if p.gallery_sent_at is not None:
+            return "delivered"
+        if p.shot_at is not None:
+            return "photographed"
+        return "signed_up"
+
+    return ClientDashboardOut(
+        job_name=job.name,
+        studio_name=account.name if account else "HeadshotDesk",
+        shoot_date=job.shoot_date.isoformat() if job.shoot_date else None,
+        location=job.location,
+        job_status=job.status,
+        participants_total=len(participants),
+        photographed=sum(1 for p in participants if p.shot_at is not None),
+        delivered=sum(1 for p in participants if p.gallery_sent_at is not None),
+        photos_uploaded=int(photos),
+        shoot_mode=job.shoot_mode,
+        slots_total=slots_total,
+        slots_booked=slots_booked,
+        participants=[
+            ClientParticipantOut(
+                name=p.name,
+                status=p_status(p),
+                slot_time=slot_by_participant.get(p.id),
+            )
+            for p in participants
+        ],
+    )

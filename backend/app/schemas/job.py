@@ -103,6 +103,8 @@ class JobOut(BaseModel):
     download_cap: int
     shoot_mode: str
     time_slot_config: dict | None
+    # HSD-67: null until the photographer shares the client dashboard.
+    client_token: str | None
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

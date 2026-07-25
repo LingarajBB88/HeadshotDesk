@@ -12,6 +12,7 @@ import {
   ShootDayHero,
   type JobStats,
 } from "@/components/JobOverview";
+import { ClientLinkBar } from "@/components/ClientLinkBar";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
 import { PhotosSection } from "@/components/PhotosSection";
 import { ScheduleSection } from "@/components/ScheduleSection";
@@ -351,13 +352,20 @@ export default function JobDetailPage() {
                   column owns both 'where + when' and 'how to share'. Hidden
                   when archived since the public page 404s for archived jobs. */}
               {job.status !== "archived" ? (
-                <SignupLinkBar
-                  url={
-                    typeof window !== "undefined"
-                      ? `${window.location.origin}/s/${job.public_slug}`
-                      : `/s/${job.public_slug}`
-                  }
-                />
+                <>
+                  <SignupLinkBar
+                    url={
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/s/${job.public_slug}`
+                        : `/s/${job.public_slug}`
+                    }
+                  />
+                  {/* HSD-67: live status link for the photographer's client. */}
+                  <ClientLinkBar
+                    job={job}
+                    onJobChanged={(updated) => setJob(updated)}
+                  />
+                </>
               ) : null}
             </div>
           </div>

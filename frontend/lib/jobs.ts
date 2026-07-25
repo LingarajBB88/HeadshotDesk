@@ -49,6 +49,8 @@ export type Job = {
   // HSD-55: how shoot day runs.
   shoot_mode: ShootMode;
   time_slot_config: TimeSlotConfig | null;
+  // HSD-67: null until the client dashboard is shared.
+  client_token: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -136,6 +138,23 @@ export async function updateJob(
     method: "PATCH",
     token: authToken(),
     body: JSON.stringify(patch),
+  });
+}
+
+// HSD-67: client dashboard link — share (create/return) and revoke.
+export async function shareClientLink(
+  jobId: string,
+): Promise<{ client_token: string; url: string }> {
+  return api<{ client_token: string; url: string }>(
+    `/api/v1/jobs/${jobId}/client-link`,
+    { method: "POST", token: authToken() },
+  );
+}
+
+export async function revokeClientLink(jobId: string): Promise<void> {
+  await api(`/api/v1/jobs/${jobId}/client-link`, {
+    method: "DELETE",
+    token: authToken(),
   });
 }
 

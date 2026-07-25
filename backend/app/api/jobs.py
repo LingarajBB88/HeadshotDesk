@@ -132,6 +132,49 @@ def deliver(
     return DeliveryResult(**result)
 
 
+class ClientLinkOut(BaseModel):
+    client_token: str
+    url: str
+
+
+@router.post("/{job_id}/client-link", response_model=ClientLinkOut)
+def share_client_link(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ClientLinkOut:
+    """HSD-67 — create (or return) the client dashboard link for this job.
+    Token-only access for the photographer's client; revocable below."""
+    from app.config import settings as app_settings
+    from app.core.security import generate_refresh_token
+
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    if not job.client_token:
+        job.client_token = generate_refresh_token()
+        db.commit()
+        db.refresh(job)
+    return ClientLinkOut(
+        client_token=job.client_token,
+        url=f"{app_settings.frontend_url}/c/{job.client_token}",
+    )
+
+
+@router.delete(
+    "/{job_id}/client-link", status_code=status.HTTP_204_NO_CONTENT
+)
+def revoke_client_link(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> None:
+    """HSD-67 — revoke the client dashboard link. The old URL stops working
+    immediately; sharing again generates a fresh token."""
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    if job.client_token:
+        job.client_token = None
+        db.commit()
+
+
 @router.get("/{job_id}/schedule", response_model=ScheduleOut)
 def schedule(
     job_id: str,
