@@ -1,1 +1,4 @@
-uploads/
+# Local dev storage: participant photos and client logos land here when R2
+# isn't configured. Never commit the files themselves — only this rule.
+*
+!.gitignore
