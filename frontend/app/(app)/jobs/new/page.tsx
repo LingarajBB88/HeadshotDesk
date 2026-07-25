@@ -18,10 +18,11 @@ export default function NewJobPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // HSD-55: how shoot day runs. Queue is the familiar default.
   const [shootMode, setShootMode] = useState<ShootMode>("queue");
-  // HSD-36: pick an existing client or create one inline. "" = no client,
-  // "__new__" = the inline name field below is used.
+  // HSD-36: pick an existing client, or flip into create mode with the
+  // "+ New client" button (shows an inline name field).
   const [clients, setClients] = useState<Client[]>([]);
   const [clientChoice, setClientChoice] = useState<string>("");
+  const [creatingClient, setCreatingClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
 
   useEffect(() => {
@@ -49,10 +50,10 @@ export default function NewJobPage() {
       // HSD-36: resolve the client first. Inline-create dedupes by name
       // server-side, so typing an existing client's name just reuses it.
       let clientId: string | null = null;
-      if (clientChoice === "__new__" && newClientName.trim()) {
+      if (creatingClient && newClientName.trim()) {
         const created = await createClient(newClientName.trim());
         clientId = created.id;
-      } else if (clientChoice && clientChoice !== "__new__") {
+      } else if (!creatingClient && clientChoice) {
         clientId = clientChoice;
       }
 
@@ -214,27 +215,49 @@ export default function NewJobPage() {
               <label className="block text-sm font-medium text-ink mb-1.5">
                 Client
               </label>
-              <select
-                value={clientChoice}
-                onChange={(e) => setClientChoice(e.target.value)}
-                className="w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-              >
-                <option value="">No client (personal / internal)</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-                <option value="__new__">+ New client…</option>
-              </select>
-              {clientChoice === "__new__" ? (
-                <input
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Client name, e.g. Acme Corp"
-                  className="mt-2 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                />
-              ) : null}
+              {creatingClient ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Client name, e.g. Acme Corp"
+                    autoFocus
+                    className="flex-1 rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreatingClient(false);
+                      setNewClientName("");
+                    }}
+                    className="text-xs text-muted-600 hover:text-ink transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={clientChoice}
+                    onChange={(e) => setClientChoice(e.target.value)}
+                    className="flex-1 rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  >
+                    <option value="">No client (personal / internal)</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setCreatingClient(true)}
+                    className="btn-secondary text-xs whitespace-nowrap"
+                  >
+                    + New client
+                  </button>
+                </div>
+              )}
               <p className="mt-1 text-xs text-muted-600">
                 The company you&apos;re shooting for. Their logo brands the
                 signup page, galleries, and delivery emails.
