@@ -72,6 +72,10 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Share a live progress link with your contact: signups, bookings, deliveries. No more status-check emails.",
   },
   {
+    title: "Client-branded delivery",
+    body: "Upload a client's logo once. Their signup page, every gallery, and delivery emails carry their branding.",
+  },
+  {
     title: "Watch folder",
     body: "Map your export folder; new frames upload and sort automatically.",
   },
@@ -111,6 +115,11 @@ const ROADMAP_TIMELINE: {
 }[] = [
   {
     status: "shipped",
+    title: "Client logos everywhere it counts",
+    detail: "Upload a logo once per client; signup pages, galleries, and delivery emails carry their branding.",
+  },
+  {
+    status: "shipped",
     title: "Client status dashboard",
     detail: "A live link for your client contact: signups, bookings, and delivery progress without asking you.",
   },
@@ -136,11 +145,6 @@ const ROADMAP_TIMELINE: {
   },
   {
     status: "building",
-    title: "Your client's logo on signup pages and galleries",
-    detail: "Branded delivery that looks like it came from the client's team.",
-  },
-  {
-    status: "next",
     title: "Participant retouch picks and proofing",
     detail: "Participants mark favorites; you see exactly what to retouch.",
   },

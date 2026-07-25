@@ -686,6 +686,43 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     related: ["deliver-emails", "time-slot-booking", "create-a-job"],
   },
+  {
+    slug: "clients-and-branding",
+    title: "Clients and their logos",
+    category: "Getting started",
+    summary: "The Clients page, uploading a logo, and everywhere it appears automatically.",
+    intro: [
+      "Corporate work is repeat work: the same company books you again next year. HeadshotDesk keeps a Client record for each company you shoot for, and their logo lives on it. Upload the logo once, and every job for that client is branded automatically.",
+      "The payoff is how delivery feels: a signup page and gallery carrying the client's own logo reads as a deliverable from their brand team, not output from a tool.",
+    ],
+    keywords: ["client", "logo", "branding", "brand", "upload", "company", "clients page"],
+    sections: [
+      {
+        id: "clients-page",
+        heading: "The Clients page",
+        body: [
+          "Clients in the main menu lists every company you work with, how many jobs each has, and their logo. Add a client by name, rename them any time (linked jobs update too), and delete them once no jobs reference them.",
+          "Logos can be PNG, JPEG, or SVG up to 2 MB. Transparent backgrounds look best. Replace or remove a logo any time; every surface updates immediately.",
+        ],
+      },
+      {
+        id: "linking-jobs",
+        heading: "Linking a job to a client",
+        body: [
+          "The New Job form has a Client picker: choose an existing client or create one on the spot by typing their name. Typing a name you already use simply reuses that client, so duplicates don't creep in.",
+          "Jobs created before this feature were linked automatically based on their client name; they just have no logo until you upload one.",
+        ],
+      },
+      {
+        id: "where-it-shows",
+        heading: "Where the logo appears",
+        body: [
+          "Four places, all automatic once the logo is uploaded: the signup page (above the form, where their employees first land), each participant's private gallery, the delivery email, and your own job page header. No logo set? Every surface falls back cleanly to the plain layout.",
+        ],
+      },
+    ],
+    related: ["create-a-job", "galleries", "deliver-emails"],
+  },
 ];
 
 export function getHelpArticle(slug: string): HelpArticle | undefined {

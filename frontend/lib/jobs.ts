@@ -51,6 +51,8 @@ export type Job = {
   time_slot_config: TimeSlotConfig | null;
   // HSD-67: null until the client dashboard is shared.
   client_token: string | null;
+  // HSD-36: linked Client entity (branding owner), when set.
+  client_id: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -94,6 +96,8 @@ export async function createJob(input: {
   location?: string | null;
   download_cap?: number | null;
   shoot_mode?: ShootMode;
+  // HSD-36: link an existing Client (branding owner).
+  client_id?: string | null;
 }): Promise<Job> {
   // Strip empty strings → null so backend doesn't try to validate them as emails/dates.
   const body: Record<string, unknown> = { name: input.name };
@@ -105,6 +109,7 @@ export async function createJob(input: {
     body.download_cap = input.download_cap;
   }
   if (input.shoot_mode) body.shoot_mode = input.shoot_mode;
+  if (input.client_id) body.client_id = input.client_id;
 
   return api<Job>("/api/v1/jobs", {
     method: "POST",
@@ -131,6 +136,7 @@ export async function updateJob(
       | "download_cap"
       | "shoot_mode"
       | "time_slot_config"
+      | "client_id"
     >
   >,
 ): Promise<Job> {

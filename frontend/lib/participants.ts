@@ -45,6 +45,8 @@ export type PublicJob = {
   // HSD-55: signals the signup page to show the slot picker.
   shoot_mode: "queue" | "time_slot";
   branding: Record<string, unknown> | null;
+  /** HSD-36: the client's logo, shown above the signup form. */
+  client_logo_url?: string | null;
 };
 
 export type PublicSlot = {

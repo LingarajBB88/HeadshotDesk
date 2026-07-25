@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useEffect } from "react";
+
 import { FormField } from "@/components/FormField";
+import { createClient, listClients, type Client } from "@/lib/clients";
 import { createJob, type ShootMode } from "@/lib/jobs";
 import { classifyFormError } from "@/lib/form-errors";
 
@@ -15,6 +18,23 @@ export default function NewJobPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // HSD-55: how shoot day runs. Queue is the familiar default.
   const [shootMode, setShootMode] = useState<ShootMode>("queue");
+  // HSD-36: pick an existing client or create one inline. "" = no client,
+  // "__new__" = the inline name field below is used.
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientChoice, setClientChoice] = useState<string>("");
+  const [newClientName, setNewClientName] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setClients(await listClients());
+      } catch {
+        setClients([]);
+      }
+    })();
+  }, []);
+
+  const selectedClient = clients.find((c) => c.id === clientChoice) ?? null;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -25,9 +45,20 @@ export default function NewJobPage() {
       const data = new FormData(e.currentTarget);
       const rawCap = String(data.get("download_cap") ?? "").trim();
       const parsedCap = rawCap === "" ? null : Number(rawCap);
+
+      // HSD-36: resolve the client first. Inline-create dedupes by name
+      // server-side, so typing an existing client's name just reuses it.
+      let clientId: string | null = null;
+      if (clientChoice === "__new__" && newClientName.trim()) {
+        const created = await createClient(newClientName.trim());
+        clientId = created.id;
+      } else if (clientChoice && clientChoice !== "__new__") {
+        clientId = clientChoice;
+      }
+
       const job = await createJob({
         name: String(data.get("name") ?? "").trim(),
-        client_name: (String(data.get("client_name") ?? "").trim()) || null,
+        client_id: clientId,
         client_email: (String(data.get("client_email") ?? "").trim()) || null,
         shoot_date: (String(data.get("shoot_date") ?? "").trim()) || null,
         location: (String(data.get("location") ?? "").trim()) || null,
@@ -178,12 +209,37 @@ export default function NewJobPage() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-600 mb-4">
               Client
             </h2>
-            <FormField
-              label="Client name"
-              name="client_name"
-              hint="The company or contact you're shooting for. Optional."
-              error={fieldErrors.client_name}
-            />
+            {/* HSD-36: client picker — existing clients + inline create. */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-ink mb-1.5">
+                Client
+              </label>
+              <select
+                value={clientChoice}
+                onChange={(e) => setClientChoice(e.target.value)}
+                className="w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="">No client (personal / internal)</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+                <option value="__new__">+ New client…</option>
+              </select>
+              {clientChoice === "__new__" ? (
+                <input
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  placeholder="Client name, e.g. Acme Corp"
+                  className="mt-2 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                />
+              ) : null}
+              <p className="mt-1 text-xs text-muted-600">
+                The company you&apos;re shooting for. Their logo brands the
+                signup page, galleries, and delivery emails.
+              </p>
+            </div>
             <FormField
               label="Client email"
               name="client_email"
@@ -192,19 +248,42 @@ export default function NewJobPage() {
               error={fieldErrors.client_email}
             />
 
-            {/* Client logo — coming with the Client entity (HSD-36). Show a
-                disabled placeholder so the photographer knows it's on the
-                way; keeps this form pre-shaped for that work. */}
+            {/* HSD-36: logo preview for the selected client. Uploads live
+                on the Clients page (once per client, every job inherits). */}
             <div className="mb-4">
               <span className="block text-sm font-medium text-ink mb-1.5">
                 Client logo
               </span>
-              <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
-                <p className="text-xs text-muted-600">
-                  Coming soon: upload your client&apos;s logo once and it&apos;ll
-                  appear on their signup page and galleries.
-                </p>
-              </div>
+              {selectedClient?.logo_url ? (
+                <div className="rounded-md border border-muted-200 bg-paper px-3 py-3 flex items-center gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedClient.logo_url}
+                    alt={`${selectedClient.name} logo`}
+                    className="h-10 max-w-[140px] object-contain"
+                  />
+                  <span className="text-xs text-muted-600">
+                    Shown on the signup page, galleries, and delivery emails.
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-muted-200 bg-muted-50 px-3 py-4 text-center">
+                  <p className="text-xs text-muted-600">
+                    {selectedClient
+                      ? `No logo for ${selectedClient.name} yet. `
+                      : "Pick or create a client, then "}
+                    <a
+                      href="/clients"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      upload one on the Clients page
+                    </a>
+                    . Every job for that client inherits it.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
         </div>

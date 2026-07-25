@@ -70,6 +70,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/jobs" className="hover:text-ink">
               Jobs
             </Link>
+            {/* HSD-36: client entities own branding (logos). */}
+            <Link href="/clients" className="hover:text-ink">
+              Clients
+            </Link>
             {/* Help opens in a new tab so mid-shoot work isn't lost. */}
             <a
               href="/help"

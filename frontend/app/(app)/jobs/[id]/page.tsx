@@ -19,6 +19,7 @@ import { ScheduleSection } from "@/components/ScheduleSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
 import { StatusPill } from "@/components/StatusPill";
 import { ApiError } from "@/lib/api";
+import { listClients } from "@/lib/clients";
 import { listFiles } from "@/lib/files";
 import {
   archiveJob,
@@ -136,6 +137,33 @@ export default function JobDetailPage() {
     };
   }, [id, participantsRefreshKey]);
 
+  // HSD-36: the linked client's logo for the job header. Resolved from the
+  // clients list; missing logo (or no client) renders nothing.
+  const [clientLogoUrl, setClientLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const clientId = job?.client_id;
+    if (!clientId) {
+      setClientLogoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const cs = await listClients();
+        if (!cancelled) {
+          setClientLogoUrl(
+            cs.find((c) => c.id === clientId)?.logo_url ?? null,
+          );
+        }
+      } catch {
+        /* logo is decorative — never block the page on it */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [job?.client_id]);
+
   // Live sync: signups and slot bookings happen on the public signup page,
   // in another tab or on a participant's phone. This page would otherwise
   // only show what existed when it loaded. Poll while the tab is visible so
@@ -226,6 +254,14 @@ export default function JobDetailPage() {
       <div className="mt-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            {clientLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={clientLogoUrl}
+                alt={job.client_name ? `${job.client_name} logo` : "Client logo"}
+                className="h-9 max-w-[120px] object-contain"
+              />
+            ) : null}
             <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight break-words">
               {job.name}
             </h1>

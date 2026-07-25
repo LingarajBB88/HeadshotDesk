@@ -194,7 +194,19 @@ export default function PublicSignupPage() {
     <main className="min-h-dvh flex items-center justify-center px-6 py-12 bg-muted-50">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
-          <Logo size="md" wordmark />
+          {/* HSD-36: the client's logo leads when set — participants see
+              their employer's branding first. HeadshotDesk moves to the
+              footer role via the card below. */}
+          {job?.client_logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={job.client_logo_url}
+              alt={job.client_name ? `${job.client_name} logo` : "Company logo"}
+              className="max-h-16 max-w-[220px] object-contain"
+            />
+          ) : (
+            <Logo size="md" wordmark />
+          )}
         </div>
 
         <div className="bg-paper border border-muted-200 rounded-dialog p-8 shadow-sm">

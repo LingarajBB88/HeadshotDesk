@@ -314,6 +314,20 @@ export default function PublicGalleryPage() {
       </header>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
+        {/* HSD-36: client branding — the delivery feels like the client's,
+            not the tool's. */}
+        {gallery.client_logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={gallery.client_logo_url}
+            alt={
+              gallery.job.client_name
+                ? `${gallery.job.client_name} logo`
+                : "Company logo"
+            }
+            className="mb-5 max-h-14 max-w-[200px] object-contain"
+          />
+        ) : null}
         <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
           Hi {gallery.participant_name.split(" ")[0]}, here are your photos
         </h1>

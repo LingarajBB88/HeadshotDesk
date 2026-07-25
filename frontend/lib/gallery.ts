@@ -24,6 +24,8 @@ export type Gallery = {
   files: GalleryFile[];
   download_cap: number;
   downloads_used: number;
+  /** HSD-36: client branding on the gallery header. */
+  client_logo_url?: string | null;
 };
 
 export async function getGallery(token: string): Promise<Gallery> {
