@@ -448,6 +448,44 @@ class TestSmartConfigChange:
         ).json()["slots"]
         assert len(slots) == 6
 
+    def test_extra_slot_with_custom_length(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)  # 09:00–10:00, 10-min slots
+        cfg = job["time_slot_config"]
+
+        # Append a 25-minute slot after the day, plus one overlapping the
+        # grid (skipped silently).
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    **cfg,
+                    "extra": [
+                        {"start": "10:00", "minutes": 25},
+                        {"start": "09:05", "minutes": 30},  # overlaps → skipped
+                    ],
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert len(slots) == 7  # 6 grid + 1 extra
+        last = slots[-1]
+        assert last["start"][11:16] == "10:00"
+        assert last["end"][11:16] == "10:25"
+
+        # The extra slot is bookable like any other.
+        jane = _public_signup(client, job["public_slug"], "Jane", "jane@example.com")
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": jane["gallery_token"], "slot_start": last["start"]},
+        )
+        assert r.status_code == 200, r.text
+
     def test_partial_change_cancels_only_nonfitting(self, client: TestClient):
         a = _signup(client)
         token = a["tokens"]["access_token"]

@@ -15,6 +15,8 @@ export type TimeSlotConfig = {
   breaks: SlotBreak[];
   /** Individually removed slots (HH:MM start times). */
   blocked?: string[];
+  /** One-off slots outside the grid, any length. */
+  extra?: { start: string; minutes: number }[];
 };
 
 export type ScheduleEntry = {

@@ -30,6 +30,22 @@ class SlotBreak(BaseModel):
         return self
 
 
+class ExtraSlot(BaseModel):
+    """A one-off slot outside the uniform grid, e.g. a 15-minute add-on
+    after the day's normal 10-minute slots. Overlapping extras are skipped
+    at generation time rather than rejected, so a stale entry can't wedge
+    the whole config."""
+    start: str
+    minutes: int = Field(ge=1, le=120)
+
+    @field_validator("start")
+    @classmethod
+    def _valid_time(cls, v: str) -> str:
+        if not _TIME_RE.match(v):
+            raise ValueError("Times must be HH:MM (24h).")
+        return v
+
+
 class TimeSlotConfig(BaseModel):
     """Slot generation parameters, stored whole in Job.time_slot_config."""
     start: str
@@ -41,6 +57,8 @@ class TimeSlotConfig(BaseModel):
     # them; restoring is just removing the entry. Times that don't land on
     # the grid are harmless leftovers (e.g. after the grid shifted).
     blocked: list[str] = Field(default_factory=list, max_length=500)
+    # One-off slots appended outside the grid, any length.
+    extra: list[ExtraSlot] = Field(default_factory=list, max_length=200)
 
     @field_validator("start", "end")
     @classmethod

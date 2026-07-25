@@ -73,6 +73,17 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
         if slot[0].strftime("%H:%M") not in blocked:
             slots.append(slot)
         cursor += step
+
+    # One-off extras (custom lengths, usually appended after the day).
+    # Overlaps with existing slots or each other are skipped, not errors.
+    for ex in cfg.extra:
+        ex_start = at(ex.start)
+        ex_end = ex_start + timedelta(minutes=ex.minutes)
+        if any(s < ex_end and e > ex_start for s, e in slots):
+            continue
+        slots.append((ex_start, ex_end))
+
+    slots.sort(key=lambda se: se[0])
     return slots
 
 
