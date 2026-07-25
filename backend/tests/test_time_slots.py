@@ -448,6 +448,41 @@ class TestSmartConfigChange:
         ).json()["slots"]
         assert len(slots) == 6
 
+    def test_stale_removals_pruned_on_cadence_change(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_slot_job(client, token)  # 09:00–10:00, 10-min slots
+        cfg = job["time_slot_config"]
+
+        # Remove 09:20 on the 10-minute grid.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": {**cfg, "blocked": ["09:20"]}},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200
+
+        # Switch to 17-minute slots: 09:20 doesn't land on the new grid
+        # (09:00, 09:17, 09:34) — the stale removal must be pruned, not
+        # left to silently eat a future slot.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    **cfg,
+                    "slot_minutes": 17,
+                    "blocked": ["09:20"],
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["time_slot_config"]["blocked"] == []
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert slots[0]["start"][11:16] == "09:00"
+
     def test_extra_slot_with_custom_length(self, client: TestClient):
         a = _signup(client)
         token = a["tokens"]["access_token"]

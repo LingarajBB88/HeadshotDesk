@@ -148,6 +148,27 @@ def update_job(
 
         new_config = fields.get("time_slot_config", job.time_slot_config)
         new_date = fields.get("shoot_date", job.shoot_date)
+
+        # Hygiene: removals (blocked times) belong to the grid they were
+        # made on. Prune any that don't land on the new grid, so a cadence
+        # change doesn't leave a graveyard of stale entries that silently
+        # eat future slots.
+        if new_config and new_config.get("blocked"):
+            candidate_starts = {
+                s.strftime("%H:%M")
+                for s, _ in slot_service.slot_times_for(
+                    {**new_config, "blocked": []}, new_date
+                )
+            }
+            new_config = {
+                **new_config,
+                "blocked": [
+                    b for b in new_config["blocked"] if b in candidate_starts
+                ],
+            }
+            if "time_slot_config" in fields:
+                fields["time_slot_config"] = new_config
+
         new_grid = {
             (s, e)
             for s, e in slot_service.slot_times_for(new_config, new_date)

@@ -125,6 +125,16 @@ export function ScheduleSection({
 
   // --- Draft preview ------------------------------------------------------
   const preview = draftSlots(config);
+  // Removals that actually land on the draft's grid. Stale ones (from a
+  // previous cadence) are hidden here and pruned by the server on save.
+  const relevantBlocked = (() => {
+    const candidates = new Set(
+      draftSlots({ ...config, blocked: [] })
+        .filter((s) => !s.isExtra)
+        .map((s) => s.start),
+    );
+    return (config.blocked ?? []).filter((t) => candidates.has(t));
+  })();
   const previewStarts = new Set(preview.map((s) => `${s.start}-${s.end}`));
   const bookedByTime = new Map(
     (schedule ?? []).map((e) => [fmtTime(e.slot_start), e]),
@@ -170,10 +180,19 @@ export function ScheduleSection({
     });
   }
 
+  // Cadence changes (start, slot length, buffer, breaks) shift where slots
+  // fall, so per-slot removals from the old grid no longer mean anything.
+  // Clear them along with the change. Day-end changes keep removals: the
+  // surviving slots are the same ones.
+  function setCadence(patch: Partial<TimeSlotConfig>) {
+    setConfig((c) => ({ ...c, ...patch, blocked: [] }));
+  }
+
   function setBreak(i: number, patch: Partial<SlotBreak>) {
     setConfig((c) => ({
       ...c,
       breaks: c.breaks.map((b, j) => (j === i ? { ...b, ...patch } : b)),
+      blocked: [],
     }));
   }
 
@@ -215,6 +234,9 @@ export function ScheduleSection({
         ...(clear ? { clear_slot_bookings: true } : {}),
       });
       onJobChanged(updated);
+      // The server prunes stale removals on save; adopt its version so the
+      // draft matches what was actually stored.
+      setConfig(canonical(updated.time_slot_config ?? DEFAULT_CONFIG));
       setSaved(true);
       window.setTimeout(() => setSaved(false), 2000);
       try {
@@ -304,7 +326,7 @@ export function ScheduleSection({
             <input
               type="time"
               value={config.start}
-              onChange={(e) => setConfig({ ...config, start: e.target.value })}
+              onChange={(e) => setCadence({ start: e.target.value })}
               className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
           </label>
@@ -329,7 +351,7 @@ export function ScheduleSection({
               max={120}
               value={config.slot_minutes}
               onChange={(e) =>
-                setConfig({ ...config, slot_minutes: Number(e.target.value) })
+                setCadence({ slot_minutes: Number(e.target.value) })
               }
               className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
@@ -344,7 +366,7 @@ export function ScheduleSection({
               max={60}
               value={config.buffer_minutes}
               onChange={(e) =>
-                setConfig({ ...config, buffer_minutes: Number(e.target.value) })
+                setCadence({ buffer_minutes: Number(e.target.value) })
               }
               className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
@@ -540,37 +562,38 @@ export function ScheduleSection({
               );
             })}
             {/* Add a slot after the last one — custom length allowed. */}
-            <div className="flex items-center gap-1 rounded-md border border-dashed border-muted-200 px-1.5 py-1">
+            <div className="rounded-md border border-dashed border-accent/50 bg-accent-muted/40 px-1.5 py-1 min-w-0">
               <button
                 type="button"
                 onClick={addExtraSlot}
                 title="Add a slot after the last one"
-                aria-label="Add a slot after the last one"
-                className="text-base leading-none text-muted-400 hover:text-accent transition"
+                className="block w-full text-left text-[11px] font-medium leading-tight text-accent hover:underline"
               >
-                +
+                + Add slot
               </button>
-              <input
-                type="number"
-                min={1}
-                max={120}
-                value={extraMinutes}
-                onChange={(e) => setExtraMinutes(e.target.value)}
-                placeholder={String(config.slot_minutes)}
-                aria-label="Minutes for the added slot"
-                title="Length of the added slot in minutes"
-                className="w-10 bg-transparent text-[11px] text-muted-600 outline-none placeholder:text-muted-400"
-              />
-              <span className="text-[11px] text-muted-400">m</span>
+              <span className="flex items-center gap-1 text-[11px] leading-tight text-muted-600">
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={extraMinutes}
+                  onChange={(e) => setExtraMinutes(e.target.value)}
+                  placeholder={String(config.slot_minutes)}
+                  aria-label="Minutes for the added slot"
+                  title="Length of the added slot in minutes"
+                  className="w-9 bg-transparent outline-none placeholder:text-muted-400"
+                />
+                minutes
+              </span>
             </div>
           </div>
         )}
 
         {/* Removed slots: restore with one click (applies on Save). */}
-        {(config.blocked ?? []).length > 0 ? (
+        {relevantBlocked.length > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-600">
             <span>Removed:</span>
-            {(config.blocked ?? []).map((t) => (
+            {relevantBlocked.map((t) => (
               <button
                 key={t}
                 type="button"
