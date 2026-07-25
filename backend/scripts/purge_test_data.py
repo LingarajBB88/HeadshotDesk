@@ -11,6 +11,13 @@ sessions) go with them via DB-level cascades.
 Run inside the backend container:
     docker compose exec backend python scripts/purge_test_data.py
 """
+import sys
+from pathlib import Path
+
+# Running as `python scripts/purge_test_data.py` puts scripts/ on the
+# path, not the app root — add the parent so `app` imports resolve.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from sqlalchemy import text
 
 from app.db import engine
