@@ -80,6 +80,10 @@ const SHIPPED: { title: string; body: string }[] = [
     body: "Let people star the shots they want kept. Your retouch list builds itself, no email thread required.",
   },
   {
+    title: "Works with Capture One and Lightroom",
+    body: "No plugin, no new habits. Name files from the queue, point us at your export folder, and photos file themselves.",
+  },
+  {
     title: "Watch folder",
     body: "Map your export folder; new frames upload and sort automatically.",
   },
@@ -181,6 +185,9 @@ export default function HomePage() {
           <a href="#how-it-works" className="hidden sm:inline text-muted-600 hover:text-ink transition">
             How it works
           </a>
+          <a href="#tethering" className="hidden sm:inline text-muted-600 hover:text-ink transition">
+            Tethering
+          </a>
           <a href="#features" className="hidden sm:inline text-muted-600 hover:text-ink transition">
             What&apos;s included
           </a>
@@ -237,6 +244,129 @@ export default function HomePage() {
             easy part. It&apos;s everything around it that eats the week:
           </p>
 
+          {/* The same week, drawn twice. Left: work scattered across tools
+              and evenings. Right: one flow that finishes when the shoot
+              does. Reads in a glance before anyone reads the lists. */}
+          <div className="mt-10 rounded-card border border-muted-200 bg-paper p-6 sm:p-8">
+            <svg
+              viewBox="0 0 980 260"
+              className="w-full h-auto"
+              role="img"
+              aria-label="Without a tool: shoot day is followed by days of renaming, sorting, zipping, emailing, and chasing follow-ups. With HeadshotDesk: signups, shoot day, and delivery happen in one flow that ends the day of the shoot."
+            >
+              {/* Without */}
+              <text x={0} y={20} fontSize="13" fontWeight="600" className="fill-muted-600">
+                WITHOUT A TOOL
+              </text>
+              <line
+                x1={0}
+                y1={62}
+                x2={980}
+                y2={62}
+                className="stroke-muted-200"
+                strokeWidth={2}
+              />
+              {[
+                { x: 0, w: 120, label: "Chase names", days: "days 1–5" },
+                { x: 130, w: 90, label: "Shoot", days: "1 hour" },
+                { x: 230, w: 150, label: "Rename files", days: "evening" },
+                { x: 390, w: 150, label: "Sort folders", days: "evening" },
+                { x: 550, w: 130, label: "Zip + upload", days: "evening" },
+                { x: 690, w: 140, label: "Email 30 links", days: "day 8" },
+                { x: 840, w: 140, label: "Chase replies", days: "days 9–14" },
+              ].map((b) => (
+                <g key={b.label}>
+                  <rect
+                    x={b.x}
+                    y={34}
+                    width={b.w}
+                    height={28}
+                    rx={6}
+                    className="fill-muted-100 stroke-muted-200"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={b.x + b.w / 2}
+                    y={52}
+                    textAnchor="middle"
+                    fontSize="12"
+                    className="fill-ink"
+                  >
+                    {b.label}
+                  </text>
+                  <text
+                    x={b.x + b.w / 2}
+                    y={78}
+                    textAnchor="middle"
+                    fontSize="11"
+                    className="fill-muted-400"
+                  >
+                    {b.days}
+                  </text>
+                </g>
+              ))}
+
+              {/* With */}
+              <text x={0} y={150} fontSize="13" fontWeight="600" className="fill-accent">
+                WITH HEADSHOTDESK
+              </text>
+              <line
+                x1={0}
+                y1={192}
+                x2={980}
+                y2={192}
+                className="stroke-accent"
+                strokeWidth={2}
+              />
+              {[
+                { x: 0, w: 200, label: "Signup link does the admin", days: "runs itself" },
+                { x: 210, w: 200, label: "Shoot from the queue", days: "1 hour" },
+                { x: 420, w: 240, label: "Photos file themselves as you shoot", days: "live" },
+                { x: 670, w: 200, label: "One click delivers all", days: "same day" },
+              ].map((b) => (
+                <g key={b.label}>
+                  <rect
+                    x={b.x}
+                    y={164}
+                    width={b.w}
+                    height={28}
+                    rx={6}
+                    className="fill-accent-muted stroke-accent"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={b.x + b.w / 2}
+                    y={182}
+                    textAnchor="middle"
+                    fontSize="12"
+                    className="fill-ink"
+                  >
+                    {b.label}
+                  </text>
+                  <text
+                    x={b.x + b.w / 2}
+                    y={208}
+                    textAnchor="middle"
+                    fontSize="11"
+                    className="fill-muted-600"
+                  >
+                    {b.days}
+                  </text>
+                </g>
+              ))}
+              <text
+                x={880}
+                y={182}
+                textAnchor="middle"
+                fontSize="12"
+                fontWeight="600"
+                className="fill-accent"
+              >
+                Done
+              </text>
+            </svg>
+          </div>
+
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-card border border-muted-200 bg-paper p-6">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-600">
@@ -292,6 +422,173 @@ export default function HomePage() {
               </ul>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Tethering — the question every photographer asks first: "does this
+          work with what I already shoot on?" Answer with the actual flow,
+          not marketing. Wordmarks are plain text on purpose: nominative
+          "works with" use, no third-party logo files to license. Swap in
+          official marks later per each vendor's brand guidelines. */}
+      <section id="tethering" className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
+            Works with the software you already shoot on
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
+            You keep tethering the way you do today. <BrandName /> sits after
+            your capture software, not in front of it: nothing to install, no
+            plugin, no new export habit. Two settings and photos file
+            themselves under the right person while you keep shooting.
+          </p>
+
+          {/* Compatibility row */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {["Capture One", "Adobe Lightroom", "Smart Shooter", "Any tool that exports to a folder"].map(
+              (tool) => (
+                <span
+                  key={tool}
+                  className="inline-flex items-center rounded-card border border-muted-200 bg-paper px-4 py-2 text-sm font-medium text-ink"
+                >
+                  {tool}
+                </span>
+              ),
+            )}
+          </div>
+
+          {/* The flow, drawn. Camera → capture software → export folder →
+              HeadshotDesk → per-person galleries. */}
+          <div className="mt-10 rounded-card border border-muted-200 bg-paper p-6 sm:p-8">
+            <svg
+              viewBox="0 0 980 200"
+              className="w-full h-auto"
+              role="img"
+              aria-label="Flow: camera tethers into your capture software, which exports to a watch folder; HeadshotDesk uploads and files each photo under the right person, then emails private galleries."
+            >
+              <defs>
+                <marker
+                  id="hd-arrow"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+                </marker>
+              </defs>
+
+              {[
+                { x: 10, label: "Camera", sub: "tethered" },
+                { x: 205, label: "Capture One / Lightroom", sub: "names files from the queue" },
+                { x: 400, label: "Export folder", sub: "on your laptop" },
+                { x: 595, label: "HeadshotDesk", sub: "uploads + matches" },
+                { x: 790, label: "Private galleries", sub: "one per person" },
+              ].map((box, i) => (
+                <g key={box.label}>
+                  <rect
+                    x={box.x}
+                    y={55}
+                    width={180}
+                    height={80}
+                    rx={10}
+                    className={
+                      i >= 3
+                        ? "fill-accent-muted stroke-accent"
+                        : "fill-paper stroke-muted-200"
+                    }
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={box.x + 90}
+                    y={88}
+                    textAnchor="middle"
+                    className="fill-ink"
+                    fontSize="14"
+                    fontWeight="600"
+                  >
+                    {box.label}
+                  </text>
+                  <text
+                    x={box.x + 90}
+                    y={109}
+                    textAnchor="middle"
+                    className="fill-muted-600"
+                    fontSize="12"
+                  >
+                    {box.sub}
+                  </text>
+                  {i < 4 ? (
+                    <line
+                      x1={box.x + 182}
+                      y1={95}
+                      x2={box.x + 203}
+                      y2={95}
+                      className="stroke-muted-400 text-muted-400"
+                      strokeWidth={1.5}
+                      markerEnd="url(#hd-arrow)"
+                    />
+                  ) : null}
+                </g>
+              ))}
+              <text
+                x={490}
+                y={175}
+                textAnchor="middle"
+                className="fill-muted-600"
+                fontSize="12"
+              >
+                You set this up once per shoot. Everything right of the folder happens on its own.
+              </text>
+            </svg>
+          </div>
+
+          {/* The two settings, concretely. */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="rounded-card border border-muted-200 bg-paper p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-600">
+                Setting 1 · in your capture software
+              </p>
+              <h3 className="mt-2 font-display text-lg font-semibold tracking-tight">
+                Name files from the clipboard
+              </h3>
+              <p className="mt-2 text-sm text-muted-600 leading-relaxed">
+                In Capture One, set the naming token to Clipboard Contents. In
+                Lightroom, use a filename template with the custom text field.
+                On shoot day you tap the next person in the queue, their name
+                lands on your clipboard, and every frame comes out as
+                <span className="whitespace-nowrap"> Jane Doe_0001.jpg</span>.
+              </p>
+            </div>
+            <div className="rounded-card border border-muted-200 bg-paper p-6">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-600">
+                Setting 2 · in <BrandName />
+              </p>
+              <h3 className="mt-2 font-display text-lg font-semibold tracking-tight">
+                Point us at your export folder
+              </h3>
+              <p className="mt-2 text-sm text-muted-600 leading-relaxed">
+                Map the folder your software exports to. New frames upload on
+                their own and match to the right person by that filename. No
+                plugin, no cloud sync service, no dragging files at midnight.
+                Prefer to work offline? Drop the folder in afterwards instead.
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-6 text-sm text-muted-600">
+            <Link href="/help" className="text-accent hover:underline">
+              Step-by-step setup for Capture One, Lightroom, and everything
+              else
+            </Link>{" "}
+            lives in the help center.
+          </p>
+          <p className="mt-3 text-xs text-muted-400">
+            Capture One, Adobe Lightroom, and Smart Shooter are trademarks of
+            their respective owners. <BrandName /> is not affiliated with or
+            endorsed by them.
+          </p>
         </div>
       </section>
 

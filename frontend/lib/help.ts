@@ -553,6 +553,52 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     related: ["upload-photos", "watch-folder", "shoot-day-queue"],
   },
+  {
+    slug: "tethering-setup",
+    title: "Capture One and Lightroom setup",
+    category: "Photos",
+    summary: "The two settings that make photos file themselves, per capture software.",
+    intro: [
+      "HeadshotDesk sits after your capture software, not in front of it. There is nothing to install and no plugin: you keep tethering exactly as you do today, and two settings connect the two.",
+      "The idea is simple. Your capture software names each file after the person in front of the camera, and HeadshotDesk watches the folder those files land in. Names come from the shoot-day queue, so you are never typing them.",
+    ],
+    keywords: ["capture one", "lightroom", "adobe", "smart shooter", "tether", "tethering", "setup", "integration", "clipboard", "naming", "token", "export"],
+    sections: [
+      {
+        id: "capture-one",
+        heading: "Capture One",
+        body: [
+          "Open the Next Capture Naming tool in the Capture tab. Set the format to use the Clipboard Contents token followed by a counter, so files come out as Jane Doe_0001.jpg.",
+          "Then map the session's Output or Capture folder in the Photos section of the job. On shoot day, tap a name in the queue to copy it, fire your frames, tap the next name. Every frame lands under the right person while you keep shooting.",
+        ],
+      },
+      {
+        id: "lightroom",
+        heading: "Lightroom Classic",
+        body: [
+          "In the tethered capture bar, open Settings and choose a filename template with a Custom Text field, then paste the copied name into that field when you switch person. Lightroom appends the sequence number itself.",
+          "Point HeadshotDesk at the destination folder you set for the tethered session. If you prefer to cull first, export your selects into a watched folder instead and only those reach the galleries.",
+        ],
+      },
+      {
+        id: "other-tools",
+        heading: "Smart Shooter and everything else",
+        body: [
+          "Any tool that can name files from a template and write them to a folder works the same way: name from the clipboard (or paste the name into the naming field), and let HeadshotDesk watch the folder.",
+          "No tethering at all? Shoot to cards as usual and drop the folder into the Photos section afterwards. Matching works the same, it just happens after the shoot instead of during it.",
+        ],
+      },
+      {
+        id: "troubleshooting",
+        heading: "If photos land in Unassigned",
+        body: [
+          "That means the filename did not carry a recognisable name. Check that the naming token is actually applied to new captures, that you copied a name from the queue before shooting, and that you mapped the folder your software really writes to (Capture One sessions have separate Capture and Output folders).",
+          "Anything unmatched waits in Unassigned rather than being guessed, so you can drop it on the right person in seconds.",
+        ],
+      },
+    ],
+    related: ["watch-folder", "filename-matching", "shoot-day-queue"],
+  },
 
   // ------------------------------------------------------------------
   // Galleries & delivery
