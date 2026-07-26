@@ -269,13 +269,13 @@ export default function HomePage() {
                 strokeWidth={2}
               />
               {[
-                { x: 0, w: 120, label: "Chase names", days: "days 1–5" },
-                { x: 130, w: 90, label: "Shoot", days: "1 hour" },
-                { x: 230, w: 150, label: "Rename files", days: "evening" },
-                { x: 390, w: 150, label: "Sort folders", days: "evening" },
-                { x: 550, w: 130, label: "Zip + upload", days: "evening" },
-                { x: 690, w: 140, label: "Email 30 links", days: "day 8" },
-                { x: 840, w: 140, label: "Chase replies", days: "days 9–14" },
+                { x: 0, w: 115, label: "Chase names", days: "days 1–5" },
+                { x: 125, w: 80, label: "Shoot", days: "1 hour" },
+                { x: 215, w: 140, label: "Rename + sort", days: "evenings" },
+                { x: 365, w: 110, label: "Retouch", days: "days" },
+                { x: 485, w: 125, label: "Zip + upload", days: "evening" },
+                { x: 620, w: 135, label: "Email 30 links", days: "day 10" },
+                { x: 765, w: 215, label: "Chase replies and resends", days: "days 11–16" },
               ].map((b) => (
                 <g key={b.label}>
                   <rect
@@ -325,10 +325,11 @@ export default function HomePage() {
                 strokeWidth={2}
               />
               {[
-                { x: 0, w: 195, label: "Signup link does the admin", days: "runs itself" },
-                { x: 205, w: 185, label: "Shoot from the queue", days: "1 hour" },
-                { x: 400, w: 235, label: "Photos file themselves as you shoot", days: "live" },
-                { x: 645, w: 185, label: "One click delivers all", days: "same day" },
+                { x: 0, w: 180, label: "Signup link does the admin", days: "runs itself" },
+                { x: 190, w: 160, label: "Shoot from the queue", days: "1 hour" },
+                { x: 360, w: 190, label: "Photos sort themselves", days: "live" },
+                { x: 560, w: 165, label: "Retouch your picks", days: "your tools" },
+                { x: 735, w: 150, label: "One click delivers", days: "minutes" },
               ].map((b) => (
                 <g key={b.label}>
                   <rect
@@ -360,27 +361,38 @@ export default function HomePage() {
                   </text>
                 </g>
               ))}
-              {/* Finish marker — the point of the whole graphic: the work
-                  ends when the shoot does. */}
+              {/* Finish marker. Deliberately says "admin", not "same day":
+                  retouching is still your time, and claiming otherwise
+                  would be the kind of overclaim this page avoids. */}
               <rect
-                x={845}
+                x={895}
                 y={164}
-                width={135}
+                width={85}
                 height={28}
                 rx={14}
                 className="fill-accent"
               />
               <text
-                x={912}
+                x={937}
                 y={182}
                 textAnchor="middle"
                 fontSize="12"
                 fontWeight="600"
                 className="fill-paper"
               >
-                Done, same day
+                No admin
               </text>
             </svg>
+            {/* Honesty note: we don't retouch for you (yet), so we don't
+                pretend the whole job is same-day. */}
+            <p className="mt-4 text-sm text-muted-600">
+              Retouching stays yours, whether that&apos;s an hour in Evoto or
+              a few evenings by hand. What disappears is everything around
+              it: chasing names, renaming, sorting, zipping, emailing, and
+              answering &ldquo;can you resend mine?&rdquo; Participants even
+              star the shots they want, so you retouch a decided list.
+              AI retouching is on the roadmap, not shipped.
+            </p>
           </div>
 
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -428,8 +440,12 @@ export default function HomePage() {
                   while you&apos;re still shooting.
                 </li>
                 <li>
-                  One click emails every person a private gallery of just
-                  their photos.
+                  Participants star the shots they want, so your retouch list
+                  is decided before you open an editor.
+                </li>
+                <li>
+                  When the edits are done, one click emails every person a
+                  private gallery of just their photos.
                 </li>
                 <li>
                   Links don&apos;t expire, re-downloads are free, and you can
@@ -647,7 +663,8 @@ export default function HomePage() {
               <p className="mt-3 text-sm text-muted-600 leading-relaxed">
                 No export sessions, no renaming evenings, no zip files over
                 WeTransfer, no &ldquo;which photo was Jane again?&rdquo; The
-                admin happens while you shoot.
+                admin happens while you shoot. Your retouching time stays
+                your own.
               </p>
             </li>
           </ol>
