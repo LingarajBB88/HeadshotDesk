@@ -258,11 +258,13 @@ export default function HomePage() {
               <text x={0} y={20} fontSize="13" fontWeight="600" className="fill-muted-600">
                 WITHOUT A TOOL
               </text>
+              {/* Track lines sit behind the cards; drawn first so the
+                  rounded cards read as beads on a timeline. */}
               <line
                 x1={0}
-                y1={62}
+                y1={48}
                 x2={980}
-                y2={62}
+                y2={48}
                 className="stroke-muted-200"
                 strokeWidth={2}
               />
@@ -307,22 +309,26 @@ export default function HomePage() {
               ))}
 
               {/* With */}
-              <text x={0} y={150} fontSize="13" fontWeight="600" className="fill-accent">
-                WITH HEADSHOTDESK
+              {/* Two-tone wordmark, matching the Logo/BrandName treatment:
+                  Headshot in accent, Desk in ink. */}
+              <text x={0} y={150} fontSize="13" fontWeight="600">
+                <tspan className="fill-muted-600">WITH </tspan>
+                <tspan className="fill-accent">Headshot</tspan>
+                <tspan className="fill-ink">Desk</tspan>
               </text>
               <line
                 x1={0}
-                y1={192}
+                y1={178}
                 x2={980}
-                y2={192}
+                y2={178}
                 className="stroke-accent"
                 strokeWidth={2}
               />
               {[
-                { x: 0, w: 200, label: "Signup link does the admin", days: "runs itself" },
-                { x: 210, w: 200, label: "Shoot from the queue", days: "1 hour" },
-                { x: 420, w: 240, label: "Photos file themselves as you shoot", days: "live" },
-                { x: 670, w: 200, label: "One click delivers all", days: "same day" },
+                { x: 0, w: 195, label: "Signup link does the admin", days: "runs itself" },
+                { x: 205, w: 185, label: "Shoot from the queue", days: "1 hour" },
+                { x: 400, w: 235, label: "Photos file themselves as you shoot", days: "live" },
+                { x: 645, w: 185, label: "One click delivers all", days: "same day" },
               ].map((b) => (
                 <g key={b.label}>
                   <rect
@@ -354,15 +360,25 @@ export default function HomePage() {
                   </text>
                 </g>
               ))}
+              {/* Finish marker — the point of the whole graphic: the work
+                  ends when the shoot does. */}
+              <rect
+                x={845}
+                y={164}
+                width={135}
+                height={28}
+                rx={14}
+                className="fill-accent"
+              />
               <text
-                x={880}
+                x={912}
                 y={182}
                 textAnchor="middle"
                 fontSize="12"
                 fontWeight="600"
-                className="fill-accent"
+                className="fill-paper"
               >
-                Done
+                Done, same day
               </text>
             </svg>
           </div>
