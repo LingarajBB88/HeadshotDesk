@@ -570,10 +570,10 @@ export default function HomePage() {
                 Name files from the clipboard
               </h3>
               <p className="mt-2 text-sm text-muted-600 leading-relaxed">
-                In Capture One, set the naming token to Clipboard Contents. In
-                Lightroom, use a filename template with the custom text field.
-                On shoot day you tap the next person in the queue, their name
-                lands on your clipboard, and every frame comes out as
+                In Capture One, build the Next Capture Naming format from the
+                clipboard (or name) token plus a counter. In Lightroom, use a
+                Shot Name template and press Cmd+Shift+T per person. Either
+                way, frames come out as
                 <span className="whitespace-nowrap"> Jane Doe_0001.jpg</span>.
               </p>
             </div>
@@ -595,10 +595,11 @@ export default function HomePage() {
 
           <p className="mt-6 text-sm text-muted-600">
             <Link href="/help" className="text-accent hover:underline">
-              Step-by-step setup for Capture One, Lightroom, and everything
+              Numbered setup steps for Capture One, Lightroom, and everything
               else
             </Link>{" "}
-            lives in the help center.
+            live in the help center, including what to do when a photo lands
+            in Unassigned.
           </p>
           <p className="mt-3 text-xs text-muted-400">
             Capture One, Adobe Lightroom, and Smart Shooter are trademarks of

@@ -565,35 +565,68 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: ["capture one", "lightroom", "adobe", "smart shooter", "tether", "tethering", "setup", "integration", "clipboard", "naming", "token", "export"],
     sections: [
       {
-        id: "capture-one",
-        heading: "Capture One",
+        id: "goal",
+        heading: "What you are setting up",
         body: [
-          "Open the Next Capture Naming tool in the Capture tab. Set the format to use the Clipboard Contents token followed by a counter, so files come out as Jane Doe_0001.jpg.",
-          "Then map the session's Output or Capture folder in the Photos section of the job. On shoot day, tap a name in the queue to copy it, fire your frames, tap the next name. Every frame lands under the right person while you keep shooting.",
+          "One rule makes the whole thing work: the file that lands on your laptop must start with the participant's name, for example Jane Doe_0001.jpg. Everything below is just how to get your capture software to write that name for you.",
+          "The queue gives you the name. Tap a person in the shoot screen and their name is copied to your clipboard, ready to paste or picked up automatically, depending on which setup you choose.",
+        ],
+      },
+      {
+        id: "capture-one",
+        heading: "Capture One, step by step",
+        items: [
+          { term: "1. Start a Session", def: "File then New Session. A Session gives you Capture and Output folders you can point at later. Sessions suit shoot days better than Catalogs." },
+          { term: "2. Connect and open the Capture tab", def: "Plug the camera in and open the Capture tab (the camera icon). You should see Camera and Next Capture Naming tools." },
+          { term: "3. Open the naming dialog", def: "In the Next Capture Naming tool, click the three dots next to the Format field. This opens the token editor where you build the filename." },
+          { term: "4. Build the format", def: "Clear what's there. If your version offers a Clipboard token, drag it in, then type an underscore and drag in the 4-digit Counter. If it doesn't, drag in the Name token instead, then underscore, then Counter. Click OK." },
+          { term: "5a. With the Clipboard token", def: "Nothing more to do on shoot day: tap a name in the queue and the next frames are named after that person automatically." },
+          { term: "5b. With the Name token", def: "Paste the copied name into the Name field of Next Capture Naming before shooting each person. One paste per person, and every frame after it carries their name." },
+          { term: "6. Map the folder in HeadshotDesk", def: "In the job's Photos section, map the Session's Capture folder (or Output if you export there). Sessions have both, so pick the one your captures actually land in." },
         ],
       },
       {
         id: "lightroom",
-        heading: "Lightroom Classic",
-        body: [
-          "In the tethered capture bar, open Settings and choose a filename template with a Custom Text field, then paste the copied name into that field when you switch person. Lightroom appends the sequence number itself.",
-          "Point HeadshotDesk at the destination folder you set for the tethered session. If you prefer to cull first, export your selects into a watched folder instead and only those reach the galleries.",
+        heading: "Lightroom Classic, step by step",
+        items: [
+          { term: "1. Start tethered capture", def: "File then Tethered Capture then Start Tethered Capture." },
+          { term: "2. Name the session and pick a destination", def: "In the dialog, set a Session Name and choose the destination folder. Note where it is: you will map this folder in HeadshotDesk." },
+          { term: "3. Turn on shot segmenting", def: "Tick Segment Photos By Shots. This is what lets you switch names during the shoot without reopening settings." },
+          { term: "4. Build the naming template", def: "Under Naming, choose Edit and build a template of Shot Name, then underscore, then Sequence. Save it as a preset called something like HeadshotDesk." },
+          { term: "5. Switch person during the shoot", def: "Press Cmd+Shift+T (Ctrl+Shift+T on Windows) to start a new shot, paste the name from the queue, and shoot. Frames come out as Jane Doe_0001.jpg." },
+          { term: "6. Watch the right folder", def: "Segmenting can put each shot in its own subfolder. HeadshotDesk reads only the folder you map, not subfolders, so either leave subfolder creation off or map the specific folder your files land in. Culling first? Export your selects into one flat folder and map that instead." },
         ],
       },
       {
         id: "other-tools",
         heading: "Smart Shooter and everything else",
         body: [
-          "Any tool that can name files from a template and write them to a folder works the same way: name from the clipboard (or paste the name into the naming field), and let HeadshotDesk watch the folder.",
-          "No tethering at all? Shoot to cards as usual and drop the folder into the Photos section afterwards. Matching works the same, it just happens after the shoot instead of during it.",
+          "The pattern is identical in any capture tool: set the filename to come from the clipboard or from a field you paste into, and write files to one folder. Smart Shooter, for instance, supports naming captures from the clipboard, which behaves exactly like the Capture One clipboard setup.",
+          "No tethering at all? Shoot to cards as usual, then drop the folder into the Photos section afterwards. Matching works the same; it just happens after the shoot instead of during it.",
+        ],
+      },
+      {
+        id: "shoot-day-loop",
+        heading: "The shoot-day loop",
+        body: [
+          "Once set up, the rhythm is the same in every tool: tap the next person in the queue (their name goes to your clipboard), paste it if your setup needs a paste, shoot your frames, mark them shot. Photos upload and file themselves while the next person sits down.",
         ],
       },
       {
         id: "troubleshooting",
         heading: "If photos land in Unassigned",
+        items: [
+          { term: "The filename has no name in it", def: "Check the naming format is applied to NEW captures. Existing frames keep the name they were born with; renaming the file on disk fixes them." },
+          { term: "You forgot to switch person", def: "Frames carry the previous person's name. Reassign them from the photo row's dropdown, it takes seconds." },
+          { term: "Wrong folder mapped", def: "Capture One Sessions have separate Capture and Output folders, and Lightroom may be writing into a per-shot subfolder. Map the folder where files actually appear." },
+          { term: "Only one name word", def: "A file called jane_001.jpg won't be guessed between Jane Doe and Jane Smith. Use the full name from the queue." },
+        ],
+      },
+      {
+        id: "versions",
+        heading: "A note on versions",
         body: [
-          "That means the filename did not carry a recognisable name. Check that the naming token is actually applied to new captures, that you copied a name from the queue before shooting, and that you mapped the folder your software really writes to (Capture One sessions have separate Capture and Output folders).",
-          "Anything unmatched waits in Unassigned rather than being guessed, so you can drop it on the right person in seconds.",
+          "Menu wording shifts between versions of both apps, and the clipboard token is not in every Capture One release. If a label doesn't match exactly, look for the equivalent: a naming or token editor for the filename, and a destination or capture folder for where files land. The two things HeadshotDesk needs are always the same: the person's name in the filename, and one folder to watch.",
         ],
       },
     ],
