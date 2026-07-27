@@ -57,14 +57,20 @@ billing; steps marked **[auto]** happen because of files in this repo.
    | --- | --- |
    | `JWT_SECRET` | the token you generated in step 0 |
    | `POSTMARK_SERVER_TOKEN` | from step 2 |
-   | `R2_ACCOUNT_ID` | from step 1 |
-   | `R2_ACCESS_KEY_ID` | from step 1 |
-   | `R2_SECRET_ACCESS_KEY` | from step 1 |
+   | `R2_ACCOUNT_ID` | the **32-char hex Account ID** from the R2 dashboard sidebar — NOT an API token (`cfat_…`) and not the access key. It becomes part of the endpoint hostname. |
+   | `R2_ACCESS_KEY_ID` | from step 1 (32 hex chars) |
+   | `R2_SECRET_ACCESS_KEY` | from step 1 (64 hex chars) |
 
 3. Deploy. The docker command runs `alembic upgrade head` first — the
    database schema comes up automatically.
 4. When the service is live, open its `onrender.com` URL + `/health` —
    should return OK.
+4b. **Then open `/health/storage`.** It round-trips an object through R2
+   and returns `{"status":"ok","mode":"r2",...}`. Anything else means
+   uploads will fail: photos and client logos get skipped silently by
+   design (the API still answers 200), so this check is the only quick
+   way to know storage is really working. Re-run it after any change to
+   the R2 variables.
 5. Service → Settings → Custom Domain → add `api.headshotdesk.com`.
    Render shows a CNAME target — add it in Cloudflare DNS (see step 5).
 

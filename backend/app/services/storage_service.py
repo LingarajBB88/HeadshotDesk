@@ -74,11 +74,32 @@ def exists(*, key: str) -> bool:
 _r2 = None
 
 
+def _validate_account_id(value: str) -> None:
+    """R2_ACCOUNT_ID must be the 32-char hex Cloudflare account id — it goes
+    straight into the endpoint hostname. Pasting an API token (cfat_...) or
+    an access key here produces an unusable URL and every write fails, which
+    on 2026-07-27 looked like 'uploads succeed but photos vanish'. Fail with
+    a message that names the actual mistake."""
+    if value.startswith("cfat_") or value.startswith("v1.0-"):
+        raise ValueError(
+            "R2_ACCOUNT_ID looks like a Cloudflare API token, not an account "
+            "id. Copy the 32-character Account ID from the R2 dashboard "
+            "sidebar (or the hex in your dash.cloudflare.com/<id> URL)."
+        )
+    if len(value) != 32 or any(c not in "0123456789abcdefABCDEF" for c in value):
+        raise ValueError(
+            f"R2_ACCOUNT_ID should be 32 hex characters, got {len(value)} "
+            "characters. This value becomes part of the R2 endpoint hostname."
+        )
+
+
 def _r2_client():  # type: ignore[no-untyped-def]
     global _r2
     if _r2 is not None:
         return _r2
     import boto3
+
+    _validate_account_id(settings.r2_account_id)
 
     # Jurisdiction-restricted buckets (prod uses "eu") live behind a
     # jurisdiction-specific endpoint. Empty jurisdiction = default namespace.
