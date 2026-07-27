@@ -54,6 +54,10 @@ export function FolderWatchSection({
   // Shown as a transient notice so the photographer knows the paste was
   // absorbed rather than silently dropped. Auto-clears on a 30s timer.
   const [duplicatesNotice, setDuplicatesNotice] = useState(0);
+  // Files the server neither stored nor merged. Should always be 0; when
+  // it isn't, something is wrong and the photographer needs to know NOW,
+  // not after the client asks where their photos are.
+  const [rejectedNotice, setRejectedNotice] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [pendingNames, setPendingNames] = useState<string[]>([]);
   const [skipped, setSkipped] = useState<Array<{ name: string; reason: SkipReason }>>([]);
@@ -170,9 +174,12 @@ export function FolderWatchSection({
             [...q.filter((x) => x.name !== name), { name, reason }].slice(-5),
           );
         },
-        onFilesUploaded: async (count, duplicates) => {
+        onFilesUploaded: async (count, duplicates, rejected) => {
           setTotalUploaded((c) => c + count);
           setPendingNames([]);
+          // Loud about rejections: silence here is what made a broken
+          // upload look like a working one during the live shoot.
+          setRejectedNotice(rejected);
           if (duplicates > 0) {
             // Use the latest batch's count rather than accumulating — the
             // notice is meant to call attention to the most recent paste,
@@ -414,6 +421,17 @@ export function FolderWatchSection({
             <p className="mt-1 text-xs text-muted-600">
               {totalUploaded} file{totalUploaded === 1 ? "" : "s"} auto-uploaded this
               session.
+            </p>
+          ) : null}
+          {rejectedNotice > 0 ? (
+            <p
+              className="mt-1 text-xs text-red-600"
+              role="alert"
+            >
+              {rejectedNotice} file{rejectedNotice === 1 ? " was" : "s were"}{" "}
+              sent but not saved. Check the file type and size, then try
+              Pause and Resume. If it keeps happening, the photos are still
+              safe in your folder.
             </p>
           ) : null}
           {duplicatesNotice > 0 ? (

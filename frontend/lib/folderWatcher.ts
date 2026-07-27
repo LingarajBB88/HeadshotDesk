@@ -41,7 +41,12 @@ export type WatcherEvents = {
   /** Fires after a batch upload completes. `duplicates` is the count of
    *  incoming files whose bytes already existed on the backend — useful
    *  for surfacing "N file(s) were duplicates of existing photos." */
-  onFilesUploaded: (count: number, duplicates: number) => void;
+  onFilesUploaded: (
+    count: number,
+    duplicates: number,
+    /** Sent but neither stored nor merged — the backend rejected them. */
+    rejected: number,
+  ) => void;
   onFileSkipped: (filename: string, reason: SkipReason) => void;
   onError: (message: string) => void;
 };
@@ -302,7 +307,15 @@ export class FolderWatcher {
         }
       }
       this.onFingerprintsChanged?.(Object.fromEntries(this.fileIdByFingerprint));
-      this.events.onFilesUploaded(ready.length, outcome.duplicates);
+      // Report what the SERVER accepted, not what we attempted. Reporting
+      // ready.length made a failing/skipping backend look like a healthy
+      // upload ("12 files auto-uploaded" with an empty gallery) during
+      // live testing on 2026-07-27.
+      this.events.onFilesUploaded(
+        outcome.files.length,
+        outcome.duplicates,
+        ready.length - outcome.files.length - outcome.duplicates,
+      );
     } catch (e) {
       this.events.onError(
         e instanceof Error ? e.message : "Upload failed for some files.",

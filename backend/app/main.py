@@ -4,11 +4,15 @@ HeadshotDesk API entrypoint.
 Run locally:   uvicorn app.main:app --reload --port 8000
 Run via tasks: see scripts/dev.sh
 """
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import admin, auth, clients, files, gallery, jobs, participants, public
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="HeadshotDesk API",
@@ -30,6 +34,42 @@ app.add_middleware(
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "env": settings.env}
+
+
+@app.get("/health/storage")
+def health_storage() -> dict[str, object]:
+    """Round-trip a tiny object through the storage backend.
+
+    Photo and logo uploads fail *silently* when storage writes fail (the
+    upload endpoint skips the file and returns 200), which cost a live
+    shoot on 2026-07-27. This makes the storage layer answerable without
+    digging through logs: hit it after any deploy or credential change.
+    """
+    from app.services import storage_service
+
+    key = "healthcheck/roundtrip.txt"
+    payload = b"headshotdesk-storage-ok"
+    mode = "local-disk" if not settings.r2_access_key_id else "r2"
+    try:
+        storage_service.save(key=key, content=payload, content_type="text/plain")
+        got = storage_service.read(key=key)
+        storage_service.delete(key=key)
+        if got != payload:
+            return {"status": "error", "mode": mode, "detail": "read mismatch"}
+        return {
+            "status": "ok",
+            "mode": mode,
+            "bucket": settings.r2_bucket if mode == "r2" else None,
+            "jurisdiction": settings.r2_jurisdiction or None,
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Storage health check failed")
+        return {
+            "status": "error",
+            "mode": mode,
+            "bucket": settings.r2_bucket if mode == "r2" else None,
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
 
 
 # v0.1 routers

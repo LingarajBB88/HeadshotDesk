@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import re
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from sqlalchemy.orm import Session
 from app.core.ids import new_id
 from app.models import Account, File, Participant
 from app.services import job_service, storage_service
+
+logger = logging.getLogger(__name__)
 
 # Supported upload mime types (gallery-bound JPEG/PNG, plus HEIC for iPhone exports).
 _ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
@@ -225,8 +228,17 @@ async def upload_files(
             storage_service.save(
                 key=storage_key, content=content, content_type=uf.content_type
             )
-        except Exception:  # noqa: BLE001
-            skipped.append(f"{filename} (storage write failed)")
+        except Exception as exc:  # noqa: BLE001
+            # Log with traceback: this used to fail silently, so a broken
+            # storage config looked like "photos uploaded but nothing
+            # appeared" with nothing in the logs (live shoot, 2026-07-27).
+            logger.exception(
+                "Storage write failed for %s (job=%s, key=%s)",
+                filename,
+                job.id,
+                storage_key,
+            )
+            skipped.append(f"{filename} (storage write failed: {exc})")
             continue
 
         match = match_filename_to_participant(filename, participants)

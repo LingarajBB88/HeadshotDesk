@@ -12,6 +12,7 @@ import {
   type FileItem,
   type FileUploadResult,
 } from "@/lib/files";
+import { ApiError } from "@/lib/api";
 import { listParticipants, type Participant } from "@/lib/participants";
 
 import { CollapsibleSection } from "./CollapsibleSection";
@@ -68,8 +69,20 @@ export function PhotosSection({
       // section to refetch — that's how photo counts / status pills update
       // without a hard refresh.
       onChanged?.();
-    } catch {
-      setError("Could not load photos.");
+    } catch (e) {
+      // Surface WHY. A bare "Could not load photos" next to an empty
+      // gallery reads as "no photos yet", which is how a failing list
+      // request looked like an upload problem during the live shoot.
+      const detail =
+        e instanceof ApiError
+          ? `${e.status}: ${e.message}`
+          : e instanceof Error
+            ? e.message
+            : "unknown error";
+      setError(
+        `Could not load photos (${detail}). Your uploads may still be safe — ` +
+          "reload the page before re-uploading.",
+      );
     }
   }
 
