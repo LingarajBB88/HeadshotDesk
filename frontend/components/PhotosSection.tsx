@@ -232,6 +232,9 @@ export function PhotosSection({
         </>
       }
       defaultOpen={false}
+      // The watch folder lives in this subtree; unmounting it on collapse
+      // stopped uploads mid-shoot. Keep it alive, just hidden.
+      keepMounted
       // Auto-open while the user is searching so results aren't hidden behind
       // a collapsed header. Reverts to internal state when the search clears.
       forceOpen={search.trim().length > 0}

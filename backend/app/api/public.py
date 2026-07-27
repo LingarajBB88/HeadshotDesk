@@ -253,6 +253,9 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
             .order_by(Participant.created_at.asc())
         ).all()
     )
+    # Ordering: on time-slot jobs the client is watching a running order,
+    # so sort by booked time (unbooked last, then by name). Queue jobs keep
+    # signup order. Applied after slot lookup below.
     photos = db.scalar(
         sa_select(sa_func.count())
         .select_from(File)
@@ -274,6 +277,15 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
             slot_by_participant[e["participant_id"]] = e[
                 "slot_start"
             ].strftime("%H:%M")
+
+    if job.shoot_mode == "time_slot":
+        participants.sort(
+            key=lambda p: (
+                slot_by_participant.get(p.id) is None,  # unbooked last
+                slot_by_participant.get(p.id) or "",
+                p.name.lower(),
+            )
+        )
 
     def p_status(p: Participant) -> str:
         if p.gallery_sent_at is not None:

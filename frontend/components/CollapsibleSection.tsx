@@ -14,6 +14,7 @@ export function CollapsibleSection({
   actions,
   defaultOpen = true,
   forceOpen,
+  keepMounted = false,
   children,
 }: {
   title: string;
@@ -27,6 +28,12 @@ export function CollapsibleSection({
    *  header. Internal state still tracks the user's chevron clicks so
    *  behavior on clear-search is honored. */
   forceOpen?: boolean;
+  /** Keep children mounted while collapsed, hidden with CSS instead of
+   *  unmounted. Critical for Photos: the watch folder lives in that
+   *  subtree, and unmounting it silently stopped uploads mid-shoot when
+   *  the photographer collapsed the section (found in live testing
+   *  2026-07-27). Costs nothing but a hidden div. */
+  keepMounted?: boolean;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -55,7 +62,11 @@ export function CollapsibleSection({
       {description && isOpen ? (
         <p className="mt-0.5 ml-7 text-xs text-muted-600">{description}</p>
       ) : null}
-      {isOpen ? <div className="mt-4">{children}</div> : null}
+      {keepMounted ? (
+        <div className={isOpen ? "mt-4" : "hidden"}>{children}</div>
+      ) : isOpen ? (
+        <div className="mt-4">{children}</div>
+      ) : null}
     </section>
   );
 }

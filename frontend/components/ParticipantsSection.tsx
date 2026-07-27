@@ -243,16 +243,28 @@ export function ParticipantsSection({
   );
 
   // Derived: filtered participants for display. Matches name OR email OR title.
+  // On time-slot jobs the running order is what matters on shoot day, so
+  // rows sort by booked time (unbooked last), not by name.
   const filteredParticipants = participants
-    ? participants.filter((p) => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          (p.email ?? "").toLowerCase().includes(q) ||
-          (p.title ?? "").toLowerCase().includes(q)
-        );
-      })
+    ? participants
+        .filter((p) => {
+          if (!search.trim()) return true;
+          const q = search.toLowerCase();
+          return (
+            p.name.toLowerCase().includes(q) ||
+            (p.email ?? "").toLowerCase().includes(q) ||
+            (p.title ?? "").toLowerCase().includes(q)
+          );
+        })
+        .sort((a, b) => {
+          if (!timeSlots) return 0; // queue jobs keep signup order
+          const ta = slotByParticipant.get(a.id)?.slot_start ?? "";
+          const tb = slotByParticipant.get(b.id)?.slot_start ?? "";
+          if (ta && tb) return ta.localeCompare(tb);
+          if (ta) return -1;
+          if (tb) return 1;
+          return a.name.localeCompare(b.name);
+        })
     : null;
 
   async function refresh() {
@@ -319,10 +331,10 @@ export function ParticipantsSection({
         </>
       }
       defaultOpen={false}
-      // Auto-open the section while the user is searching, so results aren't
-      // hidden behind a collapsed header. Reverts to internal state when the
-      // search clears.
-      forceOpen={search.trim().length > 0}
+      // Auto-open while searching or while the Add form is open — clicking
+      // Add participant on a collapsed section used to toggle an invisible
+      // form, so the button appeared to do nothing (live test 2026-07-27).
+      forceOpen={search.trim().length > 0 || adding}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           {participants && participants.length > 0 ? (
