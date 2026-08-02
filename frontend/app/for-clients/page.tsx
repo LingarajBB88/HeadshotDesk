@@ -46,7 +46,9 @@ function ForClientsContent() {
     <main className="min-h-dvh">
       {/* Header */}
       <header className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 h-16 flex items-center justify-between">
-        <Logo size="sm" wordmark />
+        <Link href="/" aria-label="HeadshotDesk home" className="inline-flex">
+          <Logo size="sm" wordmark />
+        </Link>
         <Link href="/" className="text-sm text-muted-600 hover:text-ink transition">
           What is this?
         </Link>
