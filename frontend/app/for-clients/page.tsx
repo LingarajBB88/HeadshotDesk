@@ -65,9 +65,9 @@ function ForClientsContent() {
         <p className="mt-6 max-w-2xl text-base sm:text-lg text-muted-600">
           Booking a headshot day usually means a spreadsheet, a scheduling
           thread, and weeks of forwarding photos to colleagues.{" "}
-          {photographer} uses <BrandName /> so none of that lands on your
-          desk. Your people organise themselves, and everyone ends up with
-          their own photos.
+          <strong className="font-semibold text-ink">{photographer}</strong>{" "}
+          uses <BrandName /> so none of that lands on your desk. Your people
+          organise themselves, and everyone ends up with their own photos.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link className="btn-primary" href={"/sample" as Route}>
@@ -90,9 +90,14 @@ function ForClientsContent() {
           </h2>
           <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="rounded-card border border-muted-200 bg-paper p-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-600">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-600">
                 The usual way
               </h3>
+              {/* Spacer keeps both columns' lists starting on the same line
+                  now that the right column has a name under its label. */}
+              <p className="mt-1 font-display text-xl font-semibold tracking-tight text-muted-400">
+                Without a tool
+              </p>
               <ul className="mt-4 space-y-3 text-sm text-muted-600 leading-relaxed">
                 {WITHOUT_TOOL.map((line) => (
                   <li key={line}>{line}</li>
@@ -100,9 +105,15 @@ function ForClientsContent() {
               </ul>
             </div>
             <div className="rounded-card border border-accent/30 bg-accent-muted p-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-accent">
-                With {photographer}
+              {/* The photographer's name is the point of this column, so it
+                  gets weight and size rather than sitting inside a small
+                  uppercase label like a generic section header. */}
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-accent">
+                With
               </h3>
+              <p className="mt-1 font-display text-xl font-semibold tracking-tight text-ink">
+                {photographer}
+              </p>
               <ul className="mt-4 space-y-3 text-sm text-ink leading-relaxed">
                 {WITH_TOOL.map((line) => (
                   <li key={line}>{line}</li>
