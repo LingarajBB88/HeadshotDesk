@@ -11,6 +11,7 @@
 //     labeled. Don't move items up until they're live.
 //   • Free during beta — no pricing claims until billing exists.
 
+import type { Route } from "next";
 import Link from "next/link";
 
 import { BrandName, renderBrand } from "@/components/BrandName";
@@ -191,6 +192,14 @@ export default function HomePage() {
           <a href="#features" className="hidden sm:inline text-muted-600 hover:text-ink transition">
             What&apos;s included
           </a>
+          {/* Cast: typedRoutes only learns new routes on a fresh build, and
+              a stale cache here has broken a production build before. */}
+          <Link
+            href={"/for-clients" as Route}
+            className="hidden sm:inline text-muted-600 hover:text-ink transition"
+          >
+            For clients
+          </Link>
           <Link href="/help" className="text-muted-600 hover:text-ink transition">
             Help
           </Link>
