@@ -13,6 +13,7 @@
 // Personalized with ?studio=Panther+Studios so it reads as the
 // photographer's own material rather than a generic vendor page.
 
+import type { Route } from "next";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -66,6 +67,17 @@ function ForClientsContent() {
           desk. Your people organise themselves, and everyone ends up with
           their own photos.
         </p>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link className="btn-primary" href={"/sample" as Route}>
+            Try it as an employee
+          </Link>
+          <a className="btn-secondary" href="#what-they-experience">
+            What your colleagues do
+          </a>
+        </div>
+        <p className="mt-3 text-xs text-muted-600">
+          Two minutes, nothing to install, nothing saved.
+        </p>
       </section>
 
       {/* The swap — their week, before and after. */}
@@ -100,7 +112,7 @@ function ForClientsContent() {
       </section>
 
       {/* What the employee experiences — the thing they will be asked about. */}
-      <section className="border-t border-muted-200">
+      <section id="what-they-experience" className="border-t border-muted-200">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
             What your colleagues experience
@@ -114,6 +126,7 @@ function ForClientsContent() {
                 title: "They click your link",
                 body: "One page: name, email, and the time that suits them. Takes under a minute, works on a phone.",
               },
+
               {
                 title: "They show up at their time",
                 body: "No queueing in a corridor, no guessing. They picked the slot, so they know when they are on.",

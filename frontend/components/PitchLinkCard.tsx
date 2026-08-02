@@ -53,6 +53,15 @@ export function PitchLinkCard({ studioName }: { studioName: string }) {
           >
             Preview
           </a>
+          <a
+            href="/sample"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-accent hover:underline whitespace-nowrap"
+            title="The clickable participant walkthrough your client can try"
+          >
+            Sample experience
+          </a>
         </div>
       </div>
     </div>
