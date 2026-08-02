@@ -1,15 +1,32 @@
-{% if client.logo_url %}
-<p style="margin-bottom:16px;">
-  <img src="{{ client.logo_url }}" alt="{{ job.client_name or 'Company logo' }}"
-       style="max-width:160px;max-height:64px;height:auto;" />
-</p>
-{% endif %}
-<p>Hi {{ participant.first_name }},</p>
-<p>Your headshots from <strong>{{ job.name }}</strong> are ready to view and download.</p>
-<p>
-  <a href="{{ gallery.url }}"
-     style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600;">
-    View your gallery
-  </a>
-</p>
-<p>{{ photographer.display_name }}</p>
+{# Participant-facing, so it carries the client's brand when set and reads
+   as a note from the photographer. Inline styles only. #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  {% if client.logo_url %}
+  <p style="margin:0 0 20px;">
+    <img src="{{ client.logo_url }}" alt="{{ job.client_name or 'Company logo' }}"
+         style="max-width:160px;max-height:64px;height:auto;" />
+  </p>
+  {% endif %}
+
+  <p style="margin:0 0 16px;">Hi {{ participant.first_name }},</p>
+
+  <p style="margin:0 0 16px;">
+    Your headshots from <strong>{{ job.name }}</strong> are ready.
+  </p>
+
+  <p style="margin:0 0 16px;">
+    <a href="{{ gallery.url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      View your photos
+    </a>
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">
+    Everything there is yours: have a look, pick the one you like, and
+    download it. The link keeps working, so you can come back for it later.
+  </p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ photographer.display_name }}
+  </p>
+</div>

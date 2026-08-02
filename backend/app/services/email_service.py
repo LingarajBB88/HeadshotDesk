@@ -16,7 +16,16 @@ logger = logging.getLogger(__name__)
 
 # Canonical "app" context for templates. Variable namespace lives in
 # docs/EMAIL_TEMPLATES.md.
-_APP_CONTEXT = {"name": "HeadshotDesk"}
+_APP_CONTEXT = {
+    "name": "HeadshotDesk",
+    "url": "https://headshotdesk.com",
+    # Product email is signed by a person, not a no-reply robot: these go
+    # to a few hundred photographers, and a name invites the reply that
+    # tells us something is broken. Override via env when the team grows.
+    "sender_name": settings.email_sender_name,
+    "sender_role": settings.email_sender_role,
+    "support_email": settings.email_support_address or settings.feedback_to_email,
+}
 
 
 def _first_name(full_name: str | None) -> str:

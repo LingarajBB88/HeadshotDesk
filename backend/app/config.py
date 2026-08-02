@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     email_from: str = Field(default="HeadshotDesk <noreply@headshotdesk.com>")
     # Where public feature requests are forwarded.
     feedback_to_email: str = Field(default="info@pantherstudios.nl")
+    # Signature on product emails. A real name reads like a person wrote
+    # it and makes replying feel natural, which is how we hear about
+    # problems early.
+    email_sender_name: str = Field(default="Lingaraj")
+    email_sender_role: str = Field(default="HeadshotDesk")
+    # Contact address printed in the signature. NOT a Reply-To header —
+    # replies go to EMAIL_FROM. Empty falls back to feedback_to_email.
+    email_support_address: str = Field(default="")
 
     # --- AI providers (only needed for v0.2) ---
     replicate_api_token: str = Field(default="")

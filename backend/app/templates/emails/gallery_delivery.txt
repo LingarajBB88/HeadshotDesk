@@ -1,7 +1,9 @@
 Hi {{ participant.first_name }},
 
-Your headshots from {{ job.name }} are ready to view and download.
+Your headshots from {{ job.name }} are ready. Here's your private link:
 
 {{ gallery.url }}
+
+Everything there is yours: have a look, pick the one you like, and download it. The link keeps working, so you can come back for it later.
 
 {{ photographer.display_name }}
