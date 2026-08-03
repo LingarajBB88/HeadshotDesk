@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { fetchMe } from "@/lib/auth";
 
 /**
  * HSD-65 — "Send this to a client you're pitching."
@@ -9,13 +11,47 @@ import { useState } from "react";
  * experience will be like rather than hearing it described. This copies a
  * link to the client-facing benefits page, personalized with the studio
  * name so it reads as the photographer's own material.
+ *
+ * Two shapes: the full card for the jobs home, and a compact one for the
+ * job page's share column, where it sits next to the signup link and the
+ * client dashboard link — the place a photographer is already thinking
+ * about what to send someone.
  */
-export function PitchLinkCard({ studioName }: { studioName: string }) {
+export function PitchLinkCard({
+  studioName,
+  variant = "full",
+}: {
+  /** Omit to resolve the studio name from the session. */
+  studioName?: string;
+  variant?: "full" | "compact";
+}) {
   const [copied, setCopied] = useState(false);
+  const [studio, setStudio] = useState<string | null>(studioName ?? null);
+
+  useEffect(() => {
+    if (studioName) {
+      setStudio(studioName);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await fetchMe();
+        if (!cancelled) setStudio(me?.account.name ?? null);
+      } catch {
+        /* card just stays hidden */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [studioName]);
+
+  if (!studio) return null;
 
   const url =
     typeof window !== "undefined"
-      ? `${window.location.origin}/for-clients?studio=${encodeURIComponent(studioName)}`
+      ? `${window.location.origin}/for-clients?studio=${encodeURIComponent(studio)}`
       : "/for-clients";
 
   async function copy() {
@@ -26,6 +62,43 @@ export function PitchLinkCard({ studioName }: { studioName: string }) {
     } catch {
       window.prompt("Copy this link:", url);
     }
+  }
+
+  if (variant === "compact") {
+    return (
+      <div className="rounded-card border border-muted-200 bg-paper p-4">
+        <p className="text-sm font-medium text-ink">Pitch another client</p>
+        <p className="mt-0.5 text-xs text-muted-600">
+          A page that sells the shoot for you, in your studio&apos;s name.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={copy}
+            className="btn-secondary text-xs"
+          >
+            {copied ? "Copied!" : "Copy link"}
+          </button>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-accent hover:underline"
+          >
+            Preview
+          </a>
+          <a
+            href="/sample"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-accent hover:underline"
+            title="The clickable participant walkthrough your client can try"
+          >
+            Sample experience
+          </a>
+        </div>
+      </div>
+    );
   }
 
   return (

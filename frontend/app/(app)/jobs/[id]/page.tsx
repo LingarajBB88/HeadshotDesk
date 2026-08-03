@@ -14,6 +14,7 @@ import {
 } from "@/components/JobOverview";
 import { ClientLinkBar } from "@/components/ClientLinkBar";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
+import { PitchLinkCard } from "@/components/PitchLinkCard";
 import { PhotosSection } from "@/components/PhotosSection";
 import { ScheduleSection } from "@/components/ScheduleSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
@@ -406,6 +407,11 @@ export default function JobDetailPage() {
                     job={job}
                     onJobChanged={(updated) => setJob(updated)}
                   />
+                  {/* HSD-65: the share column is where photographers think
+                      about what to send someone, so the pitch link belongs
+                      here too — compact, so it doesn't compete with the
+                      links for this job. */}
+                  <PitchLinkCard variant="compact" />
                 </>
               ) : null}
             </div>
