@@ -212,6 +212,81 @@ function ForClientsContent() {
         </div>
       </section>
 
+      {/* Security and data protection. Every claim here is checked against
+          what the product actually does — an IT or legal reviewer will
+          test these, and one false line costs the booking. Anything not
+          yet true lives on the roadmap, not on this page. */}
+      <section className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
+          <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight max-w-2xl">
+            For your IT and legal reviewers
+          </h2>
+          <p className="mt-3 text-sm sm:text-base text-muted-600 max-w-2xl">
+            Employee photos and names are personal data, so this usually
+            needs a second pair of eyes internally. Here is what to tell
+            them.
+          </p>
+
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8">
+            {[
+              {
+                title: "Data stays in the EU",
+                body: "Photos and personal data are stored in the EU: the database runs in Frankfurt and photo storage is restricted to EU jurisdiction. Delivery emails are sent through Postmark (US), which receives only a name, an email address, and the gallery link.",
+              },
+              {
+                title: "Encrypted in transit and at rest",
+                body: "Everything runs over HTTPS, and both the database and photo storage encrypt data at rest by default with our providers.",
+              },
+              {
+                title: "Consent recorded per person",
+                body: "Anyone signing up themselves ticks a privacy consent box, and the exact moment is stored against their record. It is per person and per shoot, never assumed for the group.",
+              },
+              {
+                title: "No public links, ever",
+                body: "Each gallery is reachable only through a long random link that is impossible to guess and is never listed or indexed. One person's link shows only their photos.",
+              },
+              {
+                title: "Access is scoped and gated",
+                body: "Every request is checked against the account it belongs to, so one photographer's data cannot be read by another. Passwords are stored with Argon2 hashing, never in readable form.",
+              },
+              {
+                title: "Deletion on request",
+                body: "Your photographer can delete a person, their photos, or the whole shoot at any time, and it is removed from storage too. Ask them, or email us directly and we will action it.",
+              },
+              {
+                title: "You keep the rights",
+                body: "We never use your employees' photos for marketing, training, or anything else. They exist to be delivered to the people in them, and nothing more.",
+              },
+              {
+                title: "No accounts for employees",
+                body: "Your colleagues never create a login or a password with us, which means there is no extra credential to manage or off-board.",
+              },
+              {
+                title: "Written policies",
+                body: "Our privacy policy names what we store, why, how long, and who processes it. Happy to walk your DPO through it.",
+              },
+            ].map((b) => (
+              <div key={b.title}>
+                <h3 className="text-sm font-semibold text-ink">{b.title}</h3>
+                <p className="mt-1 text-sm text-muted-600 leading-relaxed">
+                  {b.body}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-10 text-sm text-muted-600">
+            Reviewers usually want the details in writing:{" "}
+            <Link href="/privacy" className="text-accent hover:underline">
+              read the full privacy policy
+            </Link>
+            . If your team needs a data processing agreement or has questions
+            we have not answered here, ask {studio ? studio : "your photographer"} and we
+            will provide one.
+          </p>
+        </div>
+      </section>
+
       {/* The questions a coordinator actually has to answer internally. */}
       <section className="border-t border-muted-200">
         <div className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 py-14 sm:py-20">
