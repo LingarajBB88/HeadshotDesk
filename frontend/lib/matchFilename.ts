@@ -60,6 +60,25 @@ export function findMatchingParticipant<
     }
   }
 
+  // Substring fallback: the full name sits inside the filename with no
+  // separator before the counter — "Antonella Di Santi9223.jpg", or a
+  // Finder duplicate "… copy.jpg". Capture One writes the first form when
+  // the naming token is clipboard + counter with nothing between them.
+  // Longest name wins so a Doerr file can't fall to Doe.
+  if (matches.length === 0) {
+    let best: T | null = null;
+    let bestLen = 0;
+    for (const p of participants) {
+      const nameNorm = normalize(p.name);
+      if (nameNorm.split(" ").filter(Boolean).length < 2) continue;
+      if (fileNorm.includes(nameNorm) && nameNorm.length > bestLen) {
+        best = p;
+        bestLen = nameNorm.length;
+      }
+    }
+    if (best) return best;
+  }
+
   if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0];
   // Tie-break: prefer participants already marked as shot in the queue.

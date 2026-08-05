@@ -247,10 +247,18 @@ export default function PublicGalleryPage() {
         text: file.is_downloaded ? "Saved again." : "Saved.",
       });
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError) {
+        // Show what the server (or the timeout) actually said — a blanket
+        // "didn't go through" made a stuck download impossible to explain.
         setNotice({ type: "err", text: err.message });
       } else {
-        setNotice({ type: "err", text: "Didn't go through. Try again?" });
+        setNotice({
+          type: "err",
+          text:
+            err instanceof Error
+              ? `Didn't go through: ${err.message}`
+              : "Didn't go through. Try again?",
+        });
       }
     } finally {
       setDownloading(null);
@@ -294,10 +302,18 @@ export default function PublicGalleryPage() {
       });
       clearSelection();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 403) {
+      if (err instanceof ApiError) {
+        // Show what the server (or the timeout) actually said — a blanket
+        // "didn't go through" made a stuck download impossible to explain.
         setNotice({ type: "err", text: err.message });
       } else {
-        setNotice({ type: "err", text: "Didn't go through. Try again?" });
+        setNotice({
+          type: "err",
+          text:
+            err instanceof Error
+              ? `Didn't go through: ${err.message}`
+              : "Didn't go through. Try again?",
+        });
       }
     } finally {
       setZipping(false);

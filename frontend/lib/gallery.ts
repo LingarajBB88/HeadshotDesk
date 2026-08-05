@@ -72,14 +72,43 @@ export function thumbnailUrl(token: string, fileId: string): string {
  *
  * Throws ApiError with status 403 when the cap is exceeded.
  */
+/**
+ * Fetch with a hard deadline. A hung request used to leave the gallery
+ * stuck on "Saving…" forever with every button disabled, because the
+ * promise never settled and the finally block never ran (seen in the
+ * field 2026-08-04). Now it always ends, one way or another.
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  ms: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if ((e as DOMException)?.name === "AbortError") {
+      throw new ApiError(
+        408,
+        "That took too long. Check your connection and try again.",
+      );
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function downloadFile(
   token: string,
   fileId: string,
 ): Promise<{ filename: string }> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BASE}/api/v1/public/gallery/${encodeURIComponent(token)}` +
       `/files/${encodeURIComponent(fileId)}/download`,
     { method: "POST" },
+    60_000,
   );
 
   if (!res.ok) {
@@ -123,13 +152,16 @@ export async function downloadZip(
   token: string,
   fileIds: string[],
 ): Promise<{ filename: string }> {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     `${BASE}/api/v1/public/gallery/${encodeURIComponent(token)}/files/zip`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ file_ids: fileIds }),
     },
+    // Zips are built server-side from full-resolution originals, so allow
+    // longer than a single download before giving up.
+    180_000,
   );
 
   if (!res.ok) {
