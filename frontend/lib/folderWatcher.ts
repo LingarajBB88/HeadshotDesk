@@ -146,8 +146,29 @@ export class FolderWatcher {
     try {
       await this.scan({ initial: true });
     } catch (e) {
-      this.events.onError("Could not read folder. Permission may be missing.");
-      this.events.onStatus("no-permission");
+      // Distinguish the two very different failures. Calling everything a
+      // permission problem sent photographers round the Resume loop when
+      // the real cause was a folder their export tool had re-created
+      // (Evoto and Capture One both do this), which invalidates the saved
+      // handle even though permission is intact.
+      const name = (e as DOMException | undefined)?.name;
+      if (name === "NotFoundError") {
+        this.events.onError(
+          "That folder no longer exists. Export tools often delete and " +
+            "re-create their output folder, which breaks the link. Map it again.",
+        );
+        this.events.onStatus("error");
+      } else if (name === "NotAllowedError" || name === "SecurityError") {
+        this.events.onError(
+          "The browser denied access to the folder. Resume to grant it again.",
+        );
+        this.events.onStatus("no-permission");
+      } else {
+        this.events.onError(
+          `Could not read the folder: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        this.events.onStatus("error");
+      }
       return;
     }
     this.timer = setInterval(() => {

@@ -337,6 +337,38 @@ export function FolderWatchSection({
       return;
     }
 
+    // Permission is granted — but the folder itself may be gone. Export
+    // tools (Evoto, Capture One) delete and re-create their output folder,
+    // which leaves the saved handle pointing at nothing. Verify with a
+    // single read so Resume can say what's actually wrong instead of
+    // looping on a permission message.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (handle as any).values().next();
+    } catch (e) {
+      setBusy(false);
+      const name = (e as DOMException | undefined)?.name;
+      if (name === "NotFoundError") {
+        // The mapping is dead; drop it so the UI offers a fresh pick
+        // rather than a Resume button that can never succeed.
+        await deleteFolderHandle(jobId);
+        await deleteUploadedFingerprints(jobId);
+        handleRef.current = null;
+        setFolderName(null);
+        setState("idle");
+        setError(
+          "That folder no longer exists — your export tool likely re-created " +
+            "it. Choose it again and watching will pick up where it left off.",
+        );
+      } else {
+        setState("error");
+        setError(
+          `Could not read the folder: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+      return;
+    }
+
     try {
       await startWatching(handle);
     } finally {
@@ -415,7 +447,10 @@ export function FolderWatchSection({
             {!busy && state === "uploading" && "Uploading new photos…"}
             {!busy && state === "idle" && "Not watching. Click Resume to start checking."}
             {!busy && state === "no-permission" && "Browser permission was revoked. Resume to re-grant."}
-            {!busy && state === "error" && "Something went wrong. Try resuming."}
+            {/* The error message below carries the specific cause, so don't
+                contradict it with a generic 'try resuming' that may be
+                impossible (e.g. the folder is gone). */}
+            {!busy && state === "error" && !error && "Something went wrong. Try resuming."}
           </p>
           {totalUploaded > 0 ? (
             <p className="mt-1 text-xs text-muted-600">
