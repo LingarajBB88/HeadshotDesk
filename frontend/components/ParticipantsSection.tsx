@@ -647,8 +647,9 @@ function AddParticipantForm({
 // --- CSV upload -------------------------------------------------------------
 
 function downloadCsvTemplate() {
-  // Just the header row — keeps the file unambiguous, no dummy data to delete.
-  const csv = "name,email,title\n";
+  // Just the header row — keeps the file unambiguous, no dummy data to
+  // delete. `time` is optional and books the slot on import.
+  const csv = "name,email,title,time\n";
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -688,10 +689,15 @@ function CsvUpload({
   return (
     <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-4 flex flex-wrap items-center gap-3 justify-between">
       <div className="text-xs text-muted-600">
-        Upload a CSV with columns <code className="bg-muted-50 px-1 rounded">name</code>,{" "}
+        Upload a CSV, Excel or Numbers file with columns{" "}
+        <code className="bg-muted-50 px-1 rounded">name</code>,{" "}
         <code className="bg-muted-50 px-1 rounded">email</code>,{" "}
-        <code className="bg-muted-50 px-1 rounded">title</code> (header row required, only{" "}
-        <code className="bg-muted-50 px-1 rounded">name</code> mandatory). New to this?{" "}
+        <code className="bg-muted-50 px-1 rounded">title</code>,{" "}
+        <code className="bg-muted-50 px-1 rounded">time</code> (header row
+        required, only <code className="bg-muted-50 px-1 rounded">name</code>{" "}
+        mandatory). A time like{" "}
+        <code className="bg-muted-50 px-1 rounded">09:20</code> books that
+        slot straight away. New to this?{" "}
         <button
           onClick={downloadCsvTemplate}
           className="text-accent hover:underline"
@@ -705,7 +711,7 @@ function CsvUpload({
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.tsv,.txt,.xlsx,.xlsm,.numbers,text/csv"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -745,6 +751,9 @@ function ImportResultBanner({
             Imported {result.created} participant{result.created === 1 ? "" : "s"}.
             {result.skipped_duplicates > 0
               ? ` Skipped ${result.skipped_duplicates} duplicate${result.skipped_duplicates === 1 ? "" : "s"}.`
+              : ""}
+            {result.slots_booked
+              ? ` Booked ${result.slots_booked} time${result.slots_booked === 1 ? "" : "s"} from the file.`
               : ""}
           </p>
           {result.errors.length > 0 ? (

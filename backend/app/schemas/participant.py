@@ -25,6 +25,8 @@ class CsvImportResult(BaseModel):
     created: int
     skipped_duplicates: int
     errors: list[str]  # row-level error messages, e.g. "Row 4: invalid email"
+    # How many rows carried a time that was booked as a slot.
+    slots_booked: int = 0
 
 
 # --- Public (signup form) ---

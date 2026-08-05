@@ -16,7 +16,7 @@ from app.schemas.participant import (
     ParticipantOut,
     ParticipantUpdate,
 )
-from app.services import participant_service
+from app.services import participant_service, spreadsheet_service
 
 router = APIRouter()
 
@@ -71,10 +71,9 @@ async def import_csv_for_job(
     db: Session = Depends(get_db),
 ) -> CsvImportResult:
     raw = await file.read()
-    try:
-        text = raw.decode("utf-8-sig")  # strip BOM if present
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1")
+    # Accepts CSV, Excel and Numbers; everything is normalised to CSV text
+    # before the importer sees it.
+    text = spreadsheet_service.to_csv_text(file.filename or "", raw)
 
     result = participant_service.import_csv(
         db, account=account, job_id=job_id, csv_text=text

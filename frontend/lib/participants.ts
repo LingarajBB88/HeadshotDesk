@@ -37,6 +37,8 @@ export type CsvImportResult = {
   created: number;
   skipped_duplicates: number;
   errors: string[];
+  /** Rows that carried a time and had that slot booked on import. */
+  slots_booked?: number;
 };
 
 export type PublicJob = {

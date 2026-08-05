@@ -7,7 +7,7 @@ from __future__ import annotations
 import csv
 import io
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from pydantic import ValidationError
@@ -19,7 +19,7 @@ from app.core.ids import new_id
 from app.core.security import generate_refresh_token  # reused for opaque tokens
 from app.models import Account, Job, Participant, User
 from app.schemas.participant import ParticipantCreate
-from app.services import email_service, job_service
+from app.services import email_service, job_service, slot_service
 
 logger = logging.getLogger(__name__)
 
@@ -413,6 +413,8 @@ def import_csv(
     skipped_duplicates = 0
     errors: list[str] = []
     seen_in_batch: set[str] = set()
+    # (row number, participant, raw time) — booked after the commit.
+    pending_bookings: list[tuple[int, Participant, str]] = []
 
     for i, row in enumerate(reader, start=2):  # header is row 1
         # Skip fully-blank rows silently
@@ -422,6 +424,10 @@ def import_csv(
         name = get(row, "name")
         email = get(row, "email") or None
         title = get(row, "title") or None
+        # Clients often hand over a list that already has times against
+        # names. Accept it and book the slot outright rather than making
+        # the photographer re-enter 30 times by hand.
+        wanted_time = get(row, "time") or get(row, "slot") or get(row, "time slot")
 
         # Validate via the same Pydantic schema as manual create.
         try:
@@ -451,16 +457,82 @@ def import_csv(
         )
         db.add(participant)
         created += 1
+        if wanted_time:
+            pending_bookings.append((i, participant, wanted_time))
 
     if created > 0:
         job_service.maybe_advance_status(job, "open_for_signup")
 
     db.commit()
+
+    # Book any times from the file. Done after the commit so participants
+    # exist; each failure is reported per row and never loses the import.
+    booked = 0
+    for row_no, participant, raw_time in pending_bookings:
+        slot_start = _resolve_slot_time(job, raw_time)
+        if slot_start is None:
+            errors.append(
+                f"Row {row_no}: couldn't read the time '{raw_time}'. "
+                "Use HH:MM, or YYYY-MM-DD HH:MM on a multi-day shoot."
+            )
+            continue
+        try:
+            slot_service.book_slot_for_participant(
+                db, job=job, participant=participant, slot_start=slot_start
+            )
+            booked += 1
+        except HTTPException as e:
+            errors.append(f"Row {row_no}: {raw_time} — {e.detail}")
+
     return {
         "created": created,
         "skipped_duplicates": skipped_duplicates,
         "errors": errors,
+        "slots_booked": booked,
     }
+
+
+def _resolve_slot_time(job: Job, raw: str):  # type: ignore[no-untyped-def]
+    """Turn a cell value into a slot start on one of the job's days.
+
+    Accepts "09:20", "9:20", "2026-09-16 09:20" and "2026-09-16@09:20".
+    A bare time lands on the first shoot day, which is what a single-day
+    list means. Returns None when it can't be read at all.
+    """
+    from datetime import datetime as _dt, timezone as _tz
+
+    value = (raw or "").strip().replace("@", " ")
+    if not value:
+        return None
+
+    day = None
+    time_part = value
+    if " " in value:
+        maybe_day, maybe_time = value.split(None, 1)
+        try:
+            day = date.fromisoformat(maybe_day)
+            time_part = maybe_time.strip()
+        except ValueError:
+            day = None
+            time_part = value
+
+    # Excel/Numbers often hand back "09:20:00".
+    bits = time_part.split(":")
+    if len(bits) < 2:
+        return None
+    try:
+        hour, minute = int(bits[0]), int(bits[1])
+    except ValueError:
+        return None
+    if not (0 <= hour < 24 and 0 <= minute < 60):
+        return None
+
+    days = job.all_shoot_dates
+    if day is None:
+        day = days[0] if days else job.shoot_date
+    if day is None:
+        return None
+    return _dt(day.year, day.month, day.day, hour, minute, tzinfo=_tz.utc)
 
 
 # ============================================================================
