@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { EditJobModal } from "@/components/EditJobModal";
-import { PitchLinkCard } from "@/components/PitchLinkCard";
 import { StatusPill } from "@/components/StatusPill";
-import { fetchMe } from "@/lib/auth";
 import {
   archiveJob,
   getJob,
@@ -207,23 +205,6 @@ export default function JobsPage() {
   const [error, setError] = useState<string | null>(null);
   // Full job being edited via the row ⋯ menu (null = modal closed).
   const [editingJob, setEditingJob] = useState<Job | null>(null);
-  // Studio name personalizes the client-facing pitch link (HSD-65).
-  const [studioName, setStudioName] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const me = await fetchMe();
-        if (!cancelled) setStudioName(me?.account.name ?? null);
-      } catch {
-        /* the pitch card just stays hidden */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
   // Bumped to refetch the list after archive / edit-save.
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -260,15 +241,6 @@ export default function JobsPage() {
           New job
         </Link>
       </div>
-
-      {/* HSD-65: the pitch link. Lives on the jobs home because that's
-          where photographers land between shoots, which is exactly when
-          they're chasing the next booking. */}
-      {studioName ? (
-        <div className="mt-6">
-          <PitchLinkCard studioName={studioName} />
-        </div>
-      ) : null}
 
       {/* Tabs */}
       <div className="mt-6 border-b border-muted-200 flex gap-6">

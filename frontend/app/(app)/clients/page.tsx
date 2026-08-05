@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { PitchLinkCard } from "@/components/PitchLinkCard";
 import {
   createClient,
   deleteClient,
@@ -170,6 +171,12 @@ export default function ClientsPage() {
         The companies you shoot for. Upload a logo once and it brands their
         signup pages, galleries, and delivery emails automatically.
       </p>
+
+      {/* HSD-65: pitching a client belongs on the Clients page — it's the
+          one screen that's about clients rather than a shoot in progress. */}
+      <div className="mt-6">
+        <PitchLinkCard />
+      </div>
 
       <form onSubmit={handleCreate} className="mt-6 flex items-center gap-2">
         <input

@@ -14,7 +14,6 @@ import {
 } from "@/components/JobOverview";
 import { ClientLinkBar } from "@/components/ClientLinkBar";
 import { ParticipantsSection } from "@/components/ParticipantsSection";
-import { PitchLinkCard } from "@/components/PitchLinkCard";
 import { PhotosSection } from "@/components/PhotosSection";
 import { ScheduleSection } from "@/components/ScheduleSection";
 import { SignupLinkBar } from "@/components/SignupLinkBar";
@@ -398,11 +397,6 @@ export default function JobDetailPage() {
                     job={job}
                     onJobChanged={(updated) => setJob(updated)}
                   />
-                  {/* HSD-65: the share column is where photographers think
-                      about what to send someone, so the pitch link belongs
-                      here too — compact, so it doesn't compete with the
-                      links for this job. */}
-                  <PitchLinkCard variant="compact" />
                 </>
               ) : null}
             </div>
@@ -608,9 +602,11 @@ function DeliverResultToast({
   );
 }
 
-// F5b.2 — per-job favorites setting: on/off plus how many each person may
-// star ("pick 1", "pick 3", or unlimited). Sits next to the download cap
-// because photographers think of both as package terms.
+// F5b.2 — participant favourites. One checkbox, saved on toggle: a
+// separate "how many stars" number next to the download cap read as two
+// competing limits. Participants can star as many photos as they're
+// allowed to download, which is how packages are actually sold ("pick 1",
+// "pick 3"), so the cap simply follows download_cap.
 function PicksDetail({
   job,
   onChanged,
@@ -620,34 +616,20 @@ function PicksDetail({
   onChanged: (updated: Job) => void;
   editable: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [enabled, setEnabled] = useState(job.picks_enabled);
-  const [cap, setCap] = useState<string>(String(job.pick_cap));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const summary = !job.picks_enabled
-    ? "Off — nobody is asked to choose."
-    : job.pick_cap === 0
-      ? "Any number of favourites."
-      : `Up to ${job.pick_cap}.`;
-
-  async function save() {
-    const parsed = Number(cap);
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
-      setError("Enter a number between 0 and 100.");
-      return;
-    }
+  async function toggle(next: boolean) {
     setSaving(true);
     setError(null);
     try {
       onChanged(
         await updateJob(job.id, {
-          picks_enabled: enabled,
-          pick_cap: Math.floor(parsed),
+          picks_enabled: next,
+          // Keep the stored cap in step with the download allowance.
+          pick_cap: job.download_cap,
         }),
       );
-      setEditing(false);
     } catch {
       setError("Couldn't save. Try again.");
     } finally {
@@ -658,74 +640,32 @@ function PicksDetail({
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Photos each person can star for retouching
+        Let people choose their favourites
       </dt>
       <dd className="mt-1 text-sm text-ink">
-        {editing ? (
-          <div className="space-y-2">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => setEnabled(e.target.checked)}
-                className="accent-accent"
-                disabled={saving}
-              />
-              <span className="text-sm">Let participants star favourites</span>
-            </label>
-            {enabled ? (
-              <label className="flex items-center gap-2">
-                <span className="text-xs text-muted-600">Stars each</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={cap}
-                  onChange={(e) => setCap(e.target.value)}
-                  disabled={saving}
-                  className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                />
-                <span className="text-xs text-muted-600">(0 = unlimited)</span>
-              </label>
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            checked={job.picks_enabled}
+            onChange={(e) => toggle(e.target.checked)}
+            disabled={saving || !editable}
+            className="mt-0.5 accent-accent"
+          />
+          <span>
+            <span className="block">
+              {saving
+                ? "Saving…"
+                : job.picks_enabled
+                  ? "On — they star what they want, you retouch those."
+                  : "Off — no starring in the gallery."}
+            </span>
+            {job.picks_enabled ? (
+              <span className="block text-xs text-muted-600">
+                Up to {job.download_cap === 1 ? "1 photo" : `${job.download_cap} photos`}, matching their download allowance.
+              </span>
             ) : null}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={save}
-                disabled={saving}
-                className="text-xs font-medium text-accent hover:underline disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditing(false);
-                  setEnabled(job.picks_enabled);
-                  setCap(String(job.pick_cap));
-                  setError(null);
-                }}
-                disabled={saving}
-                className="text-xs text-muted-600 hover:text-ink"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-baseline gap-3">
-            <span>{summary}</span>
-            {editable ? (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-accent hover:underline"
-              >
-                Change
-              </button>
-            ) : null}
-          </div>
-        )}
+          </span>
+        </label>
         {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
       </dd>
     </div>
