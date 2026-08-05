@@ -637,34 +637,23 @@ function PicksDetail({
     }
   }
 
+  // One line, no label above it, no explanation underneath: the sentence
+  // is the setting.
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Let people choose their favourites
-      </dt>
-      <dd className="mt-1 text-sm text-ink">
-        <label className="flex items-start gap-2">
+      <dd className="text-sm text-ink">
+        <label className="flex items-center gap-2">
           <input
             type="checkbox"
             checked={job.picks_enabled}
             onChange={(e) => toggle(e.target.checked)}
             disabled={saving || !editable}
-            className="mt-0.5 accent-accent"
+            className="accent-accent"
           />
-          <span>
-            <span className="block">
-              {saving
-                ? "Saving…"
-                : job.picks_enabled
-                  ? "On — they star what they want, you retouch those."
-                  : "Off — no starring in the gallery."}
-            </span>
-            {job.picks_enabled ? (
-              <span className="block text-xs text-muted-600">
-                Up to {job.download_cap === 1 ? "1 photo" : `${job.download_cap} photos`}, matching their download allowance.
-              </span>
-            ) : null}
-          </span>
+          <span>Participants choose their favourite photos</span>
+          {saving ? (
+            <span className="text-xs text-muted-600">Saving…</span>
+          ) : null}
         </label>
         {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
       </dd>
