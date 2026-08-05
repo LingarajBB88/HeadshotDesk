@@ -249,7 +249,12 @@ class TestCsvImport:
         job = _create_job(client, a["tokens"]["access_token"])
         csv = "name,email,title\n"
         result = self._import(client, a["tokens"]["access_token"], job["id"], csv)
-        assert result == {"created": 0, "skipped_duplicates": 0, "errors": []}
+        assert result == {
+            "created": 0,
+            "skipped_duplicates": 0,
+            "errors": [],
+            "slots_booked": 0,
+        }
 
     def test_handles_excel_sep_preamble(self, client: TestClient):
         """Excel sometimes saves CSVs with a 'sep=,' first line. Don't reject."""

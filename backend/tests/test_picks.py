@@ -7,10 +7,14 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 
-def _make_jpeg() -> bytes:
-    """Tiny in-memory JPEG for upload tests (matches test_files' helper)."""
+def _make_jpeg(seed: int = 0) -> bytes:
+    """Tiny in-memory JPEG. The seed varies the pixels: uploads are
+    content-deduplicated by SHA-256, so identical bytes would collapse into
+    a single photo and quietly invalidate any test that needs several."""
     buf = io.BytesIO()
-    Image.new("RGB", (60, 60), color="white").save(buf, format="JPEG")
+    Image.new("RGB", (60, 60), color=(seed * 40 % 256, 120, 200)).save(
+        buf, format="JPEG"
+    )
     return buf.getvalue()
 
 
@@ -64,7 +68,7 @@ def _job_with_photos(
     for i in range(photos):
         up = client.post(
             f"/api/v1/jobs/{job['id']}/files",
-            files={"files": (f"Jane Doe_{i}.jpg", _make_jpeg(), "image/jpeg")},
+            files={"files": (f"Jane Doe_{i}.jpg", _make_jpeg(i + 1), "image/jpeg")},
             headers=_auth(token),
         ).json()
         file_ids.append(up["uploaded"][0]["id"])
