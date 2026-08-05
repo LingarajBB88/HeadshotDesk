@@ -144,7 +144,7 @@ export function ScheduleSection({
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<ScheduleEntry[] | null>(null);
 
   useEffect(() => {
@@ -281,7 +281,7 @@ export function ScheduleSection({
     // then retry with the cancel flag.
     setSaving(true);
     setSaveError(null);
-    setSaved(false);
+    setSaved(null);
 
     async function doSave(clear: boolean) {
       const updated = await updateJob(job.id, {
@@ -292,8 +292,16 @@ export function ScheduleSection({
       // The server prunes stale removals on save; adopt its version so the
       // draft matches what was actually stored.
       setConfig(canonical(updated.time_slot_config ?? DEFAULT_CONFIG));
-      setSaved(true);
-      window.setTimeout(() => setSaved(false), 2000);
+      // Confirmation carries the numbers, because "Saved." next to an
+      // unchanged-looking grid doesn't tell you the shoot day is actually
+      // bookable now. Stays up long enough to read.
+      const liveSlots = draftSlots(
+        canonical(updated.time_slot_config ?? DEFAULT_CONFIG),
+      ).length;
+      setSaved(
+        `Schedule saved. ${liveSlots} slot${liveSlots === 1 ? "" : "s"} are live on the signup page.`,
+      );
+      window.setTimeout(() => setSaved(null), 6000);
       try {
         setSchedule(await getSchedule(job.id));
       } catch {
@@ -758,8 +766,18 @@ export function ScheduleSection({
               Reset
             </button>
           ) : null}
-          {saved ? <span className="text-xs text-green-700">Saved.</span> : null}
         </div>
+        {saved ? (
+          <div
+            role="status"
+            className="mt-3 flex items-start gap-2 rounded-card border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+          >
+            <span aria-hidden className="leading-5">
+              ✓
+            </span>
+            <span>{saved}</span>
+          </div>
+        ) : null}
       </div>
     </CollapsibleSection>
   );
