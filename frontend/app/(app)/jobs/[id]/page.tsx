@@ -378,15 +378,6 @@ export default function JobDetailPage() {
                 onChanged={(updated) => setJob(updated)}
                 editable={job.status !== "archived"}
               />
-              <Detail label="Client email" value={job.client_email ?? "—"} />
-              <Detail
-                label="Created"
-                value={new Date(job.created_at).toLocaleDateString()}
-              />
-              <Detail
-                label="Last updated"
-                value={new Date(job.updated_at).toLocaleDateString()}
-              />
             </dl>
             <div className="md:col-span-3 flex flex-col gap-4">
               <ShootDayHero job={job} />
@@ -416,6 +407,27 @@ export default function JobDetailPage() {
               ) : null}
             </div>
           </div>
+
+          {/* Reference data you read once and never act on: contact address
+              and timestamps. Kept (support asks for them) but demoted to a
+              single quiet line so the settings above stay the focus. */}
+          <p className="mt-8 pt-4 border-t border-muted-200 text-xs text-muted-600">
+            {job.client_email ? (
+              <>
+                Client contact{" "}
+                <a
+                  href={`mailto:${job.client_email}`}
+                  className="text-accent hover:underline"
+                >
+                  {job.client_email}
+                </a>
+                {" · "}
+              </>
+            ) : null}
+            Created {new Date(job.created_at).toLocaleDateString()}
+            {" · "}
+            Updated {new Date(job.updated_at).toLocaleDateString()}
+          </p>
         </CollapsibleSection>
       </div>
 
@@ -450,17 +462,6 @@ export default function JobDetailPage() {
           onChanged={() => setParticipantsRefreshKey((k) => k + 1)}
         />
       </div>
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        {label}
-      </dt>
-      <dd className="mt-1 text-sm text-ink">{value}</dd>
     </div>
   );
 }
@@ -626,10 +627,10 @@ function PicksDetail({
   const [error, setError] = useState<string | null>(null);
 
   const summary = !job.picks_enabled
-    ? "Off. Participants just download."
+    ? "Off — nobody is asked to choose."
     : job.pick_cap === 0
-      ? "On, unlimited stars."
-      : `On, ${job.pick_cap} star${job.pick_cap === 1 ? "" : "s"} each.`;
+      ? "Any number of favourites."
+      : `Up to ${job.pick_cap}.`;
 
   async function save() {
     const parsed = Number(cap);
@@ -657,7 +658,7 @@ function PicksDetail({
   return (
     <div>
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Participant favourites
+        Photos each person can star for retouching
       </dt>
       <dd className="mt-1 text-sm text-ink">
         {editing ? (
@@ -746,9 +747,9 @@ function DownloadCapDetail({
   const [error, setError] = useState<string | null>(null);
 
   const formattedHelper = (() => {
-    if (job.download_cap === 0) return "Downloads disabled.";
-    if (job.download_cap === 1) return "1 headshot per participant.";
-    return `${job.download_cap} headshots per participant.`;
+    if (job.download_cap === 0) return "None — downloads are off for now.";
+    if (job.download_cap === 1) return "1 photo.";
+    return `Up to ${job.download_cap} photos.`;
   })();
 
   async function save() {
@@ -772,8 +773,11 @@ function DownloadCapDetail({
 
   return (
     <div>
+      {/* Paired with the favourites setting below. Both are "per person"
+          numbers, which read as the same thing at a glance, so each says
+          plainly what it controls: keeping vs. flagging for retouch. */}
       <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
-        Headshots per participant
+        Photos each person can download
       </dt>
       <dd className="mt-1 text-sm text-ink">
         {editing ? (
