@@ -11,6 +11,7 @@ import {
   type Job,
   type ScheduleEntry,
   type SlotBreak,
+  type DayConfig,
   type TimeSlotConfig,
 } from "@/lib/jobs";
 
@@ -46,13 +47,27 @@ const toHHMM = (mins: number): string =>
 
 type DraftSlot = { start: string; end: string; isExtra: boolean };
 
+/** The settings in force for a given day: its own override when it has
+ *  one, otherwise the job's base settings. */
+export function dayConfigFor(cfg: TimeSlotConfig, isoDay?: string): DayConfig {
+  const ov = isoDay ? cfg.day_overrides?.[isoDay] : undefined;
+  return {
+    start: ov?.start ?? cfg.start,
+    end: ov?.end ?? cfg.end,
+    slot_minutes: ov?.slot_minutes ?? cfg.slot_minutes,
+    buffer_minutes: ov?.buffer_minutes ?? cfg.buffer_minutes,
+    breaks: ov?.breaks ?? cfg.breaks,
+  };
+}
+
 /** Client-side mirror of the backend's slot generation, for live preview.
- *  `isoDay` scopes date-qualified removals and extras ("2026-09-16@14:20")
- *  so a multi-day shoot previews each day correctly. */
+ *  `isoDay` selects that day's settings and scopes date-qualified removals
+ *  and extras ("2026-09-16@14:20"). */
 function draftSlots(cfg: TimeSlotConfig, isoDay?: string): DraftSlot[] {
-  if (!cfg.start || !cfg.end) return [];
+  const day = dayConfigFor(cfg, isoDay);
+  if (!day.start || !day.end) return [];
   const out: DraftSlot[] = [];
-  const breaks = cfg.breaks
+  const breaks = day.breaks
     .filter((b) => b.start && b.end)
     .map((b) => [toMins(b.start), toMins(b.end)] as const);
   const blocked = new Set(
@@ -60,13 +75,13 @@ function draftSlots(cfg: TimeSlotConfig, isoDay?: string): DraftSlot[] {
       .filter((b) => !b.includes("@") || b.split("@")[0] === isoDay)
       .map((b) => (b.includes("@") ? b.split("@")[1] : b)),
   );
-  const step = cfg.slot_minutes + cfg.buffer_minutes;
+  const step = day.slot_minutes + day.buffer_minutes;
   if (step <= 0) return [];
-  let cur = toMins(cfg.start);
-  const end = toMins(cfg.end);
-  while (cur + cfg.slot_minutes <= end) {
+  let cur = toMins(day.start);
+  const end = toMins(day.end);
+  while (cur + day.slot_minutes <= end) {
     const s = cur;
-    const e = cur + cfg.slot_minutes;
+    const e = cur + day.slot_minutes;
     const hit = breaks.find(([bs, be]) => s < be && e > bs);
     if (hit) {
       cur = hit[1];
@@ -279,6 +294,26 @@ export function ScheduleSection({
     setExtraMinutes("");
   }
 
+  // HSD-71: edit one day's hours. Writes an override seeded from whatever
+  // that day currently resolves to, so a fresh day starts as a copy of the
+  // base settings and then diverges freely.
+  function setDayConfig(isoDay: string, patch: Partial<DayConfig>) {
+    setConfig((c) => {
+      const current = dayConfigFor(c, isoDay);
+      return {
+        ...c,
+        // Removals belong to the old cadence for this day only.
+        blocked: (c.blocked ?? []).filter(
+          (b) => !b.startsWith(`${isoDay}@`),
+        ),
+        day_overrides: {
+          ...(c.day_overrides ?? {}),
+          [isoDay]: { ...current, ...patch },
+        },
+      };
+    });
+  }
+
   function setBreak(i: number, patch: Partial<SlotBreak>) {
     setConfig((c) => ({
       ...c,
@@ -432,7 +467,14 @@ export function ScheduleSection({
 
       {/* --- Slot settings --------------------------------------------- */}
       <div className="rounded-card border border-muted-200 bg-paper p-5">
-        <h3 className="text-sm font-semibold text-ink">Slot settings</h3>
+        <h3 className="text-sm font-semibold text-ink">
+          {multiDay ? "Default slot settings" : "Slot settings"}
+        </h3>
+        {multiDay ? (
+          <p className="mt-0.5 text-xs text-muted-600">
+            Used by any day that hasn&apos;t been given its own hours below.
+          </p>
+        ) : null}
         {!configured ? (
           <p className="mt-1 text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1 inline-block">
             No slots yet. Adjust the preview below and hit Create slots so
@@ -638,16 +680,78 @@ export function ScheduleSection({
             {/* One grid per shoot day. Single-day jobs render exactly as
                 before (no heading), so nothing changes for them. */}
             {multiDay ? (
-              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-600">
-                {new Date(day).toLocaleDateString(undefined, {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                })}
-                <span className="ml-2 font-normal normal-case tracking-normal">
-                  {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
-                </span>
-              </p>
+              <div className="mb-2 rounded-card border border-muted-200 bg-muted-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-ink">
+                    {new Date(day).toLocaleDateString(undefined, {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                    <span className="ml-2 text-xs font-normal text-muted-600">
+                      {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
+                    </span>
+                  </p>
+                </div>
+                {/* Each day sets its own hours — day two is often a
+                    half-day, not a copy of day one. */}
+                <div className="mt-2 flex flex-wrap items-end gap-3">
+                  <label className="block">
+                    <span className="block text-[11px] font-medium text-muted-600">
+                      Starts
+                    </span>
+                    <TimeSelect
+                      value={dayConfigFor(config, day).start}
+                      onChange={(v) => setDayConfig(day, { start: v })}
+                      ariaLabel={`Day ${day} starts`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] font-medium text-muted-600">
+                      Ends
+                    </span>
+                    <TimeSelect
+                      value={dayConfigFor(config, day).end}
+                      onChange={(v) => setDayConfig(day, { end: v })}
+                      ariaLabel={`Day ${day} ends`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] font-medium text-muted-600">
+                      Minutes each
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={120}
+                      value={dayConfigFor(config, day).slot_minutes}
+                      onChange={(e) =>
+                        setDayConfig(day, {
+                          slot_minutes: Number(e.target.value),
+                        })
+                      }
+                      className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[11px] font-medium text-muted-600">
+                      Buffer
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={60}
+                      value={dayConfigFor(config, day).buffer_minutes}
+                      onChange={(e) =>
+                        setDayConfig(day, {
+                          buffer_minutes: Number(e.target.value),
+                        })
+                      }
+                      className="w-20 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+                    />
+                  </label>
+                </div>
+              </div>
             ) : null}
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
             {/* Breaks render inline as amber chips so the day reads as one

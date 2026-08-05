@@ -17,6 +17,17 @@ export type TimeSlotConfig = {
   blocked?: string[];
   /** One-off slots outside the grid, any length. */
   extra?: { start: string; minutes: number }[];
+  /** HSD-71: per-day settings for multi-day shoots, keyed by ISO date.
+   *  A day without an entry uses the base settings above. */
+  day_overrides?: Record<string, DayConfig>;
+};
+
+export type DayConfig = {
+  start: string;
+  end: string;
+  slot_minutes: number;
+  buffer_minutes: number;
+  breaks: SlotBreak[];
 };
 
 export type ScheduleEntry = {

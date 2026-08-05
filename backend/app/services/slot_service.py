@@ -57,10 +57,20 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
             h, m, tzinfo=timezone.utc,
         )
 
-    day_end = at(cfg.end)
-    breaks = [(at(b.start), at(b.end)) for b in cfg.breaks]
-    step = timedelta(minutes=cfg.slot_minutes + cfg.buffer_minutes)
-    length = timedelta(minutes=cfg.slot_minutes)
+    # HSD-71: a day may run different hours from the rest of the shoot.
+    # Its override supplies the window and cadence; anything without one
+    # uses the base settings, so single-day jobs are untouched.
+    day = cfg.day_overrides.get(shoot_date.isoformat())
+    day_start_s = day.start if day else cfg.start
+    day_end_s = day.end if day else cfg.end
+    slot_minutes = day.slot_minutes if day else cfg.slot_minutes
+    buffer_minutes = day.buffer_minutes if day else cfg.buffer_minutes
+    day_breaks = day.breaks if day else cfg.breaks
+
+    day_end = at(day_end_s)
+    breaks = [(at(b.start), at(b.end)) for b in day_breaks]
+    step = timedelta(minutes=slot_minutes + buffer_minutes)
+    length = timedelta(minutes=slot_minutes)
 
     # HSD-71: on a multi-day shoot the same clock time exists on every day,
     # so removals and one-off slots may be date-qualified
@@ -74,7 +84,7 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
         if "@" not in b or b.split("@", 1)[0] == iso_day
     }
     slots: list[tuple[datetime, datetime]] = []
-    cursor = at(cfg.start)
+    cursor = at(day_start_s)
     while cursor + length <= day_end:
         slot = (cursor, cursor + length)
         # Skip slots overlapping any break; resume at the break's end.

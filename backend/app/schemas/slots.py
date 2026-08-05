@@ -51,6 +51,33 @@ class ExtraSlot(BaseModel):
         return v
 
 
+class DayConfig(BaseModel):
+    """Per-day overrides for a multi-day shoot (HSD-71).
+
+    Days rarely run identical hours: day one might be 09:00–17:00 and day
+    two a half-day. Any day without an override simply uses the job's base
+    settings, so single-day shoots never see this.
+    """
+    start: str
+    end: str
+    slot_minutes: int = Field(ge=1, le=120)
+    buffer_minutes: int = Field(default=0, ge=0, le=60)
+    breaks: list[SlotBreak] = Field(default_factory=list, max_length=10)
+
+    @field_validator("start", "end")
+    @classmethod
+    def _valid_time(cls, v: str) -> str:
+        if not _TIME_RE.match(v):
+            raise ValueError("Times must be HH:MM (24h).")
+        return v
+
+    @model_validator(mode="after")
+    def _sane(self) -> "DayConfig":
+        if _minutes(self.end) <= _minutes(self.start):
+            raise ValueError("Day end must be after day start.")
+        return self
+
+
 class TimeSlotConfig(BaseModel):
     """Slot generation parameters, stored whole in Job.time_slot_config."""
     start: str
@@ -64,6 +91,8 @@ class TimeSlotConfig(BaseModel):
     blocked: list[str] = Field(default_factory=list, max_length=500)
     # One-off slots appended outside the grid, any length.
     extra: list[ExtraSlot] = Field(default_factory=list, max_length=200)
+    # HSD-71: per-day settings, keyed by ISO date. Absent day = base config.
+    day_overrides: dict[str, DayConfig] = Field(default_factory=dict)
 
     @field_validator("start", "end")
     @classmethod

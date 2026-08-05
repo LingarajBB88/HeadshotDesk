@@ -465,6 +465,42 @@ class TestMultiDay:
         ).json()["entries"]
         assert [e["participant_name"] for e in entries] == ["Stays"]
 
+    def test_day_can_have_its_own_hours(self, client: TestClient):
+        """Day two is a half-day: its own window and slot length, without
+        touching day one."""
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job, day1, day2 = self._multi_day_job(client, token)
+
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    **job["time_slot_config"],
+                    "day_overrides": {
+                        day2: {
+                            "start": "13:00",
+                            "end": "14:00",
+                            "slot_minutes": 20,
+                            "buffer_minutes": 0,
+                            "breaks": [],
+                        }
+                    },
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        d1 = [s["start"][11:16] for s in slots if s["start"].startswith(day1)]
+        d2 = [s["start"][11:16] for s in slots if s["start"].startswith(day2)]
+        # Day one keeps 09:00-10:00 in 10s; day two is 13:00-14:00 in 20s.
+        assert d1 == ["09:00", "09:10", "09:20", "09:30", "09:40", "09:50"]
+        assert d2 == ["13:00", "13:20", "13:40"]
+
     def test_blocked_time_can_target_one_day(self, client: TestClient):
         a = _signup(client)
         token = a["tokens"]["access_token"]
