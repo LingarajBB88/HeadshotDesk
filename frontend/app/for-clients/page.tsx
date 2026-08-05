@@ -56,9 +56,22 @@ function ForClientsContent() {
 
       {/* Hero — speaks to the coordinator's actual worry: workload. */}
       <section className="mx-auto max-w-[var(--max-content)] px-4 sm:px-6 pt-10 sm:pt-16 pb-12">
-        <p className="text-xs sm:text-sm font-medium text-accent uppercase tracking-wider">
-          {studio ? `${studio} runs headshot days on HeadshotDesk` : "For HR and office teams"}
-        </p>
+        {/* The studio name carries this line, so it gets ink + weight
+            against the muted accent text, and the product wordmark keeps
+            its own two-tone treatment in proper case. */}
+        {studio ? (
+          <p className="text-xs sm:text-sm font-medium tracking-wider uppercase">
+            <span className="text-ink font-semibold">{studio}</span>{" "}
+            <span className="text-accent">runs headshot days on</span>{" "}
+            <span className="normal-case tracking-normal">
+              <BrandName />
+            </span>
+          </p>
+        ) : (
+          <p className="text-xs sm:text-sm font-medium text-accent uppercase tracking-wider">
+            For HR and office teams
+          </p>
+        )}
         <h1 className="mt-3 font-display text-4xl sm:text-5xl font-semibold tracking-tight max-w-3xl">
           Team headshots that don&apos;t become your side project.
         </h1>
