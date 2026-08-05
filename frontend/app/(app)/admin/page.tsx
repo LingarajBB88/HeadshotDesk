@@ -16,6 +16,7 @@ import {
   type AdminOverview,
 } from "@/lib/admin";
 import { SearchInput } from "@/components/SearchInput";
+import { SortableHeader, useSort } from "@/components/SortableHeader";
 
 // Inline per-account editor: manual admin actions (rename, change plan,
 // extend trial). Server-gated; this is just the console for it.
@@ -175,6 +176,18 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { sort, toggle, sorted } = useSort<
+    | "name"
+    | "email"
+    | "status"
+    | "signed_up"
+    | "jobs"
+    | "jobs_month"
+    | "participants"
+    | "photos"
+    | "delivered"
+    | "downloads"
+  >({ key: "signed_up", dir: "desc" });
   // Bumped to force a refetch of overview + accounts (after edits, and by
   // the 30s poll so the numbers always reflect current data).
   const [refreshKey, setRefreshKey] = useState(0);
@@ -235,6 +248,34 @@ export default function AdminPage() {
       cancelled = true;
     };
   }, [search, statusFilter, refreshKey]);
+
+  // Newest signups first by default: that's what an operator checks.
+  const sortedAccounts = accounts
+    ? sorted(accounts, (a, key) => {
+        switch (key) {
+          case "email":
+            return a.email ?? "";
+          case "status":
+            return a.status;
+          case "signed_up":
+            return a.signed_up_at;
+          case "jobs":
+            return a.jobs_total;
+          case "jobs_month":
+            return a.jobs_this_month;
+          case "participants":
+            return a.participants_total;
+          case "photos":
+            return a.photos_uploaded;
+          case "delivered":
+            return a.galleries_delivered;
+          case "downloads":
+            return a.downloads_used;
+          default:
+            return a.name;
+        }
+      })
+    : null;
 
   if (error) {
     return <p className="text-sm text-red-600">{error}</p>;
@@ -299,16 +340,16 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
               <tr>
-                <th className="px-4 py-3">Studio</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Signed up</th>
-                <th className="px-4 py-3 text-right">Jobs</th>
-                <th className="px-4 py-3 text-right">This month</th>
-                <th className="px-4 py-3 text-right">Participants</th>
-                <th className="px-4 py-3 text-right">Photos</th>
-                <th className="px-4 py-3 text-right">Delivered</th>
-                <th className="px-4 py-3 text-right">Downloads</th>
+                <SortableHeader label="Studio" sortKey="name" sort={sort} onSort={toggle} />
+                <SortableHeader label="Email" sortKey="email" sort={sort} onSort={toggle} />
+                <SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggle} />
+                <SortableHeader label="Signed up" sortKey="signed_up" sort={sort} onSort={toggle} />
+                <SortableHeader label="Jobs" sortKey="jobs" sort={sort} onSort={toggle} align="right" />
+                <SortableHeader label="This month" sortKey="jobs_month" sort={sort} onSort={toggle} align="right" />
+                <SortableHeader label="Participants" sortKey="participants" sort={sort} onSort={toggle} align="right" />
+                <SortableHeader label="Photos" sortKey="photos" sort={sort} onSort={toggle} align="right" />
+                <SortableHeader label="Delivered" sortKey="delivered" sort={sort} onSort={toggle} align="right" />
+                <SortableHeader label="Downloads" sortKey="downloads" sort={sort} onSort={toggle} align="right" />
                 <th className="px-4 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -328,7 +369,7 @@ export default function AdminPage() {
                   </td>
                 </tr>
               ) : (
-                accounts.map((a) => (
+                (sortedAccounts ?? []).map((a) => (
                   <Fragment key={a.account_id}>
                     <tr className="hover:bg-muted-50 transition">
                       <td className="px-4 py-3 font-medium text-ink">

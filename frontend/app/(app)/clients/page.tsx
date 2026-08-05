@@ -102,6 +102,17 @@ export default function ClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [clientSort, setClientSort] = useState<"name" | "jobs" | "recent">(
+    "name",
+  );
+
+  const sortedClients = [...(clients ?? [])].sort((a, b) => {
+    if (clientSort === "jobs") return b.jobs_total - a.jobs_total;
+    if (clientSort === "recent") {
+      return b.created_at.localeCompare(a.created_at);
+    }
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
 
   async function refresh() {
     try {
@@ -208,8 +219,26 @@ export default function ClientsPage() {
             </p>
           </div>
         ) : (
+          <>
+          {/* A list rather than a table, so sorting is a small control
+              instead of clickable column headers. */}
+          <div className="mb-2 flex items-center justify-end gap-2 text-xs text-muted-600">
+            <label htmlFor="client-sort">Sort by</label>
+            <select
+              id="client-sort"
+              value={clientSort}
+              onChange={(e) =>
+                setClientSort(e.target.value as typeof clientSort)
+              }
+              className="rounded-md border border-muted-200 bg-paper px-2 py-1 text-xs outline-none focus:border-accent"
+            >
+              <option value="name">Name (A–Z)</option>
+              <option value="jobs">Most jobs</option>
+              <option value="recent">Recently added</option>
+            </select>
+          </div>
           <ul className="divide-y divide-muted-200 rounded-card border border-muted-200 bg-paper">
-            {clients.map((c) => (
+            {sortedClients.map((c) => (
               <li
                 key={c.id}
                 className="flex flex-wrap items-center gap-4 px-5 py-4"
@@ -240,6 +269,7 @@ export default function ClientsPage() {
               </li>
             ))}
           </ul>
+          </>
         )}
       </div>
     </div>

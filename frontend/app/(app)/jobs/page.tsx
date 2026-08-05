@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { EditJobModal } from "@/components/EditJobModal";
+import { SortableHeader, useSort } from "@/components/SortableHeader";
 import { StatusPill } from "@/components/StatusPill";
 import {
   archiveJob,
@@ -207,6 +208,24 @@ export default function JobsPage() {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   // Bumped to refetch the list after archive / edit-save.
   const [refreshKey, setRefreshKey] = useState(0);
+  // Upcoming shoots first — the next job is the one you're preparing for.
+  const { sort, toggle, sorted } = useSort<
+    "name" | "client" | "date" | "status"
+  >({ key: "date", dir: "desc" });
+  const sortedJobs = jobs
+    ? sorted(jobs, (j, key) => {
+        switch (key) {
+          case "client":
+            return j.client_name ?? "";
+          case "date":
+            return j.shoot_date ?? "";
+          case "status":
+            return j.status;
+          default:
+            return j.name;
+        }
+      })
+    : [];
 
   useEffect(() => {
     let cancelled = false;
@@ -276,7 +295,7 @@ export default function JobsPage() {
           {/* Mobile: stacked cards. The ⋯ menu sits outside the Link so a
               menu tap doesn't navigate. */}
           <ul className="mt-6 sm:hidden space-y-3">
-            {jobs.map((job) => (
+            {sortedJobs.map((job) => (
               <li
                 key={job.id}
                 className="relative rounded-card border border-muted-200 bg-paper hover:border-accent transition"
@@ -321,17 +340,17 @@ export default function JobsPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
                 <tr>
-                  <th className="px-5 py-3">Name</th>
-                  <th className="px-5 py-3">Client</th>
-                  <th className="px-5 py-3">Shoot date</th>
-                  <th className="px-5 py-3">Status</th>
+                  <SortableHeader label="Name" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
+                  <SortableHeader label="Client" sortKey="client" sort={sort} onSort={toggle} className="px-5" />
+                  <SortableHeader label="Shoot date" sortKey="date" sort={sort} onSort={toggle} className="px-5" />
+                  <SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggle} className="px-5" />
                   <th className="px-3 py-3 w-12">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-muted-200">
-                {jobs.map((job) => (
+                {sortedJobs.map((job) => (
                   <tr key={job.id} className="group hover:bg-muted-50 transition">
                     <RowCell href={`/jobs/${job.id}`} className="font-medium group-hover:text-accent">
                       {job.name}

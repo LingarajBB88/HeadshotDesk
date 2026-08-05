@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { Logo } from "@/components/Logo";
+import { SortableHeader, useSort } from "@/components/SortableHeader";
 import { api, ApiError } from "@/lib/api";
 
 type ClientParticipant = {
@@ -59,6 +60,12 @@ export default function ClientDashboardPage() {
   const token = params?.token;
   const [data, setData] = useState<ClientDashboard | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The client watches this in running order by default, and can re-sort
+  // to answer "who hasn't been done yet?".
+  const { sort, toggle, sorted } = useSort<"name" | "time" | "status">({
+    key: "time",
+    dir: "asc",
+  });
 
   useEffect(() => {
     if (!token) return;
@@ -139,11 +146,11 @@ export default function ClientDashboardPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
                   <tr>
-                    <th className="px-4 py-3">Name</th>
+                    <SortableHeader label="Name" sortKey="name" sort={sort} onSort={toggle} />
                     {data.shoot_mode === "time_slot" ? (
-                      <th className="px-4 py-3">Time</th>
+                      <SortableHeader label="Time" sortKey="time" sort={sort} onSort={toggle} />
                     ) : null}
-                    <th className="px-4 py-3 text-right">Status</th>
+                    <SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggle} align="right" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-muted-200">
@@ -157,7 +164,15 @@ export default function ClientDashboardPage() {
                       </td>
                     </tr>
                   ) : (
-                    data.participants.map((p, i) => (
+                    sorted(data.participants, (p, key) =>
+                      key === "time"
+                        ? (p.slot_time ?? "")
+                        : key === "status"
+                          ? { signed_up: 1, photographed: 2, delivered: 3 }[
+                              p.status
+                            ]
+                          : p.name,
+                    ).map((p, i) => (
                       <tr key={`${p.name}-${i}`}>
                         <td className="px-4 py-2.5 text-ink">{p.name}</td>
                         {data.shoot_mode === "time_slot" ? (

@@ -23,6 +23,7 @@ import {
 } from "@/lib/participants";
 
 import { CollapsibleSection } from "./CollapsibleSection";
+import { SortableHeader, useSort } from "./SortableHeader";
 import { FormField } from "./FormField";
 import { ParticipantStatusPill } from "./ParticipantStatusPill";
 import { SearchInput } from "./SearchInput";
@@ -242,12 +243,15 @@ export function ParticipantsSection({
     schedule.map((e) => [e.participant_id, e]),
   );
 
-  // Derived: filtered participants for display. Matches name OR email OR title.
-  // On time-slot jobs the running order is what matters on shoot day, so
-  // rows sort by booked time (unbooked last), not by name.
+  // Sorting: default to running order on time-slot jobs (that's the shoot
+  // day itself) and to name on queue jobs. Every column is clickable.
+  const { sort, toggle, sorted } = useSort<
+    "name" | "email" | "title" | "time" | "status"
+  >({ key: timeSlots ? "time" : "name", dir: "asc" });
+
   const filteredParticipants = participants
-    ? participants
-        .filter((p) => {
+    ? sorted(
+        participants.filter((p) => {
           if (!search.trim()) return true;
           const q = search.toLowerCase();
           return (
@@ -255,16 +259,23 @@ export function ParticipantsSection({
             (p.email ?? "").toLowerCase().includes(q) ||
             (p.title ?? "").toLowerCase().includes(q)
           );
-        })
-        .sort((a, b) => {
-          if (!timeSlots) return 0; // queue jobs keep signup order
-          const ta = slotByParticipant.get(a.id)?.slot_start ?? "";
-          const tb = slotByParticipant.get(b.id)?.slot_start ?? "";
-          if (ta && tb) return ta.localeCompare(tb);
-          if (ta) return -1;
-          if (tb) return 1;
-          return a.name.localeCompare(b.name);
-        })
+        }),
+        (p, key) => {
+          switch (key) {
+            case "email":
+              return p.email ?? "";
+            case "title":
+              return p.title ?? "";
+            case "time":
+              return slotByParticipant.get(p.id)?.slot_start ?? "";
+            case "status":
+              // Rank by progress so sorting groups the shoot day sensibly.
+              return p.gallery_sent_at ? 3 : p.shot_at ? 2 : 1;
+            default:
+              return p.name;
+          }
+        },
+      )
     : null;
 
   async function refresh() {
@@ -445,11 +456,13 @@ export function ParticipantsSection({
               <table className="w-full text-sm">
                 <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
                   <tr>
-                    <th className="px-5 py-3">Name</th>
-                    <th className="px-5 py-3">Email</th>
-                    <th className="px-5 py-3">Title</th>
-                    {timeSlots ? <th className="px-5 py-3">Time</th> : null}
-                    <th className="px-5 py-3">Status</th>
+                    <SortableHeader label="Name" sortKey="name" sort={sort} onSort={toggle} className="px-5" />
+                    <SortableHeader label="Email" sortKey="email" sort={sort} onSort={toggle} className="px-5" />
+                    <SortableHeader label="Title" sortKey="title" sort={sort} onSort={toggle} className="px-5" />
+                    {timeSlots ? (
+                      <SortableHeader label="Time" sortKey="time" sort={sort} onSort={toggle} className="px-5" />
+                    ) : null}
+                    <SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggle} className="px-5" />
                     <th className="px-5 py-3">
                       <span className="sr-only">Actions</span>
                     </th>
