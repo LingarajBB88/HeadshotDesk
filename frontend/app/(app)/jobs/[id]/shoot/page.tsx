@@ -201,7 +201,18 @@ export default function ShootQueuePage() {
                     participant={p}
                     slotTime={
                       slotByParticipant[p.id]
-                        ? slotByParticipant[p.id].slot_start.slice(11, 16)
+                        ? // HSD-71: on a multi-day shoot the time alone is
+                          // ambiguous, so prefix the day when the job runs
+                          // on more than one date.
+                          (job?.extra_shoot_dates?.length
+                            ? `${new Date(
+                                slotByParticipant[p.id].slot_start.slice(0, 10),
+                              ).toLocaleDateString(undefined, {
+                                day: "numeric",
+                                month: "short",
+                              })} · `
+                            : "") +
+                          slotByParticipant[p.id].slot_start.slice(11, 16)
                         : null
                     }
                     active={activeId === p.id}

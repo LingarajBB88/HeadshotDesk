@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { CollapsibleSection } from "./CollapsibleSection";
+import { ShootDaysEditor } from "./ShootDaysEditor";
 import { ApiError } from "@/lib/api";
 import {
   getSchedule,
@@ -45,14 +46,20 @@ const toHHMM = (mins: number): string =>
 
 type DraftSlot = { start: string; end: string; isExtra: boolean };
 
-/** Client-side mirror of the backend's slot generation, for live preview. */
-function draftSlots(cfg: TimeSlotConfig): DraftSlot[] {
+/** Client-side mirror of the backend's slot generation, for live preview.
+ *  `isoDay` scopes date-qualified removals and extras ("2026-09-16@14:20")
+ *  so a multi-day shoot previews each day correctly. */
+function draftSlots(cfg: TimeSlotConfig, isoDay?: string): DraftSlot[] {
   if (!cfg.start || !cfg.end) return [];
   const out: DraftSlot[] = [];
   const breaks = cfg.breaks
     .filter((b) => b.start && b.end)
     .map((b) => [toMins(b.start), toMins(b.end)] as const);
-  const blocked = new Set(cfg.blocked ?? []);
+  const blocked = new Set(
+    (cfg.blocked ?? [])
+      .filter((b) => !b.includes("@") || b.split("@")[0] === isoDay)
+      .map((b) => (b.includes("@") ? b.split("@")[1] : b)),
+  );
   const step = cfg.slot_minutes + cfg.buffer_minutes;
   if (step <= 0) return [];
   let cur = toMins(cfg.start);
@@ -71,7 +78,9 @@ function draftSlots(cfg: TimeSlotConfig): DraftSlot[] {
     cur += step;
   }
   for (const ex of cfg.extra ?? []) {
-    const s = toMins(ex.start);
+    if (ex.start.includes("@") && ex.start.split("@")[0] !== isoDay) continue;
+    const rawStart = ex.start.includes("@") ? ex.start.split("@")[1] : ex.start;
+    const s = toMins(rawStart);
     const e = s + ex.minutes;
     const overlaps = out.some(
       (o) => s < toMins(o.end) && e > toMins(o.start),
@@ -167,33 +176,70 @@ export function ScheduleSection({
   const dirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
 
   // --- Draft preview ------------------------------------------------------
-  const preview = draftSlots(config);
+  // HSD-71: a shoot can run over several days. The same daily pattern
+  // applies to each, so the preview is one grid per day and every lookup
+  // is keyed by date + time (a 09:00 booking on Wednesday must not light
+  // up Tuesday's 09:00 chip).
+  const days: string[] = (() => {
+    const list = [job.shoot_date, ...(job.extra_shoot_dates ?? [])].filter(
+      Boolean,
+    ) as string[];
+    return [...new Set(list)].sort();
+  })();
+  const multiDay = days.length > 1;
+  const previewByDay = days.map((d) => ({ day: d, slots: draftSlots(config, d) }));
+  const preview = previewByDay.flatMap((p) => p.slots);
+
   // Removals that actually land on the draft's grid. Stale ones (from a
   // previous cadence) are hidden here and pruned by the server on save.
   const relevantBlocked = (() => {
-    const candidates = new Set(
-      draftSlots({ ...config, blocked: [] })
-        .filter((s) => !s.isExtra)
-        .map((s) => s.start),
-    );
+    const candidates = new Set<string>();
+    for (const d of days) {
+      for (const s of draftSlots({ ...config, blocked: [] }, d)) {
+        if (s.isExtra) continue;
+        candidates.add(s.start);
+        candidates.add(`${d}@${s.start}`);
+      }
+    }
     return (config.blocked ?? []).filter((t) => candidates.has(t));
   })();
-  const previewStarts = new Set(preview.map((s) => `${s.start}-${s.end}`));
-  const bookedByTime = new Map(
-    (schedule ?? []).map((e) => [fmtTime(e.slot_start), e]),
+
+  const previewStarts = new Set(
+    previewByDay.flatMap((p) =>
+      p.slots.map((s) => `${p.day}T${s.start}-${s.end}`),
+    ),
   );
-  // Bookings that would fall off the drafted grid (time or length changed).
+  const bookedByKey = new Map(
+    (schedule ?? []).map((e) => [
+      `${e.slot_start.slice(0, 10)}T${fmtTime(e.slot_start)}`,
+      e,
+    ]),
+  );
+  // Bookings that would fall off the drafted grid (time, length, or the
+  // whole day removed).
   const affected = (schedule ?? []).filter(
-    (e) => !previewStarts.has(`${fmtTime(e.slot_start)}-${fmtTime(e.slot_end)}`),
+    (e) =>
+      !previewStarts.has(
+        `${e.slot_start.slice(0, 10)}T${fmtTime(e.slot_start)}-${fmtTime(e.slot_end)}`,
+      ),
   );
   const fittingBooked = (schedule?.length ?? 0) - affected.length;
 
   // --- Draft edits --------------------------------------------------------
-  function removeSlot(slot: DraftSlot) {
+  function removeSlot(slot: DraftSlot, isoDay: string) {
+    // On a multi-day shoot, removing 12:10 on Tuesday must not remove
+    // Wednesday's 12:10, so the entry is date-qualified. Single-day jobs
+    // keep the plain "HH:MM" form.
+    const key = multiDay ? `${isoDay}@${slot.start}` : slot.start;
     setConfig((c) =>
       slot.isExtra
-        ? { ...c, extra: (c.extra ?? []).filter((x) => x.start !== slot.start) }
-        : { ...c, blocked: [...(c.blocked ?? []), slot.start].sort() },
+        ? {
+            ...c,
+            extra: (c.extra ?? []).filter(
+              (x) => x.start !== slot.start && x.start !== key,
+            ),
+          }
+        : { ...c, blocked: [...(c.blocked ?? []), key].sort() },
     );
   }
 
@@ -205,11 +251,11 @@ export function ScheduleSection({
   }
 
   const [extraMinutes, setExtraMinutes] = useState<string>("");
-  function addExtraSlot() {
+  function addExtraSlot(isoDay: string) {
     const minutes = Number(extraMinutes) || config.slot_minutes;
     if (minutes < 1 || minutes > 120) return;
     setConfig((c) => {
-      const current = draftSlots(c);
+      const current = draftSlots(c, isoDay);
       const lastEnd =
         current.length > 0
           ? Math.max(...current.map((s) => toMins(s.end)))
@@ -295,11 +341,18 @@ export function ScheduleSection({
       // Confirmation carries the numbers, because "Saved." next to an
       // unchanged-looking grid doesn't tell you the shoot day is actually
       // bookable now. Stays up long enough to read.
-      const liveSlots = draftSlots(
-        canonical(updated.time_slot_config ?? DEFAULT_CONFIG),
-      ).length;
+      const liveCfg = canonical(updated.time_slot_config ?? DEFAULT_CONFIG);
+      const liveDays = [
+        updated.shoot_date,
+        ...(updated.extra_shoot_dates ?? []),
+      ].filter(Boolean) as string[];
+      const liveSlots = [...new Set(liveDays)].reduce(
+        (sum, d) => sum + draftSlots(liveCfg, d).length,
+        0,
+      );
       setSaved(
-        `Schedule saved. ${liveSlots} slot${liveSlots === 1 ? "" : "s"} are live on the signup page.`,
+        `Schedule saved. ${liveSlots} slot${liveSlots === 1 ? "" : "s"} are live on the signup page` +
+          (liveDays.length > 1 ? ` across ${liveDays.length} days.` : "."),
       );
       window.setTimeout(() => setSaved(null), 6000);
       try {
@@ -371,6 +424,12 @@ export function ScheduleSection({
       description="Set up the slot grid participants book into, and see who booked what."
       defaultOpen={!configured}
     >
+      {/* HSD-71: which days this shoot runs on. Sits above the slot
+          settings because the pattern below applies to each of them. */}
+      <div className="mb-4">
+        <ShootDaysEditor job={job} onChanged={onJobChanged} />
+      </div>
+
       {/* --- Slot settings --------------------------------------------- */}
       <div className="rounded-card border border-muted-200 bg-paper p-5">
         <h3 className="text-sm font-semibold text-ink">Slot settings</h3>
@@ -574,7 +633,23 @@ export function ScheduleSection({
             No slots fit these settings yet.
           </p>
         ) : (
-          <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+          previewByDay.map(({ day, slots: daySlots }) => (
+          <div key={day} className="mt-4">
+            {/* One grid per shoot day. Single-day jobs render exactly as
+                before (no heading), so nothing changes for them. */}
+            {multiDay ? (
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-600">
+                {new Date(day).toLocaleDateString(undefined, {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+                <span className="ml-2 font-normal normal-case tracking-normal">
+                  {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
+                </span>
+              </p>
+            ) : null}
+          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
             {/* Breaks render inline as amber chips so the day reads as one
                 continuous timeline: slots, lunch, slots. Deduped by time
                 window so accidental duplicates never double-render. */}
@@ -607,8 +682,8 @@ export function ScheduleSection({
                   </span>
                 </div>
               ))}
-            {preview.map((s) => {
-              const entry = bookedByTime.get(s.start);
+            {daySlots.map((s) => {
+              const entry = bookedByKey.get(`${day}T${s.start}`);
               // A booking only counts as "fitting" if the length matches
               // too; otherwise it's shown in the cancelled strip below.
               const fits =
@@ -655,7 +730,7 @@ export function ScheduleSection({
                   {!fits ? (
                     <button
                       type="button"
-                      onClick={() => removeSlot(s)}
+                      onClick={() => removeSlot(s, day)}
                       aria-label={`Remove the ${s.start} slot`}
                       title="Remove this slot"
                       className="absolute top-0.5 right-1 hidden group-hover:block text-muted-400 hover:text-red-600 text-xs leading-none"
@@ -673,7 +748,7 @@ export function ScheduleSection({
             >
               <button
                 type="button"
-                onClick={addExtraSlot}
+                onClick={() => addExtraSlot(day)}
                 title="Add a slot after the last one"
                 className="block w-full text-left text-[11px] font-medium leading-tight text-accent hover:underline"
               >
@@ -698,6 +773,8 @@ export function ScheduleSection({
               </span>
             </div>
           </div>
+          </div>
+          ))
         )}
 
         {/* Removed slots: restore with one click (applies on Save). */}

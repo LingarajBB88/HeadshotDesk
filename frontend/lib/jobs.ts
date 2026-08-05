@@ -41,6 +41,8 @@ export type Job = {
   client_name: string | null;
   client_email: string | null;
   shoot_date: string | null;
+  /** HSD-71: additional days when the shoot spans more than one date. */
+  extra_shoot_dates: string[] | null;
   location: string | null;
   status: JobStatus;
   // F5b.1: per-job hard cap on unique photos each participant can download
@@ -101,6 +103,8 @@ export async function createJob(input: {
   shoot_mode?: ShootMode;
   // HSD-36: link an existing Client (branding owner).
   client_id?: string | null;
+  // HSD-71: extra days for a multi-day shoot.
+  extra_shoot_dates?: string[];
 }): Promise<Job> {
   // Strip empty strings → null so backend doesn't try to validate them as emails/dates.
   const body: Record<string, unknown> = { name: input.name };
@@ -113,6 +117,9 @@ export async function createJob(input: {
   }
   if (input.shoot_mode) body.shoot_mode = input.shoot_mode;
   if (input.client_id) body.client_id = input.client_id;
+  if (input.extra_shoot_dates?.length) {
+    body.extra_shoot_dates = input.extra_shoot_dates;
+  }
 
   return api<Job>("/api/v1/jobs", {
     method: "POST",
@@ -142,6 +149,7 @@ export async function updateJob(
       | "client_id"
       | "picks_enabled"
       | "pick_cap"
+      | "extra_shoot_dates"
     >
   >,
 ): Promise<Job> {

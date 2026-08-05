@@ -383,31 +383,53 @@ export default function PublicSignupPage() {
                     <span className="block text-sm font-medium text-ink mb-1.5">
                       Pick your time
                     </span>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {slots.map((s) => (
-                        <button
-                          key={s.start}
-                          type="button"
-                          disabled={!s.available}
-                          onClick={() =>
-                            setSelectedSlot(
-                              selectedSlot === s.start ? null : s.start,
-                            )
-                          }
-                          className={
-                            "rounded-md border px-2 py-2 text-sm font-medium transition " +
-                            (!s.available
-                              ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
-                              : selectedSlot === s.start
-                                ? "border-accent bg-accent text-accent-fg"
-                                : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
-                          }
-                          aria-pressed={selectedSlot === s.start}
-                        >
-                          {slotTime(s.start)}
-                        </button>
-                      ))}
-                    </div>
+                    {/* HSD-71: a shoot can span days, so times are grouped
+                        under the day they belong to. Single-day shoots show
+                        no headings and look exactly as before. */}
+                    {Object.entries(
+                      slots.reduce<Record<string, typeof slots>>((acc, s) => {
+                        const day = s.start.slice(0, 10);
+                        (acc[day] ||= []).push(s);
+                        return acc;
+                      }, {}),
+                    ).map(([day, daySlots], _i, groups) => (
+                      <div key={day} className={groups.length > 1 ? "mb-3" : ""}>
+                        {groups.length > 1 ? (
+                          <p className="mb-1 text-xs font-medium text-muted-600">
+                            {new Date(day).toLocaleDateString(undefined, {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "long",
+                            })}
+                          </p>
+                        ) : null}
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {daySlots.map((s) => (
+                            <button
+                              key={s.start}
+                              type="button"
+                              disabled={!s.available}
+                              onClick={() =>
+                                setSelectedSlot(
+                                  selectedSlot === s.start ? null : s.start,
+                                )
+                              }
+                              className={
+                                "rounded-md border px-2 py-2 text-sm font-medium transition " +
+                                (!s.available
+                                  ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
+                                  : selectedSlot === s.start
+                                    ? "border-accent bg-accent text-accent-fg"
+                                    : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+                              }
+                              aria-pressed={selectedSlot === s.start}
+                            >
+                              {slotTime(s.start)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                     {slotError ? (
                       <p className="mt-2 text-xs text-red-600" role="alert">
                         {slotError}

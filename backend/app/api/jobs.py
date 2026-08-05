@@ -51,6 +51,7 @@ def create(
         client_name=payload.client_name,
         client_email=payload.client_email,
         shoot_date=payload.shoot_date,
+        extra_shoot_dates=payload.extra_shoot_dates,
         location=payload.location,
         download_cap=payload.download_cap,
         shoot_mode=payload.shoot_mode,

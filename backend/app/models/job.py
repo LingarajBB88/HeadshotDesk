@@ -51,6 +51,14 @@ class Job(Base):
     )
     client_email: Mapped[str | None] = mapped_column(CITEXT(), nullable=True)
     shoot_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # HSD-71: additional days for a shoot that spans more than one date,
+    # as ISO strings ["2026-09-16", "2026-09-17"]. shoot_date stays the
+    # first day, so every existing display and email keeps working and no
+    # backfill was needed. Slot bookings store absolute timestamps, so
+    # they already span days without change.
+    extra_shoot_dates: Mapped[list[str] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     location: Mapped[str | None] = mapped_column(String, nullable=True)
 
     status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
@@ -108,6 +116,21 @@ class Job(Base):
     archived_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    @property
+    def all_shoot_dates(self) -> list[date]:
+        """Every day this job runs on, in order. Single-day jobs return one."""
+        days: list[date] = []
+        if self.shoot_date:
+            days.append(self.shoot_date)
+        for raw in self.extra_shoot_dates or []:
+            try:
+                parsed = date.fromisoformat(str(raw))
+            except (TypeError, ValueError):
+                continue
+            if parsed not in days:
+                days.append(parsed)
+        return sorted(days)
 
     __table_args__ = (
         CheckConstraint(

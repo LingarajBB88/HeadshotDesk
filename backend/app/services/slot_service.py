@@ -28,10 +28,14 @@ from app.schemas.slots import TimeSlotConfig
 
 
 def _slot_times(job: Job) -> list[tuple[datetime, datetime]]:
-    """Materialize the slot list for a job from its config + shoot_date."""
+    """Materialize the slot list for a job across every day it runs on."""
     if job.shoot_mode != "time_slot" or not job.time_slot_config or not job.shoot_date:
         return []
-    return slot_times_for(job.time_slot_config, job.shoot_date)
+    slots: list[tuple[datetime, datetime]] = []
+    for day in job.all_shoot_dates:
+        slots.extend(slot_times_for(job.time_slot_config, day))
+    slots.sort(key=lambda se: se[0])
+    return slots
 
 
 def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
@@ -58,7 +62,17 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
     step = timedelta(minutes=cfg.slot_minutes + cfg.buffer_minutes)
     length = timedelta(minutes=cfg.slot_minutes)
 
-    blocked = set(cfg.blocked)
+    # HSD-71: on a multi-day shoot the same clock time exists on every day,
+    # so removals and one-off slots may be date-qualified
+    # ("2026-09-16@14:20"). A bare "14:20" still applies to every day,
+    # which keeps single-day jobs (and everything saved before this)
+    # behaving exactly as before.
+    iso_day = shoot_date.isoformat()
+    blocked = {
+        b.split("@", 1)[1] if "@" in b else b
+        for b in cfg.blocked
+        if "@" not in b or b.split("@", 1)[0] == iso_day
+    }
     slots: list[tuple[datetime, datetime]] = []
     cursor = at(cfg.start)
     while cursor + length <= day_end:
@@ -76,8 +90,14 @@ def slot_times_for(config, shoot_date) -> list[tuple[datetime, datetime]]:
 
     # One-off extras (custom lengths, usually appended after the day).
     # Overlaps with existing slots or each other are skipped, not errors.
+    # Same date-qualification rule as blocked entries.
     for ex in cfg.extra:
-        ex_start = at(ex.start)
+        raw_start = ex.start
+        if "@" in raw_start:
+            day_part, raw_start = raw_start.split("@", 1)
+            if day_part != iso_day:
+                continue
+        ex_start = at(raw_start)
         ex_end = ex_start + timedelta(minutes=ex.minutes)
         if any(s < ex_end and e > ex_start for s, e in slots):
             continue

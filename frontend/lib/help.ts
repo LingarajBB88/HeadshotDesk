@@ -398,7 +398,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "slot-settings",
         heading: "Setting up the slots",
         items: [
-          { term: "Day starts and ends", def: "The bookable window on your shoot date, for example 09:00 to 17:00." },
+          { term: "Shoot days", def: "A job can run over several days. Add days above the slot settings; the same daily pattern applies to each one, which is how big shoots usually run (same room, same hours, different people). Removing a day cancels only that day's bookings, after you confirm." },
+          { term: "Day starts and ends", def: "The bookable window on each shoot day, for example 09:00 to 17:00." },
           { term: "Minutes per person", def: "How long each appointment lasts. Five to ten minutes is typical for headshots. Know the headcount but not the slot length? Enter the number of participants and the calculator suggests the minutes per person that fits everyone." },
           { term: "Buffer between slots", def: "Optional breathing room after each appointment, for reviewing frames or resetting." },
           { term: "Breaks", def: "Blocks nobody can book, like lunch. Slots skip over them automatically." },

@@ -34,6 +34,8 @@ class PublicJobOut(BaseModel):
     name: str
     client_name: str | None
     shoot_date: date | None
+    # HSD-71: every day the shoot runs on, so the picker can group slots.
+    shoot_dates: list[date] = []
     location: str | None
     # HSD-55: lets the signup page know whether to show the slot picker.
     shoot_mode: str = "queue"

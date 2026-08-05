@@ -102,6 +102,7 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
         name=job.name,
         client_name=job.client_name,
         shoot_date=job.shoot_date,
+        shoot_dates=job.all_shoot_dates,
         location=job.location,
         shoot_mode=job.shoot_mode,
         branding=None,  # Account-level branding wired up in v0.2

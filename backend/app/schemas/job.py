@@ -46,7 +46,9 @@ class JobCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     client_name: str | None = Field(default=None, max_length=200)
     client_email: StrictEmail | None = None
-    shoot_date: date  # Required at create time.
+    shoot_date: date  # Required at create time — the first day.
+    # HSD-71: additional days for a shoot spanning more than one date.
+    extra_shoot_dates: list[date] | None = None
     location: str = Field(min_length=2, max_length=300)  # Required.
     # F5b.1: optional at create time — falls back to DB default (1) when
     # omitted. Bounded by the same range as JobUpdate.
@@ -76,6 +78,8 @@ class JobUpdate(BaseModel):
     client_name: str | None = Field(default=None, max_length=200)
     client_email: StrictEmail | None = None
     shoot_date: date | None = None
+    # HSD-71: full replacement list of additional days ([] clears them).
+    extra_shoot_dates: list[date] | None = None
     location: str | None = Field(default=None, max_length=300)
     status: JobStatus | None = None
     # F5b.1: per-job download cap. 0 disables downloads entirely (useful while
@@ -110,6 +114,7 @@ class JobOut(BaseModel):
     client_name: str | None
     client_email: EmailStr | None
     shoot_date: date | None
+    extra_shoot_dates: list[date] | None
     location: str | None
     status: JobStatus
     download_cap: int

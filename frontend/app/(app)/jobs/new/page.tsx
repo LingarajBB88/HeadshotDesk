@@ -31,6 +31,8 @@ export default function NewJobPage() {
   const [clientChoice, setClientChoice] = useState<string>("");
   const [creatingClient, setCreatingClient] = useState(false);
   const [newClientName, setNewClientName] = useState("");
+  // HSD-71: additional shoot days (ISO strings), empty for single-day jobs.
+  const [extraDays, setExtraDays] = useState<string[]>([]);
 
   useEffect(() => {
     async function refreshClients() {
@@ -125,6 +127,7 @@ export default function NewJobPage() {
         client_id: clientId,
         client_email: (String(data.get("client_email") ?? "").trim()) || null,
         shoot_date: (String(data.get("shoot_date") ?? "").trim()) || null,
+        extra_shoot_dates: extraDays.filter(Boolean),
         location: (String(data.get("location") ?? "").trim()) || null,
         download_cap:
           parsedCap !== null && Number.isFinite(parsedCap) && parsedCap >= 0
@@ -190,6 +193,45 @@ export default function NewJobPage() {
               hint="Today or later."
               error={fieldErrors.shoot_date}
             />
+            {/* HSD-71: extra days for shoots too big for one date. Kept
+                out of the way — most shoots are one day. */}
+            <div className="mb-4">
+              {extraDays.map((d, i) => (
+                <div key={i} className="mb-2 flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={d}
+                    onChange={(e) =>
+                      setExtraDays((days) =>
+                        days.map((x, j) => (j === i ? e.target.value : x)),
+                      )
+                    }
+                    className="rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExtraDays((days) => days.filter((_, j) => j !== i))
+                    }
+                    className="text-xs text-muted-600 hover:text-red-600 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setExtraDays((days) => [...days, ""])}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                + Add another shoot day
+              </button>
+              <p className="mt-1 text-xs text-muted-600">
+                For shoots that run over several days. The same slot pattern
+                applies to each day.
+              </p>
+            </div>
+
             <FormField
               label="Location"
               name="location"

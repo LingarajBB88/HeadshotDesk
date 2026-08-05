@@ -351,6 +351,146 @@ class TestConfigChangeWithBookings:
         assert all(s["available"] for s in new_slots)
 
 
+class TestMultiDay:
+    """HSD-71 — one job spanning several shoot days."""
+
+    def _multi_day_job(self, client: TestClient, token: str) -> tuple[dict, str, str]:
+        day1 = (date.today() + timedelta(days=7)).isoformat()
+        day2 = (date.today() + timedelta(days=8)).isoformat()
+        r = client.post(
+            "/api/v1/jobs",
+            json={
+                "name": "Two-day shoot",
+                "shoot_date": day1,
+                "extra_shoot_dates": [day2],
+                "location": "HQ",
+                "shoot_mode": "time_slot",
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 201, r.text
+        job = r.json()
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    "start": "09:00",
+                    "end": "10:00",
+                    "slot_minutes": 10,
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        return r.json(), day1, day2
+
+    def test_slots_generated_for_every_day(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job, day1, day2 = self._multi_day_job(client, token)
+
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert len(slots) == 12  # 6 per day
+        days = sorted({s["start"][:10] for s in slots})
+        assert days == sorted([day1, day2])
+        # Ordered chronologically across the day boundary.
+        assert slots == sorted(slots, key=lambda s: s["start"])
+
+        pub = client.get(f"/api/v1/public/jobs/{job['public_slug']}").json()
+        assert pub["shoot_dates"] == sorted([day1, day2])
+
+    def test_booking_on_the_second_day(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job, _day1, day2 = self._multi_day_job(client, token)
+        p = _public_signup(client, job["public_slug"], "Jane", "jane@example.com")
+
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        second_day = next(s for s in slots if s["start"].startswith(day2))
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={
+                "gallery_token": p["gallery_token"],
+                "slot_start": second_day["start"],
+            },
+        )
+        assert r.status_code == 200, r.text
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert entries[0]["slot_start"].startswith(day2)
+
+    def test_removing_a_day_cancels_only_its_bookings(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job, day1, day2 = self._multi_day_job(client, token)
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+
+        keep = next(s for s in slots if s["start"].startswith(day1))
+        drop = next(s for s in slots if s["start"].startswith(day2))
+        for name, email, slot in [
+            ("Stays", "stays@example.com", keep),
+            ("Goes", "goes@example.com", drop),
+        ]:
+            p = _public_signup(client, job["public_slug"], name, email)
+            r = client.post(
+                f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+                json={"gallery_token": p["gallery_token"], "slot_start": slot["start"]},
+            )
+            assert r.status_code == 200, r.text
+
+        # Dropping day 2 strands one booking → refused without the flag.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"extra_shoot_dates": []},
+            headers=_auth(token),
+        )
+        assert r.status_code == 409
+        assert "1 booked slot" in r.json()["detail"]
+
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"extra_shoot_dates": [], "clear_slot_bookings": True},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        entries = client.get(
+            f"/api/v1/jobs/{job['id']}/schedule", headers=_auth(token)
+        ).json()["entries"]
+        assert [e["participant_name"] for e in entries] == ["Stays"]
+
+    def test_blocked_time_can_target_one_day(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job, day1, day2 = self._multi_day_job(client, token)
+
+        # Remove 09:20 on day 2 only.
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={
+                "time_slot_config": {
+                    **job["time_slot_config"],
+                    "blocked": [f"{day2}@09:20"],
+                }
+            },
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        day1_times = [s["start"][11:16] for s in slots if s["start"].startswith(day1)]
+        day2_times = [s["start"][11:16] for s in slots if s["start"].startswith(day2)]
+        assert "09:20" in day1_times
+        assert "09:20" not in day2_times
+
+
 class TestSmartConfigChange:
     """Config changes only cancel bookings that fall off the new grid."""
 

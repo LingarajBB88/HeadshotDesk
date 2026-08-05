@@ -5,6 +5,10 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+# HSD-71: a slot reference may be date-qualified for multi-day shoots.
+_DAY_TIME_RE = re.compile(
+    r"^(\d{4}-\d{2}-\d{2}@)?([01]\d|2[0-3]):[0-5]\d$"
+)
 
 
 def _minutes(hhmm: str) -> int:
@@ -35,14 +39,15 @@ class ExtraSlot(BaseModel):
     after the day's normal 10-minute slots. Overlapping extras are skipped
     at generation time rather than rejected, so a stale entry can't wedge
     the whole config."""
+    # "14:20" (every day) or "2026-09-16@14:20" (that day only).
     start: str
     minutes: int = Field(ge=1, le=120)
 
     @field_validator("start")
     @classmethod
     def _valid_time(cls, v: str) -> str:
-        if not _TIME_RE.match(v):
-            raise ValueError("Times must be HH:MM (24h).")
+        if not _DAY_TIME_RE.match(v):
+            raise ValueError("Times must be HH:MM or YYYY-MM-DD@HH:MM.")
         return v
 
 
@@ -71,8 +76,10 @@ class TimeSlotConfig(BaseModel):
     @classmethod
     def _valid_blocked(cls, v: list[str]) -> list[str]:
         for t in v:
-            if not _TIME_RE.match(t):
-                raise ValueError("Blocked times must be HH:MM (24h).")
+            if not _DAY_TIME_RE.match(t):
+                raise ValueError(
+                    "Blocked times must be HH:MM or YYYY-MM-DD@HH:MM."
+                )
         return v
 
     @model_validator(mode="after")

@@ -5,7 +5,7 @@ across accounts.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -26,6 +26,14 @@ _MAX_SLUG_ATTEMPTS = 8
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _parse_iso_date(value) -> date | None:  # type: ignore[no-untyped-def]
+    """Tolerant ISO date parse for the JSONB extra-days list."""
+    try:
+        return date.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 def _unique_slug(db: Session, *, name: str) -> str:
@@ -55,6 +63,7 @@ def create_job(
     download_cap: int | None = None,
     shoot_mode: str | None = None,
     client_id: str | None = None,
+    extra_shoot_dates: list | None = None,
 ) -> Job:
     # HSD-36: linking a Client validates ownership and mirrors the client's
     # name into the legacy display field.
@@ -78,6 +87,19 @@ def create_job(
         status="draft",
         created_by=creator.id,
         client_id=client_id,
+        # Stored as ISO strings in JSONB; dedupe and drop the primary day.
+        extra_shoot_dates=(
+            sorted(
+                {
+                    d.isoformat() if isinstance(d, date) else str(d)
+                    for d in extra_shoot_dates
+                }
+                - {shoot_date.isoformat() if shoot_date else ""}
+            )
+            or None
+        )
+        if extra_shoot_dates
+        else None,
         # Omitted optionals fall back to model defaults (cap 1, mode queue).
         **({"download_cap": download_cap} if download_cap is not None else {}),
         **({"shoot_mode": shoot_mode} if shoot_mode is not None else {}),
@@ -164,25 +186,40 @@ def update_job(
     # off the NEW grid are at risk — extending the day or adding slots
     # keeps everything. Refuse (409) when bookings would be cancelled,
     # unless the caller confirmed; then cancel only the affected ones.
-    if "time_slot_config" in fields or "shoot_date" in fields:
+    if (
+        "time_slot_config" in fields
+        or "shoot_date" in fields
+        or "extra_shoot_dates" in fields
+    ):
         from app.models import SlotBooking
         from app.services import slot_service
         from sqlalchemy import select as sa_select
 
         new_config = fields.get("time_slot_config", job.time_slot_config)
         new_date = fields.get("shoot_date", job.shoot_date)
+        # HSD-71: dropping a day must cancel that day's bookings, so the
+        # comparison grid spans every day the job will run on.
+        raw_extra = fields.get("extra_shoot_dates", job.extra_shoot_dates)
+        new_days: list = [new_date] if new_date else []
+        for raw in raw_extra or []:
+            parsed = raw if isinstance(raw, date) else _parse_iso_date(raw)
+            if parsed and parsed not in new_days:
+                new_days.append(parsed)
 
         # Hygiene: removals (blocked times) belong to the grid they were
         # made on. Prune any that don't land on the new grid, so a cadence
         # change doesn't leave a graveyard of stale entries that silently
         # eat future slots.
         if new_config and new_config.get("blocked"):
-            candidate_starts = {
-                s.strftime("%H:%M")
+            candidate_starts: set[str] = set()
+            for day in new_days:
                 for s, _ in slot_service.slot_times_for(
-                    {**new_config, "blocked": []}, new_date
-                )
-            }
+                    {**new_config, "blocked": []}, day
+                ):
+                    candidate_starts.add(s.strftime("%H:%M"))
+                    candidate_starts.add(
+                        f"{day.isoformat()}@{s.strftime('%H:%M')}"
+                    )
             new_config = {
                 **new_config,
                 "blocked": [
@@ -194,7 +231,8 @@ def update_job(
 
         new_grid = {
             (s, e)
-            for s, e in slot_service.slot_times_for(new_config, new_date)
+            for day in new_days
+            for s, e in slot_service.slot_times_for(new_config, day)
         }
         bookings = list(
             db.scalars(
@@ -215,6 +253,20 @@ def update_job(
                 )
             for b in affected:
                 db.delete(b)
+
+    # HSD-71: extra days arrive as date objects; store ISO strings in JSONB
+    # and never duplicate the primary day.
+    if "extra_shoot_dates" in fields:
+        raw = fields["extra_shoot_dates"]
+        primary = fields.get("shoot_date", job.shoot_date)
+        cleaned = sorted(
+            {
+                d.isoformat() if isinstance(d, date) else str(d)
+                for d in (raw or [])
+            }
+            - {primary.isoformat() if primary else ""}
+        )
+        fields["extra_shoot_dates"] = cleaned or None
 
     # Only assign keys that were provided (sparse update). Pydantic's
     # model_dump(exclude_unset=True) at the route layer ensures this.
