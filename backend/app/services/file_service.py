@@ -44,7 +44,13 @@ def _normalize_for_match(s: str) -> str:
 
 
 def _strip_index_suffix(stem: str) -> str:
-    """Remove trailing index numbers a la 'Jane_Doe_001' → 'Jane_Doe'."""
+    """Remove trailing index numbers a la 'Jane_Doe_001' → 'Jane_Doe'.
+
+    Only strips when a separator precedes the digits, so a name that
+    genuinely ends in a number keeps it. Counters glued directly to the
+    name ('Jane Doe0042') are handled by the substring rule in
+    match_filename_to_participant instead.
+    """
     return re.sub(r"[\s_\-]\d+$", "", stem)
 
 
@@ -93,6 +99,23 @@ def match_filename_to_participant(
             if len(p_tokens) > best_token_count:
                 best = p
                 best_token_count = len(p_tokens)
+    if best is not None:
+        return best
+
+    # 3. Substring: the full name appears in the filename with no separator
+    # before the counter — "Antonella Di Santi9223.jpg". Capture One writes
+    # this when the naming format is clipboard + counter with nothing
+    # between them, which is the default people land on. Still requires ≥2
+    # name tokens, and the longest matching name wins so "Jane Doe" can't
+    # beat "Jane Doerr" on a Doerr file.
+    best_len = 0
+    for p in participants:
+        p_norm = _normalize_for_match(p.name)
+        if len(p_norm.split()) < 2:
+            continue
+        if p_norm in file_norm and len(p_norm) > best_len:
+            best = p
+            best_len = len(p_norm)
     return best
 
 

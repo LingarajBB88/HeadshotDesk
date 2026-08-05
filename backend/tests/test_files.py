@@ -102,6 +102,31 @@ class TestMatching:
         m = match_filename_to_participant("JANE_DOE.JPG", ps)
         assert m and m.id == "p1"
 
+    def test_counter_glued_to_name(self, client: TestClient):
+        """Capture One writes 'Antonella Di Santi9223.jpg' when the naming
+        format is clipboard + counter with no separator between them —
+        which is the default people land on. Found in a live shoot
+        2026-08-04, where every frame went to Unassigned."""
+        from app.services.file_service import match_filename_to_participant
+        from types import SimpleNamespace
+
+        ps = [SimpleNamespace(id="p1", name="Antonella Di Santi")]
+        m = match_filename_to_participant("Antonella Di Santi9223.jpg", ps)
+        assert m and m.id == "p1"
+
+    def test_glued_counter_prefers_longest_name(self, client: TestClient):
+        """Substring matching must not let a shorter name win: a Doerr file
+        belongs to Doerr, not Doe."""
+        from app.services.file_service import match_filename_to_participant
+        from types import SimpleNamespace
+
+        ps = [
+            SimpleNamespace(id="p1", name="Jane Doe"),
+            SimpleNamespace(id="p2", name="Jane Doerr"),
+        ]
+        m = match_filename_to_participant("Jane Doerr0007.jpg", ps)
+        assert m and m.id == "p2"
+
     def test_no_match_returns_none(self, client: TestClient):
         from app.services.file_service import match_filename_to_participant
         from types import SimpleNamespace
