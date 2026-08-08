@@ -74,6 +74,10 @@ export async function signup(input: {
   name: string;
   account_name: string;
   account_type?: "photographer" | "corporate";
+  /** From ?ref= in the URL. Extends this account's trial. */
+  referral_code?: string | null;
+  /** From ?invite= in the URL. Claims a free beta seat if one is left. */
+  invite_code?: string | null;
 }): Promise<AuthResponse> {
   const res = await api<AuthResponse>("/api/v1/auth/signup", {
     method: "POST",

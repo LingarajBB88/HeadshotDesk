@@ -79,8 +79,14 @@ def signup(
     account_type: str,
     user_agent: str | None,
     ip: str | None,
+    referral_code: str | None = None,
+    invite_code: str | None = None,
 ) -> tuple[User, Account, dict]:
-    """Create a new account + first user (owner). Returns (user, account, tokens)."""
+    """Create a new account + first user (owner). Returns (user, account, tokens).
+
+    A referral code extends the new account's trial; an invite code claims a
+    free beta seat if the pool still has one. Neither can fail the signup.
+    """
     # Reject duplicate emails up front (cheap check; DB unique constraint is the real guard)
     existing = db.scalar(select(User).where(User.email == email))
     if existing is not None:
@@ -121,6 +127,37 @@ def signup(
     db.commit()
     db.refresh(user)
     db.refresh(account)
+
+    # Referral + invite handling runs after the account exists, so a bad
+    # code can never cost someone their signup. Both are best-effort by
+    # design: the worst case is an uncredited referral, not a failed
+    # registration.
+    from app.services import referral_service
+
+    referred = False
+    invited = False
+    try:
+        if invite_code:
+            invite = referral_service.redeem_invite_code(db, code=invite_code)
+            if invite is not None:
+                account.plan = "beta"
+                account.invite_code = invite.code
+                invited = True
+        if referral_code:
+            referred = (
+                referral_service.attach_signup(
+                    db, code=referral_code, account=account
+                )
+                is not None
+            )
+        account.trial_ends_at = referral_service.trial_end_for(
+            referred=referred, invited=invited
+        )
+        db.commit()
+        db.refresh(account)
+    except Exception:  # noqa: BLE001 — the account is what matters
+        db.rollback()
+        logger.exception("Referral/invite handling failed (account=%s)", account.id)
 
     # Best-effort: an account that exists is worth more than an email that
     # sent. Signup must never fail because Postmark is having a bad day.

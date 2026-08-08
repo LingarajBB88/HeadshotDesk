@@ -22,6 +22,23 @@ class Account(Base):
     plan_renews_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hibernate_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # This account's own share link: /r/{referral_code}. Every account gets
+    # one at signup, because the people who refer are rarely the ones you'd
+    # have picked in advance.
+    referral_code: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True, index=True
+    )
+    # When the trial ends. Stored rather than derived so a referral bonus or
+    # a manual extension is a fact on the row, not arithmetic scattered
+    # across the codebase. Null on old rows means "created_at + default".
+    trial_ends_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # The invite code this account was created with, when it took a free
+    # beta seat. Kept for the seat count and for knowing which batch of
+    # invites actually landed.
+    invite_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -38,7 +55,11 @@ class Account(Base):
     __table_args__ = (
         CheckConstraint("type IN ('photographer', 'corporate')", name="ck_accounts_type"),
         CheckConstraint(
-            "plan IN ('trial', 'solo', 'pro', 'studio', 'hibernate', 'cancelled')",
+            # 'beta' is a free seat drawn from the capped pool. It behaves
+            # like a paid plan (nothing expires) but costs nothing and is
+            # counted separately so the pool can't be overspent.
+            "plan IN ('trial', 'beta', 'solo', 'pro', 'studio', 'hibernate', "
+            "'cancelled')",
             name="ck_accounts_plan",
         ),
     )

@@ -15,6 +15,12 @@ class SignupRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     account_name: str = Field(min_length=1, max_length=120)
     account_type: Literal["photographer", "corporate"] = "photographer"
+    # Who sent them. Comes from ?ref= in the URL; the server also falls back
+    # to the attribution cookie when the query string was lost along the way.
+    referral_code: str | None = Field(default=None, max_length=32)
+    # Claims a free beta seat, if the pool still has one. An exhausted pool
+    # is silent: the person gets a normal trial rather than an error.
+    invite_code: str | None = Field(default=None, max_length=32)
 
 
 class LoginRequest(BaseModel):

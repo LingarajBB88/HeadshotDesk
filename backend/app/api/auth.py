@@ -48,6 +48,12 @@ def signup(
     db: Session = Depends(get_db),
 ) -> AuthResponse:
     user_agent, ip = _client_meta(request)
+    # The query string wins, the cookie is the fallback: someone who follows
+    # a fresh link should be credited to that link, not to one they clicked
+    # three weeks ago.
+    from app.services.referral_service import REFERRAL_COOKIE
+
+    referral_code = payload.referral_code or request.cookies.get(REFERRAL_COOKIE)
     user, account, tokens = auth_service.signup(
         db,
         email=payload.email,
@@ -57,6 +63,8 @@ def signup(
         account_type=payload.account_type,
         user_agent=user_agent,
         ip=ip,
+        referral_code=referral_code,
+        invite_code=payload.invite_code,
     )
     return AuthResponse(
         user=UserOut.model_validate(user),

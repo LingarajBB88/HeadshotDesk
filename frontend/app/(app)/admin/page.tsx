@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 // HSD-66 — Operator dashboard. Admin-only view of the business: accounts,
 // trial/subscription status, usage, and top-line metrics. The backend gates
 // every request; a 403 here bounces the visitor back to /jobs.
@@ -82,6 +84,7 @@ function AccountEditor({
           className="mt-1 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
         >
           <option value="trial">Trial</option>
+          <option value="beta">Free beta seat</option>
           <option value="solo">Solo (€29)</option>
           <option value="pro">Pro (€44)</option>
           <option value="studio">Studio (€89)</option>
@@ -132,6 +135,7 @@ function AccountEditor({
 const STATUS_LABELS: Record<AdminAccountRow["status"], string> = {
   trial: "Trial",
   active: "Active",
+  beta: "Free beta",
   soft_locked: "Soft-locked",
   hibernating: "Hibernating",
   cancelled: "Cancelled",
@@ -140,6 +144,8 @@ const STATUS_LABELS: Record<AdminAccountRow["status"], string> = {
 const STATUS_STYLES: Record<AdminAccountRow["status"], string> = {
   trial: "bg-blue-50 text-blue-700",
   active: "bg-green-100 text-green-700",
+  // Distinct from "active": a free seat costs money rather than earning it.
+  beta: "bg-purple-50 text-purple-700",
   soft_locked: "bg-amber-50 text-amber-700",
   hibernating: "bg-muted-100 text-muted-600",
   cancelled: "bg-red-50 text-red-700",
@@ -286,10 +292,18 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-ink">Admin</h1>
-      <p className="mt-1 text-sm text-muted-600">
-        Operator view: accounts, trials, and usage across all of HeadshotDesk.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">Admin</h1>
+          <p className="mt-1 text-sm text-muted-600">
+            Operator view: accounts, trials, and usage across all of
+            HeadshotDesk.
+          </p>
+        </div>
+        <Link href="/admin/referrals" className="btn-secondary text-xs">
+          Referrals and free seats
+        </Link>
+      </div>
 
       {/* --- Business metrics ------------------------------------------ */}
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -297,6 +311,12 @@ export default function AdminPage() {
         <MetricTile label="Paying customers" value={overview.paying_customers} />
         <MetricTile label="Trials in flight" value={overview.trials_in_flight} />
         <MetricTile label="Soft-locked" value={overview.soft_locked} />
+        {/* Free seats sit next to revenue on purpose: it's the number that
+            costs money if nobody watches it. */}
+        <MetricTile
+          label="Free seats"
+          value={`${overview.beta_seats_used} / ${overview.beta_seats_cap}`}
+        />
         <MetricTile label="Accounts" value={overview.accounts_total} />
         <MetricTile label="Jobs this month" value={overview.jobs_this_month} />
       </div>
@@ -328,6 +348,7 @@ export default function AdminPage() {
             >
               <option value="">All statuses</option>
               <option value="trial">Trial</option>
+          <option value="beta">Free beta seat</option>
               <option value="active">Active</option>
               <option value="soft_locked">Soft-locked</option>
               <option value="hibernating">Hibernating</option>

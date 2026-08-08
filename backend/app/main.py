@@ -9,7 +9,17 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, clients, files, gallery, jobs, participants, public
+from app.api import (
+    admin,
+    auth,
+    clients,
+    files,
+    gallery,
+    jobs,
+    participants,
+    public,
+    referrals,
+)
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -84,6 +94,12 @@ app.include_router(gallery.router, prefix="/api/v1/public/gallery", tags=["galle
 app.include_router(files.router, prefix="/api/v1", tags=["files"])
 # HSD-66 operator dashboard — admin-only, gated in the router's deps.
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+# Referrals: the photographer's own link under /api/v1, the funnel and the
+# free-seat pool under /api/v1/admin (that router carries the admin gate).
+app.include_router(referrals.router, prefix="/api/v1", tags=["referrals"])
+app.include_router(
+    referrals.admin_router, prefix="/api/v1/admin", tags=["admin"]
+)
 # HSD-36 clients (branding owner for jobs).
 app.include_router(clients.router, prefix="/api/v1/clients", tags=["clients"])
 

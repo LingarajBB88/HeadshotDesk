@@ -15,7 +15,13 @@ export type AdminAccountRow = {
   name: string;
   email: string | null;
   plan: string;
-  status: "trial" | "active" | "soft_locked" | "hibernating" | "cancelled";
+  status:
+    | "trial"
+    | "active"
+    | "beta"
+    | "soft_locked"
+    | "hibernating"
+    | "cancelled";
   trial_days_left: number | null;
   signed_up_at: string;
   jobs_total: number;
@@ -31,6 +37,9 @@ export type AdminOverview = {
   paying_customers: number;
   trials_in_flight: number;
   soft_locked: number;
+  /** Free beta seats occupied, and the size of the pool. */
+  beta_seats_used: number;
+  beta_seats_cap: number;
   hibernating: number;
   cancelled: number;
   mrr_eur: number;

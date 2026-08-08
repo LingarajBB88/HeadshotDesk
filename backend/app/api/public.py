@@ -186,6 +186,49 @@ def book_slot_public(
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
 
 
+# --- Referral links ---------------------------------------------------------
+
+@router.get("/r/{code}", include_in_schema=False)
+def follow_referral(code: str, request: Request, db: Session = Depends(get_db)):
+    """Land a referral click, then send the person to the signup page.
+
+    The click is recorded before the redirect, so a link that gets shared
+    and ignored still shows up in the numbers. An unknown code redirects
+    anyway rather than erroring: a mistyped link should still reach the
+    site, it just won't be credited to anyone.
+    """
+    from fastapi.responses import RedirectResponse
+
+    from app.config import settings
+    from app.services import referral_service
+
+    hit = referral_service.record_click(
+        db,
+        code=code,
+        landing_path=str(request.url.path),
+        referer=request.headers.get("referer"),
+        ip=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    response = RedirectResponse(
+        url=f"{settings.frontend_url}/signup?ref={code}", status_code=302
+    )
+    if hit is not None:
+        # First-party, and only this. The click and the signup are usually
+        # different sessions ("I'll do it tonight"), which is the whole
+        # reason a cookie is involved at all.
+        response.set_cookie(
+            key=referral_service.REFERRAL_COOKIE,
+            value=hit.code,
+            max_age=referral_service.REFERRAL_COOKIE_DAYS * 24 * 3600,
+            httponly=True,
+            samesite="lax",
+            secure=settings.env == "production",
+        )
+    return response
+
+
 # --- Walk-up queue position -------------------------------------------------
 
 class QueueStatusOut(BaseModel):

@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     # --- Redis (for RQ background jobs) ---
     redis_url: str = Field(default="redis://localhost:6379/0")
 
+    # --- Free beta seats ---
+    # How many accounts can hold a free 'beta' plan at once. Invite codes
+    # draw from this one pool, so handing a code to a mailing list can't
+    # cost more than you meant to give away. Raise it in the environment
+    # without a deploy; 0 means no free seats are available.
+    free_seat_cap: int = Field(default=25)
+
     # --- Auth ---
     jwt_secret: str = Field(default="dev-secret-change-me")
     jwt_algorithm: str = "HS256"

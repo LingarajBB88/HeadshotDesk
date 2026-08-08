@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { EditJobModal } from "@/components/EditJobModal";
+import { ReferralCard } from "@/components/ReferralCard";
 import { SortableHeader, useSort } from "@/components/SortableHeader";
 import { StatusPill } from "@/components/StatusPill";
 import {
@@ -380,6 +381,12 @@ export default function JobsPage() {
           </div>
         </>
       )}
+
+      {/* Referral link. Bottom of the home screen: worth finding, not worth
+          interrupting anyone's actual work over. */}
+      <div className="mt-12 border-t border-muted-200 pt-8">
+        <ReferralCard />
+      </div>
     </div>
   );
 }

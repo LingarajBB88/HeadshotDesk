@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 
 import { AuthCard } from "@/components/AuthCard";
 import { FormField } from "@/components/FormField";
@@ -10,8 +10,24 @@ import { ApiError } from "@/lib/api";
 import { signup } from "@/lib/auth";
 import { classifyFormError } from "@/lib/form-errors";
 
+// useSearchParams needs a Suspense boundary in the App Router, so the page
+// is a thin shell around the real form.
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Who sent them, and whether they're claiming a free seat. The backend
+  // also reads an attribution cookie, so losing the query string on the way
+  // here doesn't lose the credit.
+  const referralCode = searchParams.get("ref");
+  const inviteCode = searchParams.get("invite");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -49,6 +65,8 @@ export default function SignupPage() {
         password,
         name: String(data.get("name") ?? "").trim(),
         account_name: String(data.get("account_name") ?? "").trim(),
+        referral_code: referralCode,
+        invite_code: inviteCode,
       });
       router.push("/jobs");
     } catch (err) {
@@ -78,6 +96,20 @@ export default function SignupPage() {
         </>
       }
     >
+      {/* Arriving on someone's link should be visible, not silent. It's
+          also the honest place to say the bonus is real. */}
+      {inviteCode ? (
+        <p className="mb-4 rounded-md bg-accent-muted px-3 py-2 text-sm text-accent">
+          You&apos;ve been invited. Your account will be free while
+          HeadshotDesk is in beta.
+        </p>
+      ) : referralCode ? (
+        <p className="mb-4 rounded-md bg-accent-muted px-3 py-2 text-sm text-accent">
+          A photographer sent you here, so you get two extra weeks on your
+          trial.
+        </p>
+      ) : null}
+
       <form onSubmit={onSubmit} noValidate>
         <FormField
           label="Your name"

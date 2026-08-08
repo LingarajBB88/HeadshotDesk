@@ -66,3 +66,17 @@ def _test_db() -> None:
 def client() -> TestClient:
     """In-process FastAPI client. Doesn't require a running uvicorn."""
     return TestClient(app)
+
+
+@pytest.fixture
+def db_session():
+    """A plain session for tests that need to reach past the API — seeding a
+    row, or calling a service function directly to check a rule the HTTP
+    layer can't express."""
+    from app.db import SessionLocal
+
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()

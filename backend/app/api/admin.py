@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_admin
 from app.db import get_db
 from app.models import Account, File, Job, Participant, ParticipantDownload, User
+from app.services import referral_service
 
 router = APIRouter(dependencies=[Depends(require_admin)])
 
@@ -42,17 +43,26 @@ def _utcnow() -> datetime:
 def _derive_status(account: Account) -> tuple[str, int | None]:
     """Returns (status, trial_days_left). trial_days_left only for trials.
 
-    Trial expiry defaults to signup + 31 days; an admin-set
-    plan_renews_at overrides it (the "extend trial" action).
+    Trial expiry is read from trial_ends_at, which is set at signup and
+    already includes any referral bonus. plan_renews_at still wins (the
+    admin "extend trial" action), and signup + 31 days is the fallback for
+    rows created before trial_ends_at existed.
     """
     if account.plan in ("solo", "pro", "studio"):
         return "active", None
+    if account.plan == "beta":
+        # A free seat from the capped pool. Nothing expires, but it's not
+        # revenue either, so it gets its own status rather than hiding
+        # inside "active".
+        return "beta", None
     if account.plan == "hibernate":
         return "hibernating", None
     if account.plan == "cancelled":
         return "cancelled", None
-    expires = account.plan_renews_at or (
-        account.created_at + timedelta(days=TRIAL_DAYS)
+    expires = (
+        account.plan_renews_at
+        or account.trial_ends_at
+        or (account.created_at + timedelta(days=TRIAL_DAYS))
     )
     days_left = (expires - _utcnow()).days
     if days_left < 0:
@@ -81,6 +91,11 @@ class AdminOverview(BaseModel):
     paying_customers: int
     trials_in_flight: int
     soft_locked: int
+    # Free seats currently occupied, and how many the pool still has. Kept
+    # on the headline because giving away more than you meant to is the
+    # failure mode of a free tier.
+    beta_seats_used: int
+    beta_seats_cap: int
     hibernating: int
     cancelled: int
     mrr_eur: int
@@ -206,6 +221,8 @@ def overview(db: Session = Depends(get_db)) -> AdminOverview:
         paying_customers=by_status.get("active", 0),
         trials_in_flight=by_status.get("trial", 0),
         soft_locked=by_status.get("soft_locked", 0),
+        beta_seats_used=referral_service.seats_used(db),
+        beta_seats_cap=referral_service.seat_cap(db),
         hibernating=by_status.get("hibernating", 0),
         cancelled=by_status.get("cancelled", 0),
         mrr_eur=mrr,
