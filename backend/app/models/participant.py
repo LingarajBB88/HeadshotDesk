@@ -36,6 +36,12 @@ class Participant(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Booked but never turned up. Kept as a timestamp so a straggler who
+    # appears later can simply be marked shot, which clears this.
+    no_show_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Compliance: when the participant accepted the privacy terms on the
     # public signup form. NULL for photographer-added / CSV rows (they never
     # saw the form — the photographer is the controller for those).

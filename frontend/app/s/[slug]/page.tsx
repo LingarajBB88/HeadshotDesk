@@ -21,6 +21,21 @@ function slotTime(iso: string): string {
   return iso.slice(11, 16);
 }
 
+/**
+ * Has this slot already gone?
+ *
+ * Compared against the browser's clock rather than the server's, on purpose.
+ * Slots are stored as wall-clock times labelled UTC (there's no photographer
+ * timezone setting yet), so a server-side comparison would be an hour or two
+ * out in Amsterdam. Whoever is scanning the QR is standing in the same room
+ * as the shoot, so their device clock is the right reference.
+ */
+function isPast(iso: string): boolean {
+  const [y, mo, d] = iso.slice(0, 10).split("-").map(Number);
+  const [h, mi] = iso.slice(11, 16).split(":").map(Number);
+  return new Date(y, mo - 1, d, h, mi).getTime() < Date.now();
+}
+
 export default function PublicSignupPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -48,6 +63,14 @@ export default function PublicSignupPage() {
   const [slotError, setSlotError] = useState<string | null>(null);
 
   const needsSlot = job?.shoot_mode === "time_slot";
+
+  // Walk-ins scanning the QR mid-shoot shouldn't be offered times that have
+  // already gone. Past slots are hidden rather than struck through: on a
+  // phone at 14:10, a morning's worth of dead buttons is just scrolling.
+  const upcomingSlots = (slots ?? []).filter((s) => !isPast(s.start));
+  const nextFreeSlot = upcomingSlots.find((s) => s.available) ?? null;
+  // All slots gone by: the shoot is over (or the schedule is stale).
+  const scheduleFinished = (slots?.length ?? 0) > 0 && upcomingSlots.length === 0;
 
   async function refreshSlots() {
     try {
@@ -131,7 +154,9 @@ export default function PublicSignupPage() {
       setConsentError(null);
       // Time-slot jobs with a configured schedule: a time must be chosen
       // before submitting.
-      if (needsSlot && slots && slots.length > 0 && !selectedSlot) {
+      // Don't block signup when every time has already passed: a late walk-in
+      // still needs to be on the list so the photographer can decide.
+      if (needsSlot && upcomingSlots.length > 0 && !selectedSlot) {
         setSlotError("Pick a time before signing up.");
         setSubmitting(false);
         return;
@@ -237,27 +262,53 @@ export default function PublicSignupPage() {
                   The schedule isn&apos;t set up yet. You&apos;re signed up;
                   your photographer will share times separately.
                 </p>
+              ) : scheduleFinished ? (
+                <p className="mt-4 text-sm text-muted-600">
+                  All the times for today have passed. You&apos;re signed up,
+                  so ask your photographer whether they can still fit you in.
+                </p>
               ) : (
-                <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2">
-                  {slots.map((s) => (
+                <>
+                  {/* Two taps for someone standing at the booth: the common
+                      case is "whatever's next", not browsing a grid. */}
+                  {nextFreeSlot ? (
                     <button
-                      key={s.start}
                       type="button"
-                      disabled={!s.available || booking !== null}
-                      onClick={() => pickSlot(s)}
-                      className={
-                        "rounded-md border px-2 py-2 text-sm font-medium transition " +
-                        (!s.available
-                          ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
-                          : booking === s.start
-                            ? "border-accent bg-accent text-accent-fg"
-                            : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
-                      }
+                      disabled={booking !== null}
+                      onClick={() => pickSlot(nextFreeSlot)}
+                      className="mt-4 w-full btn-primary disabled:opacity-60"
                     >
-                      {booking === s.start ? "…" : slotTime(s.start)}
+                      {booking === nextFreeSlot.start
+                        ? "Booking…"
+                        : `Take the next free time (${slotTime(nextFreeSlot.start)})`}
                     </button>
-                  ))}
-                </div>
+                  ) : null}
+                  {nextFreeSlot ? (
+                    <p className="mt-4 text-xs font-medium uppercase tracking-wider text-muted-600">
+                      Or pick another time
+                    </p>
+                  ) : null}
+                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {upcomingSlots.map((s) => (
+                      <button
+                        key={s.start}
+                        type="button"
+                        disabled={!s.available || booking !== null}
+                        onClick={() => pickSlot(s)}
+                        className={
+                          "rounded-md border px-2 py-2 text-sm font-medium transition " +
+                          (!s.available
+                            ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
+                            : booking === s.start
+                              ? "border-accent bg-accent text-accent-fg"
+                              : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+                        }
+                      >
+                        {booking === s.start ? "…" : slotTime(s.start)}
+                      </button>
+                    ))}
+                  </div>
+                </>
               )}
             </>
           ) : submitted ? (
@@ -310,6 +361,17 @@ export default function PublicSignupPage() {
                   <span className="font-medium text-ink">Your time:</span>{" "}
                   {slotTime(bookedSlot.start)} to {slotTime(bookedSlot.end)}
                 </p>
+              ) : null}
+              {/* Walk-up jobs have no appointment to show, so give people the
+                  next best thing: a live position they can watch from their
+                  desk instead of standing in a line. */}
+              {!needsSlot && galleryToken ? (
+                <a
+                  href={`/q/${galleryToken}`}
+                  className="mt-6 inline-block btn-primary"
+                >
+                  See your place in the queue
+                </a>
               ) : null}
             </>
           ) : (
@@ -383,15 +445,41 @@ export default function PublicSignupPage() {
                     <span className="block text-sm font-medium text-ink mb-1.5">
                       Pick your time
                     </span>
+                    {/* Times already gone are dropped, so someone signing up
+                        mid-shoot only sees what they can actually take. */}
+                    {scheduleFinished ? (
+                      <p className="text-sm text-muted-600">
+                        All of today&apos;s times have passed. Sign up anyway
+                        and your photographer will fit you in if they can.
+                      </p>
+                    ) : null}
+                    {nextFreeSlot ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSlot(nextFreeSlot.start)}
+                        className={
+                          "mb-3 w-full rounded-md border px-3 py-2 text-sm font-medium transition " +
+                          (selectedSlot === nextFreeSlot.start
+                            ? "border-accent bg-accent text-accent-fg"
+                            : "border-accent text-accent hover:bg-accent-muted")
+                        }
+                        aria-pressed={selectedSlot === nextFreeSlot.start}
+                      >
+                        Next free time: {slotTime(nextFreeSlot.start)}
+                      </button>
+                    ) : null}
                     {/* HSD-71: a shoot can span days, so times are grouped
                         under the day they belong to. Single-day shoots show
                         no headings and look exactly as before. */}
                     {Object.entries(
-                      slots.reduce<Record<string, typeof slots>>((acc, s) => {
-                        const day = s.start.slice(0, 10);
-                        (acc[day] ||= []).push(s);
-                        return acc;
-                      }, {}),
+                      upcomingSlots.reduce<Record<string, typeof slots>>(
+                        (acc, s) => {
+                          const day = s.start.slice(0, 10);
+                          (acc[day] ||= []).push(s);
+                          return acc;
+                        },
+                        {},
+                      ),
                     ).map(([day, daySlots], _i, groups) => (
                       <div key={day} className={groups.length > 1 ? "mb-3" : ""}>
                         {groups.length > 1 ? (

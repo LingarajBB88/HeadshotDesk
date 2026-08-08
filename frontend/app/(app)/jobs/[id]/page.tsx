@@ -271,7 +271,15 @@ export default function JobDetailPage() {
         </div>
         {job.status !== "archived" ? (
           <div className="flex flex-wrap gap-2 self-start sm:self-auto">
-            <Link href={`/jobs/${job.id}/shoot`} className="btn-primary">
+            {/* New tab on purpose: on shoot day the queue stays open on a
+                second screen while the job page is still used for adding
+                walk-ins and checking photos. */}
+            <Link
+              href={`/jobs/${job.id}/shoot`}
+              target="_blank"
+              rel="noopener"
+              className="btn-primary"
+            >
               Start shooting
             </Link>
             {/* F5c Deliver button — enabled whenever anyone is emailable
@@ -366,18 +374,27 @@ export default function JobDetailPage() {
               + signup link on the right. Cap editable via DownloadCapDetail;
               the Downloads stat tile above just displays consumption. */}
           <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-5">
-            <dl className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-8 gap-y-5">
-              <DownloadCapDetail
-                job={job}
-                onChanged={(updated) => setJob(updated)}
-                editable={job.status !== "archived"}
-              />
-              <PicksDetail
-                job={job}
-                onChanged={(updated) => setJob(updated)}
-                editable={job.status !== "archived"}
-              />
-            </dl>
+            {/* Both settings live in one card so the column reads as a
+                block rather than two labels floating in white space. The
+                card hugs its content (self-start) instead of stretching to
+                match the taller right column. */}
+            <div className="md:col-span-2 self-start rounded-card border border-muted-200 bg-paper p-5">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-muted-600">
+                What participants get
+              </h3>
+              <dl className="mt-4 space-y-4">
+                <DownloadCapDetail
+                  job={job}
+                  onChanged={(updated) => setJob(updated)}
+                  editable={job.status !== "archived"}
+                />
+                <PicksDetail
+                  job={job}
+                  onChanged={(updated) => setJob(updated)}
+                  editable={job.status !== "archived"}
+                />
+              </dl>
+            </div>
             <div className="md:col-span-3 flex flex-col gap-4">
               <ShootDayHero job={job} />
               {/* Signup link tucked under the shoot-day hero so the right
@@ -386,6 +403,7 @@ export default function JobDetailPage() {
               {job.status !== "archived" ? (
                 <>
                   <SignupLinkBar
+                    jobId={job.id}
                     url={
                       typeof window !== "undefined"
                         ? `${window.location.origin}/s/${job.public_slug}`

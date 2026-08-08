@@ -280,6 +280,8 @@ def mark_shot(
     """
     p = get_participant(db, account=account, participant_id=participant_id)
     p.shot_at = datetime.now(timezone.utc)
+    # Someone who turned up after being written off is no longer a no-show.
+    p.no_show_at = None
 
     # First shot of a job → it's officially "in_progress" now.
     job = db.get(Job, p.job_id)
@@ -301,6 +303,66 @@ def reset_shot(
     db.commit()
     db.refresh(p)
     return p
+
+
+def set_no_show(
+    db: Session, *, account: Account, participant_id: str, no_show: bool
+) -> Participant:
+    """Flag (or unflag) someone who didn't turn up.
+
+    Clients ask for this list after the day, so it needs to be recorded
+    rather than remembered. Marking a no-show also clears any shot status:
+    the two states are mutually exclusive by definition.
+    """
+    p = get_participant(db, account=account, participant_id=participant_id)
+    if no_show:
+        p.no_show_at = datetime.now(timezone.utc)
+        p.shot_at = None
+    else:
+        p.no_show_at = None
+    db.commit()
+    db.refresh(p)
+    return p
+
+
+def attendance_csv(db: Session, *, account: Account, job_id: str) -> str:
+    """Attendance report for the client: who came, who didn't, when.
+
+    Plain CSV so it opens in whatever the client's office uses, and can be
+    attached to an email without a conversation about formats.
+    """
+    job = job_service.get_job(db, account=account, job_id=job_id)
+    participants, _ = list_participants(db, account=account, job_id=job_id)
+
+    from app.services import slot_service
+
+    slot_by_participant = {
+        e["participant_id"]: e["slot_start"]
+        for e in slot_service.job_schedule(db, job=job)
+    }
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Name", "Email", "Title", "Booked time", "Attendance", "Photos"])
+    for p in participants:
+        slot = slot_by_participant.get(p.id)
+        if p.shot_at is not None:
+            attendance = "Photographed"
+        elif p.no_show_at is not None:
+            attendance = "No show"
+        else:
+            attendance = "Not photographed"
+        writer.writerow(
+            [
+                p.name,
+                p.email or "",
+                p.title or "",
+                slot.strftime("%Y-%m-%d %H:%M") if slot else "",
+                attendance,
+                getattr(p, "photo_count", 0),
+            ]
+        )
+    return buf.getvalue()
 
 
 # ============================================================================

@@ -6,7 +6,14 @@ import { useState } from "react";
  * Compact bar showing the public signup URL with copy + open-in-new-tab.
  * Designed to live near the top of the job detail page so it's easy to share.
  */
-export function SignupLinkBar({ url }: { url: string }) {
+export function SignupLinkBar({
+  url,
+  jobId,
+}: {
+  url: string;
+  /** When given, offers a printable QR card for the booth. */
+  jobId?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -40,6 +47,18 @@ export function SignupLinkBar({ url }: { url: string }) {
       >
         {copied ? "Copied!" : "Copy"}
       </button>
+      {/* The card is what actually gets used on the day: people scan it at
+          the booth instead of you typing their details in. */}
+      {jobId ? (
+        <a
+          href={`/jobs/${jobId}/qr`}
+          target="_blank"
+          rel="noopener"
+          className="btn-secondary text-xs shrink-0"
+        >
+          QR card
+        </a>
+      ) : null}
     </div>
   );
 }

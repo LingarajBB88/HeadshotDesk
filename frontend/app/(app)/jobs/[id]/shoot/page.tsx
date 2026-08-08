@@ -9,6 +9,7 @@ import {
   listParticipants,
   markShot,
   resetShot,
+  setNoShow,
   type Participant,
 } from "@/lib/participants";
 
@@ -33,6 +34,9 @@ export default function ShootQueuePage() {
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Live shoots run long lists. Typing a few letters is faster than scrolling
+  // when someone turns up out of order.
+  const [search, setSearch] = useState("");
   // HSD-55: booked slot per participant on time-slot jobs. Used to order
   // the pending list by appointment and show the time next to each name.
   const [slotByParticipant, setSlotByParticipant] = useState<
@@ -109,6 +113,17 @@ export default function ShootQueuePage() {
     }
   }
 
+  async function handleNoShow(p: Participant, noShow: boolean) {
+    setBusy(p.id);
+    try {
+      await setNoShow(p.id, noShow);
+      await loadParticipants();
+      if (noShow) setActiveId((cur) => (cur === p.id ? null : cur));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (error) {
     return (
       <div>
@@ -127,15 +142,31 @@ export default function ShootQueuePage() {
   // to the bottom alphabetically). Queue jobs keep signup order.
   const slotTimeOf = (p: Participant) =>
     slotByParticipant[p.id]?.slot_start ?? "9999";
+  // Search matches name, email or title, so "sales" finds a whole department.
+  const q = search.trim().toLowerCase();
+  const matches = (p: Participant) =>
+    !q ||
+    [p.name, p.email ?? "", p.title ?? ""].some((f) =>
+      f.toLowerCase().includes(q),
+    );
   const pending = participants
-    .filter((p) => !p.shot_at)
+    .filter((p) => !p.shot_at && !p.no_show_at)
+    .filter(matches)
     .sort((a, b) =>
       job.shoot_mode === "time_slot"
         ? slotTimeOf(a).localeCompare(slotTimeOf(b)) ||
           a.name.localeCompare(b.name)
         : 0,
     );
-  const shot = participants.filter((p) => p.shot_at);
+  const shot = participants.filter((p) => p.shot_at).filter(matches);
+  // No-shows are parked in their own list rather than deleted: a straggler
+  // who turns up later just gets moved back.
+  const noShows = participants
+    .filter((p) => p.no_show_at && !p.shot_at)
+    .filter(matches);
+  const pendingTotal = participants.filter(
+    (p) => !p.shot_at && !p.no_show_at,
+  ).length;
 
   return (
     <div>
@@ -157,10 +188,43 @@ export default function ShootQueuePage() {
         </div>
         <div className="text-right text-sm text-muted-600">
           <p>
-            <span className="text-ink font-medium">{shot.length}</span> shot ·{" "}
-            <span className="text-ink font-medium">{pending.length}</span> pending
+            <span className="text-ink font-medium">
+              {participants.filter((p) => p.shot_at).length}
+            </span>{" "}
+            shot ·{" "}
+            <span className="text-ink font-medium">{pendingTotal}</span> pending
+            {noShows.length ? (
+              <>
+                {" "}
+                ·{" "}
+                <span className="text-ink font-medium">
+                  {participants.filter((p) => p.no_show_at && !p.shot_at).length}
+                </span>{" "}
+                no show
+              </>
+            ) : null}
           </p>
         </div>
+      </div>
+
+      {/* Search: fast way to find someone who turns up out of order. */}
+      <div className="mt-6 relative max-w-sm">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email or title"
+          className="w-full rounded-input border border-muted-200 bg-paper px-4 py-2.5 pr-9 text-sm text-ink placeholder:text-muted-400 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+        />
+        {search ? (
+          <button
+            onClick={() => setSearch("")}
+            aria-label="Clear search"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-400 hover:text-ink transition"
+          >
+            &times;
+          </button>
+        ) : null}
       </div>
 
       {/* Two-column layout: Pending on the left, Already shot on the right.
@@ -172,7 +236,13 @@ export default function ShootQueuePage() {
             Pending ({pending.length})
           </h2>
           {pending.length === 0 ? (
-            participants.length === 0 ? (
+            q ? (
+              <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
+                <p className="text-sm text-muted-600">
+                  Nobody pending matches &ldquo;{search}&rdquo;.
+                </p>
+              </div>
+            ) : participants.length === 0 ? (
               <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
                 <p className="text-sm font-medium text-ink">No participants yet</p>
                 <p className="mt-1 text-xs text-muted-600">
@@ -219,6 +289,7 @@ export default function ShootQueuePage() {
                     busy={busy === p.id}
                     onSelect={() => handleSelect(p)}
                     onMarkShot={() => handleMarkShot(p)}
+                    onNoShow={() => handleNoShow(p, true)}
                   />
                 </li>
               ))}
@@ -276,6 +347,46 @@ export default function ShootQueuePage() {
           )}
         </section>
       </div>
+
+      {/* No-shows. Only appears once someone is flagged, so it stays out of
+          the way on a shoot where everybody turns up. */}
+      {noShows.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-muted-600">
+            No shows ({noShows.length})
+          </h2>
+          <p className="mt-1 text-sm text-muted-600">
+            Included in the attendance report you can send your client. If
+            someone turns up late, put them back in the queue.
+          </p>
+          <ul className="mt-4 rounded-card border border-muted-200 bg-paper divide-y divide-muted-200">
+            {noShows.map((p) => (
+              <li
+                key={p.id}
+                className="px-5 py-3 flex items-center justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-ink truncate">{p.name}</p>
+                  <p className="text-xs text-muted-600 truncate">
+                    {p.email ?? "—"}
+                    {p.title ? ` · ${p.title}` : ""}
+                    {slotByParticipant[p.id]
+                      ? ` · booked ${slotByParticipant[p.id].slot_start.slice(11, 16)}`
+                      : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleNoShow(p, false)}
+                  disabled={busy === p.id}
+                  className="text-xs text-muted-600 hover:text-ink transition shrink-0 disabled:opacity-60"
+                >
+                  Back to queue
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }
@@ -289,6 +400,7 @@ function ShootCard({
   busy,
   onSelect,
   onMarkShot,
+  onNoShow,
 }: {
   participant: Participant;
   /** HSD-55: booked appointment (HH:MM) on time-slot jobs, null otherwise. */
@@ -297,6 +409,7 @@ function ShootCard({
   busy: boolean;
   onSelect: () => void;
   onMarkShot: () => void;
+  onNoShow: () => void;
 }) {
   return (
     <div
@@ -325,18 +438,31 @@ function ShootCard({
           {p.title ? ` · ${p.title}` : ""}
         </p>
         {active ? (
-          <p className="mt-1 text-xs font-medium text-accent">
-            Name copied to clipboard. Fire your shots in Capture One.
+          <p className="mt-1 flex items-center gap-2 text-xs font-medium text-accent">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+            </span>
+            Shooting now. Name copied to clipboard, fire your shots in Capture One.
           </p>
         ) : null}
       </button>
-      <button
-        onClick={onMarkShot}
-        disabled={busy}
-        className="btn-primary disabled:opacity-60"
-      >
-        {busy ? "Saving…" : "Done"}
-      </button>
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          onClick={onNoShow}
+          disabled={busy}
+          className="text-xs text-muted-600 hover:text-ink transition disabled:opacity-60"
+        >
+          No show
+        </button>
+        <button
+          onClick={onMarkShot}
+          disabled={busy}
+          className="btn-primary disabled:opacity-60"
+        >
+          {busy ? "Saving…" : "Done"}
+        </button>
+      </div>
     </div>
   );
 }

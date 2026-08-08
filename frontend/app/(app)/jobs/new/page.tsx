@@ -33,6 +33,27 @@ export default function NewJobPage() {
   const [newClientName, setNewClientName] = useState("");
   // HSD-71: additional shoot days (ISO strings), empty for single-day jobs.
   const [extraDays, setExtraDays] = useState<string[]>([]);
+  // Controlled so the extra-day pickers can refuse dates before it and
+  // reject duplicates. Native `min` alone lets you type anything.
+  const [firstDay, setFirstDay] = useState("");
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  /** Why this extra day can't be used, or null when it's fine. */
+  function dayProblem(value: string, index: number): string | null {
+    if (!value) return null;
+    if (value < today) return "That day has already passed.";
+    if (firstDay && value === firstDay)
+      return "That's already the first shoot day.";
+    if (firstDay && value < firstDay)
+      return "Extra days come after the first shoot day.";
+    if (extraDays.some((d, j) => j !== index && d === value))
+      return "That day is already in the list.";
+    return null;
+  }
+
+  const dayErrors = extraDays.map((d, i) => dayProblem(d, i));
+  const hasDayError = dayErrors.some(Boolean);
 
   useEffect(() => {
     async function refreshClients() {
@@ -106,6 +127,10 @@ export default function NewJobPage() {
     e.preventDefault();
     setFormError(null);
     setFieldErrors({});
+    if (hasDayError) {
+      setFormError("Fix the shoot days before creating the job.");
+      return;
+    }
     setSubmitting(true);
     try {
       const data = new FormData(e.currentTarget);
@@ -189,7 +214,9 @@ export default function NewJobPage() {
               name="shoot_date"
               type="date"
               required
-              min={new Date().toISOString().slice(0, 10)}
+              min={today}
+              value={firstDay}
+              onChange={(e) => setFirstDay(e.target.value)}
               hint="Today or later."
               error={fieldErrors.shoot_date}
             />
@@ -197,38 +224,64 @@ export default function NewJobPage() {
                 out of the way — most shoots are one day. */}
             <div className="mb-4">
               {extraDays.map((d, i) => (
-                <div key={i} className="mb-2 flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={d}
-                    onChange={(e) =>
-                      setExtraDays((days) =>
-                        days.map((x, j) => (j === i ? e.target.value : x)),
-                      )
-                    }
-                    className="rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExtraDays((days) => days.filter((_, j) => j !== i))
-                    }
-                    className="text-xs text-muted-600 hover:text-red-600 transition"
-                  >
-                    Remove
-                  </button>
+                <div key={i} className="mb-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={d}
+                      // Earliest allowed is the day after the first day, so
+                      // the picker itself won't offer a duplicate or a date
+                      // that sits before the shoot starts.
+                      min={
+                        firstDay
+                          ? new Date(
+                              new Date(firstDay).getTime() + 86400000,
+                            )
+                              .toISOString()
+                              .slice(0, 10)
+                          : today
+                      }
+                      onChange={(e) =>
+                        setExtraDays((days) =>
+                          days.map((x, j) => (j === i ? e.target.value : x)),
+                        )
+                      }
+                      className={
+                        "rounded-md border bg-paper px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-accent/30 " +
+                        (dayErrors[i]
+                          ? "border-red-500 focus:border-red-500"
+                          : "border-muted-200 focus:border-accent")
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraDays((days) => days.filter((_, j) => j !== i))
+                      }
+                      className="text-xs text-muted-600 hover:text-red-600 transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {dayErrors[i] ? (
+                    <p className="mt-1 text-xs text-red-600">{dayErrors[i]}</p>
+                  ) : null}
                 </div>
               ))}
               <button
                 type="button"
+                disabled={!firstDay}
+                title={
+                  firstDay ? undefined : "Pick the shoot date first."
+                }
                 onClick={() => setExtraDays((days) => [...days, ""])}
-                className="text-xs font-medium text-accent hover:underline"
+                className="text-xs font-medium text-accent hover:underline disabled:text-muted-400 disabled:no-underline disabled:cursor-not-allowed"
               >
                 + Add another shoot day
               </button>
               <p className="mt-1 text-xs text-muted-600">
-                For shoots that run over several days. The same slot pattern
-                applies to each day.
+                For shoots that run over several days. Each day gets its own
+                hours and breaks once the job exists.
               </p>
             </div>
 

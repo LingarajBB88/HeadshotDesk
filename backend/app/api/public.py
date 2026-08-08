@@ -3,6 +3,7 @@ Public API — no auth required. Used by participants signing up via the
 shareable signup link `/s/{slug}`, and by the landing page's feature
 request form.
 """
+import io
 import logging
 import time
 from collections import defaultdict
@@ -171,6 +172,66 @@ def book_slot_public(
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
 
 
+# --- Walk-up queue position -------------------------------------------------
+
+class QueueStatusOut(BaseModel):
+    """What a walk-up participant sees while they wait. Counts and their own
+    name only: nothing about anyone else in the line."""
+    name: str
+    job_name: str
+    status: str  # waiting | next | photographed | missed
+    position: int | None
+    people_ahead: int
+    estimated_wait_minutes: int | None
+    estimated_time: str | None
+    # False while the estimate is still the conservative default, so the UI
+    # can hedge its wording instead of implying a precision it doesn't have.
+    pace_measured: bool
+    queue_length: int
+
+
+@router.get("/queue/{gallery_token}", response_model=QueueStatusOut)
+def queue_status(gallery_token: str, db: Session = Depends(get_db)) -> QueueStatusOut:
+    """Live position in a walk-up queue, polled by the participant's phone."""
+    from app.services import queue_service
+
+    return QueueStatusOut(**queue_service.queue_status(db, gallery_token=gallery_token))
+
+
+# --- Signup QR code ---------------------------------------------------------
+
+@router.get("/jobs/{slug}/qr.svg")
+def signup_qr(slug: str, db: Session = Depends(get_db)):
+    """QR code for the job's signup link, so the photographer can print a card
+    and stand it next to the booth. Public because the thing it encodes is
+    already a public URL, and because an <img src> can't carry an auth header.
+
+    SVG rather than PNG: it prints crisply at any size, which matters when the
+    same code goes on an A5 table card and an A4 poster.
+    """
+    from fastapi.responses import Response as FastAPIResponse
+
+    from app.config import settings
+
+    # 404 on unknown or archived jobs, same as the signup page itself.
+    # Resolved before the QR library is touched so a missing dependency can
+    # never turn a not-found into a 500.
+    job = participant_service.get_job_by_slug(db, slug=slug)
+    url = f"{settings.frontend_url}/s/{job.public_slug}"
+
+    import segno
+
+    buf = io.BytesIO()
+    # Error correction "M" survives a coffee ring and a bit of glare without
+    # bloating the code into something unreadable across a room.
+    segno.make(url, error="m").save(buf, kind="svg", scale=10, border=2, xmldecl=False)
+    return FastAPIResponse(
+        content=buf.getvalue(),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
 # --- HSD-36: client logo (public brand asset) --------------------------------
 
 def _client_logo_url_for_job(db: Session, job) -> str | None:  # type: ignore[no-untyped-def]
@@ -224,6 +285,7 @@ class ClientDashboardOut(BaseModel):
     participants_total: int
     photographed: int
     delivered: int
+    no_shows: int
     photos_uploaded: int
     shoot_mode: str
     slots_total: int | None
@@ -293,6 +355,10 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
             return "delivered"
         if p.shot_at is not None:
             return "photographed"
+        # The client asks about no-shows more than anything else, so it's a
+        # first-class state here rather than an absence.
+        if p.no_show_at is not None:
+            return "no_show"
         return "signed_up"
 
     return ClientDashboardOut(
@@ -304,6 +370,11 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
         participants_total=len(participants),
         photographed=sum(1 for p in participants if p.shot_at is not None),
         delivered=sum(1 for p in participants if p.gallery_sent_at is not None),
+        no_shows=sum(
+            1
+            for p in participants
+            if p.no_show_at is not None and p.shot_at is None
+        ),
         photos_uploaded=int(photos),
         shoot_mode=job.shoot_mode,
         slots_total=slots_total,

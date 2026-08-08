@@ -4,6 +4,7 @@ Participants API — auth-required photographer-facing routes.
 The public signup-form endpoints live separately in app/api/public.py.
 """
 from fastapi import APIRouter, Depends, File, Response, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_account
@@ -141,6 +142,48 @@ def reset_shot(
         db, account=account, participant_id=participant_id
     )
     return ParticipantOut.model_validate(p)
+
+
+class NoShowRequest(BaseModel):
+    no_show: bool = True
+
+
+@router.post(
+    "/participants/{participant_id}/no-show", response_model=ParticipantOut
+)
+def set_no_show(
+    participant_id: str,
+    payload: NoShowRequest | None = None,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> ParticipantOut:
+    """Flag someone who didn't turn up (or clear the flag)."""
+    p = participant_service.set_no_show(
+        db,
+        account=account,
+        participant_id=participant_id,
+        no_show=payload.no_show if payload else True,
+    )
+    return ParticipantOut.model_validate(p)
+
+
+@router.get("/jobs/{job_id}/attendance.csv")
+def attendance_report(
+    job_id: str,
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+):
+    """Attendance report the photographer can forward to their client."""
+    csv_text = participant_service.attendance_csv(
+        db, account=account, job_id=job_id
+    )
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": 'attachment; filename="attendance.csv"',
+        },
+    )
 
 
 # F5c — gallery delivery (per-participant resend) ---------------------------

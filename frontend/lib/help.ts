@@ -345,13 +345,17 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "The queue is your shoot-day control panel. It shows who is waiting and who is done, keeps the next name one tap from your tethering tool, and feeds the automation that files photos under the right person.",
       "Run the day from this screen and the admin happens as a side effect of shooting.",
     ],
-    keywords: ["queue", "shoot day", "tether", "clipboard", "capture one", "mark shot", "reset", "pending"],
+    keywords: [
+      "queue", "shoot day", "tether", "clipboard", "capture one", "mark shot",
+      "reset", "pending", "no show", "attendance", "search", "qr code",
+    ],
     sections: [
       {
         id: "start",
         heading: "Start shooting",
         body: [
-          "The Start shooting button on the job page opens the queue: Pending on one side, Already shot on the other.",
+          "The Start shooting button on the job page opens the queue in a new tab: Pending on one side, Already shot on the other. It opens in its own tab so you can keep the job page open alongside it for adding walk-ins and checking photos.",
+          "Search at the top filters both lists by name, email, or title. Useful when someone turns up out of order and you need to find them in a list of sixty.",
         ],
       },
       {
@@ -369,8 +373,26 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Marking your first person shot moves the job to In progress.",
         ],
       },
+      {
+        id: "no-shows",
+        heading: "No shows and the attendance report",
+        body: [
+          "Someone booked but never turned up? Hit No show on their card. They leave the pending list and collect in a No shows section at the bottom, so your queue stays honest about who is actually still coming.",
+          "It is not a deletion. If a straggler appears later, Back to queue puts them straight back in line, and marking them shot clears the flag on its own.",
+          "The Attendance report button in the Participants section downloads a CSV listing everyone as Photographed, No show, or Not photographed. This is usually the first thing a client asks for after the shoot, so it is one click from the list it describes. Your client also sees a Didn't attend count on their live dashboard.",
+        ],
+      },
+      {
+        id: "walk-up-queue",
+        heading: "Walk-up queue and the QR card",
+        body: [
+          "On walk-up jobs there are no appointments, which is the point: some clients will not chase sixty people to book. What people want to know is how long, so each participant gets a live page showing their position and a rough estimate, worked out from how fast you are actually shooting that day.",
+          "They reach it from the confirmation screen after signing up. Keeping the page open means they can go back to their desk instead of standing in a line.",
+          "The QR card button next to the signup link prints a card for the booth. Anyone who scans it lands on the signup page, so walk-ins add their own name and email instead of you typing them mid shoot. On time-slot jobs the card opens the time picker, and only times still ahead of now are offered, with a Next free time button for anyone standing in front of you.",
+        ],
+      },
     ],
-    related: ["filename-matching", "watch-folder", "job-statuses"],
+    related: ["filename-matching", "watch-folder", "job-statuses", "time-slot-booking"],
   },
   {
     slug: "time-slot-booking",

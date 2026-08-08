@@ -33,6 +33,15 @@ export function ShootDaysEditor({
   const allDays = [job.shoot_date, ...extra].filter(Boolean) as string[];
   allDays.sort();
 
+  /** Why the day being typed can't be added, or null when it's fine. */
+  const newProblem: string | null = !newDate
+    ? null
+    : allDays.includes(newDate)
+      ? "That day is already on this shoot."
+      : job.shoot_date && newDate < job.shoot_date
+        ? "Extra days come after the first shoot day."
+        : null;
+
   function fmt(iso: string): string {
     return new Date(iso).toLocaleDateString(undefined, {
       weekday: "short",
@@ -72,6 +81,19 @@ export function ShootDaysEditor({
     }
   }
 
+  /** Scroll to that day's slot grid and flash it, so the jump is obvious
+   *  on a page where every day's grid looks alike. */
+  function scrollToDay(iso: string) {
+    const el = document.getElementById(`shoot-day-${iso}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.add("ring-2", "ring-accent/40", "rounded-card");
+    window.setTimeout(
+      () => el.classList.remove("ring-2", "ring-accent/40", "rounded-card"),
+      1200,
+    );
+  }
+
   async function removeDay(iso: string) {
     if (iso === job.shoot_date) {
       setError(
@@ -86,8 +108,9 @@ export function ShootDaysEditor({
     <div className="rounded-card border border-muted-200 bg-paper p-5">
       <h3 className="text-sm font-semibold text-ink">Shoot days</h3>
       <p className="mt-1 text-xs text-muted-600">
-        The slot settings below apply to every day. Big shoots often run the
-        same hours across several days.
+        {allDays.length > 1
+          ? "Click a day to jump to its slots. Each day can have its own hours and breaks."
+          : "Add a day for shoots too big to fit in one. Each day gets its own hours and breaks."}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -95,23 +118,35 @@ export function ShootDaysEditor({
           <span
             key={d}
             className={
-              "inline-flex items-center gap-2 rounded-card border px-3 py-1.5 text-sm " +
+              "inline-flex items-center gap-2 rounded-card border px-1 py-0.5 text-sm " +
               (d === job.shoot_date
                 ? "border-accent/40 bg-accent-muted text-ink"
                 : "border-muted-200 bg-paper text-ink")
             }
           >
-            {fmt(d)}
-            {d === job.shoot_date ? (
-              <span className="text-[11px] text-muted-600">first day</span>
-            ) : (
+            {/* The chip is the fastest way to reach a day's grid on a shoot
+                that runs a week. */}
+            <button
+              type="button"
+              onClick={() => scrollToDay(d)}
+              title={`Jump to ${fmt(d)}`}
+              className="rounded-md px-2 py-1 hover:bg-accent-muted transition"
+            >
+              {fmt(d)}
+              {d === job.shoot_date ? (
+                <span className="ml-2 text-[11px] text-muted-600">
+                  first day
+                </span>
+              ) : null}
+            </button>
+            {d === job.shoot_date ? null : (
               <button
                 type="button"
                 onClick={() => removeDay(d)}
                 disabled={busy}
                 aria-label={`Remove ${fmt(d)}`}
                 title="Remove this day"
-                className="text-muted-400 hover:text-red-600 transition"
+                className="pr-2 text-muted-400 hover:text-red-600 transition"
               >
                 ×
               </button>
@@ -124,13 +159,29 @@ export function ShootDaysEditor({
             <input
               type="date"
               value={newDate}
-              min={job.shoot_date ?? undefined}
-              onChange={(e) => setNewDate(e.target.value)}
-              className="rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+              // Earliest offered is the day after the first shoot day, so the
+              // picker can't produce a duplicate or an out-of-order date.
+              min={
+                job.shoot_date
+                  ? new Date(
+                      new Date(job.shoot_date).getTime() + 86400000,
+                    )
+                      .toISOString()
+                      .slice(0, 10)
+                  : undefined
+              }
+              onChange={(e) => {
+                setNewDate(e.target.value);
+                setError(null);
+              }}
+              className={
+                "rounded-md border bg-paper px-2 py-1.5 text-sm outline-none " +
+                (newProblem ? "border-red-500" : "border-muted-200 focus:border-accent")
+              }
             />
             <button
               type="button"
-              disabled={!newDate || busy}
+              disabled={!newDate || busy || Boolean(newProblem)}
               onClick={() => save([...extra, newDate])}
               className="btn-secondary text-xs disabled:opacity-60"
             >
@@ -159,6 +210,9 @@ export function ShootDaysEditor({
         )}
       </div>
 
+      {newProblem ? (
+        <p className="mt-2 text-xs text-red-600">{newProblem}</p>
+      ) : null}
       {error ? <p className="mt-2 text-xs text-red-600">{error}</p> : null}
     </div>
   );

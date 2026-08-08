@@ -364,6 +364,18 @@ class TestPublicSignup:
         r = client.get("/api/v1/public/jobs/does-not-exist")
         assert r.status_code == 404
 
+    def test_signup_qr_renders_svg(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        r = client.get(f"/api/v1/public/jobs/{job['public_slug']}/qr.svg")
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("image/svg+xml")
+        assert b"<svg" in r.content
+
+    def test_signup_qr_unknown_slug_returns_404(self, client: TestClient):
+        r = client.get("/api/v1/public/jobs/does-not-exist/qr.svg")
+        assert r.status_code == 404
+
     def test_archived_job_not_accepting_signups(self, client: TestClient):
         a = _signup(client)
         job = _create_job(client, a["tokens"]["access_token"])
@@ -543,6 +555,213 @@ class TestShootQueue:
     def test_mark_shot_requires_auth(self, client: TestClient):
         r = client.post("/api/v1/participants/anything/mark-shot")
         assert r.status_code == 401
+
+
+# ============================================================================
+# No-shows + attendance report
+# ============================================================================
+
+class TestNoShow:
+    def _add(self, client: TestClient, token: str, job_id: str, name: str) -> dict:
+        return client.post(
+            f"/api/v1/jobs/{job_id}/participants",
+            json={"name": name, "email": f"{name.replace(' ', '.')}@example.com"},
+            headers=_auth(token),
+        ).json()
+
+    def test_mark_and_clear_no_show(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        p = self._add(client, tok, job["id"], "Ann Absent")
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+        assert r.status_code == 200
+        assert r.json()["no_show_at"] is not None
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": False},
+            headers=_auth(tok),
+        )
+        assert r.json()["no_show_at"] is None
+
+    def test_marking_shot_clears_no_show(self, client: TestClient):
+        """A straggler who turns up late is just marked shot."""
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        p = self._add(client, tok, job["id"], "Late Larry")
+        client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/mark-shot", headers=_auth(tok)
+        )
+        assert r.json()["no_show_at"] is None
+        assert r.json()["shot_at"] is not None
+
+    def test_no_show_clears_shot_at(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        p = self._add(client, tok, job["id"], "Mixed Up")
+        client.post(f"/api/v1/participants/{p['id']}/mark-shot", headers=_auth(tok))
+
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+        assert r.json()["shot_at"] is None
+
+    def test_attendance_report_lists_every_state(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        shot = self._add(client, tok, job["id"], "Sam Shot")
+        absent = self._add(client, tok, job["id"], "Ann Absent")
+        self._add(client, tok, job["id"], "Pat Pending")
+        client.post(f"/api/v1/participants/{shot['id']}/mark-shot", headers=_auth(tok))
+        client.post(
+            f"/api/v1/participants/{absent['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+
+        r = client.get(f"/api/v1/jobs/{job['id']}/attendance.csv", headers=_auth(tok))
+        assert r.status_code == 200
+        assert "text/csv" in r.headers["content-type"]
+        body = r.text
+        assert "Sam Shot" in body and "Photographed" in body
+        assert "Ann Absent" in body and "No show" in body
+        assert "Pat Pending" in body and "Not photographed" in body
+
+    def test_attendance_report_is_account_scoped(self, client: TestClient):
+        a1 = _signup(client)
+        a2 = _signup(client)
+        job = _create_job(client, a1["tokens"]["access_token"])
+        r = client.get(
+            f"/api/v1/jobs/{job['id']}/attendance.csv",
+            headers=_auth(a2["tokens"]["access_token"]),
+        )
+        assert r.status_code == 404
+
+    def test_no_show_requires_auth(self, client: TestClient):
+        r = client.post("/api/v1/participants/anything/no-show", json={})
+        assert r.status_code == 401
+
+
+# ============================================================================
+# Walk-up queue position
+# ============================================================================
+
+class TestQueuePosition:
+    def _signup_public(self, client: TestClient, slug: str, name: str) -> dict:
+        r = client.post(
+            f"/api/v1/public/jobs/{slug}/signup",
+            json={
+                "name": name,
+                "email": f"{name.replace(' ', '.').lower()}@example.com",
+                "consent": True,
+            },
+        )
+        return r.json()["participant"]
+
+    def _queue(self, client: TestClient, token: str) -> dict:
+        r = client.get(f"/api/v1/public/queue/{token}")
+        assert r.status_code == 200
+        return r.json()
+
+    def test_position_reflects_signup_order(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        first = self._signup_public(client, job["public_slug"], "Ann One")
+        second = self._signup_public(client, job["public_slug"], "Bob Two")
+
+        assert self._queue(client, first["gallery_token"])["position"] == 1
+        q2 = self._queue(client, second["gallery_token"])
+        assert q2["position"] == 2
+        assert q2["people_ahead"] == 1
+        assert q2["queue_length"] == 2
+
+    def test_front_of_queue_reports_next(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        p = self._signup_public(client, job["public_slug"], "Ann One")
+        q = self._queue(client, p["gallery_token"])
+        assert q["status"] == "next"
+        assert q["people_ahead"] == 0
+        assert q["estimated_wait_minutes"] == 0
+
+    def test_queue_advances_when_someone_is_shot(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        first = self._signup_public(client, job["public_slug"], "Ann One")
+        second = self._signup_public(client, job["public_slug"], "Bob Two")
+
+        client.post(f"/api/v1/participants/{first['id']}/mark-shot", headers=_auth(tok))
+        assert self._queue(client, second["gallery_token"])["position"] == 1
+
+    def test_no_show_leaves_the_line(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        first = self._signup_public(client, job["public_slug"], "Ann One")
+        second = self._signup_public(client, job["public_slug"], "Bob Two")
+
+        client.post(
+            f"/api/v1/participants/{first['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+        assert self._queue(client, second["gallery_token"])["position"] == 1
+        assert self._queue(client, first["gallery_token"])["status"] == "missed"
+
+    def test_photographed_participant_sees_done(self, client: TestClient):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _create_job(client, tok)
+        p = self._signup_public(client, job["public_slug"], "Ann One")
+        client.post(f"/api/v1/participants/{p['id']}/mark-shot", headers=_auth(tok))
+
+        q = self._queue(client, p["gallery_token"])
+        assert q["status"] == "photographed"
+        assert q["position"] is None
+
+    def test_estimate_starts_unmeasured(self, client: TestClient):
+        """Before anyone's been shot the wait is a conservative guess, and the
+        response says so, so the UI can hedge its wording."""
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        self._signup_public(client, job["public_slug"], "Ann One")
+        second = self._signup_public(client, job["public_slug"], "Bob Two")
+
+        q = self._queue(client, second["gallery_token"])
+        assert q["pace_measured"] is False
+        assert q["estimated_wait_minutes"] == 5  # DEFAULT_MINUTES_PER_PERSON
+
+    def test_queue_exposes_no_other_participants(self, client: TestClient):
+        a = _signup(client)
+        job = _create_job(client, a["tokens"]["access_token"])
+        self._signup_public(client, job["public_slug"], "Ann One")
+        second = self._signup_public(client, job["public_slug"], "Bob Two")
+
+        body = client.get(f"/api/v1/public/queue/{second['gallery_token']}").text
+        assert "Ann One" not in body
+        assert "example.com" not in body
+
+    def test_unknown_token_returns_404(self, client: TestClient):
+        r = client.get("/api/v1/public/queue/not-a-real-token")
+        assert r.status_code == 404
 
 
 # ============================================================================

@@ -14,7 +14,7 @@ import { api, ApiError } from "@/lib/api";
 
 type ClientParticipant = {
   name: string;
-  status: "signed_up" | "photographed" | "delivered";
+  status: "signed_up" | "photographed" | "delivered" | "no_show";
   slot_time: string | null;
 };
 
@@ -27,6 +27,7 @@ type ClientDashboard = {
   participants_total: number;
   photographed: number;
   delivered: number;
+  no_shows: number;
   photos_uploaded: number;
   shoot_mode: string;
   slots_total: number | null;
@@ -38,12 +39,15 @@ const STATUS_LABELS: Record<ClientParticipant["status"], string> = {
   signed_up: "Signed up",
   photographed: "Photographed",
   delivered: "Delivered",
+  no_show: "Didn't attend",
 };
 
 const STATUS_STYLES: Record<ClientParticipant["status"], string> = {
   signed_up: "bg-muted-100 text-muted-600",
   photographed: "bg-blue-50 text-blue-700",
   delivered: "bg-green-100 text-green-700",
+  // Amber, not red: a no-show is information the client acts on, not a fault.
+  no_show: "bg-amber-50 text-amber-700",
 };
 
 function Tile({ label, value }: { label: string; value: string | number }) {
@@ -139,6 +143,10 @@ export default function ClientDashboardPage() {
               )}
               <Tile label="Photographed" value={data.photographed} />
               <Tile label="Galleries delivered" value={data.delivered} />
+              {/* Only shown once there's something to report. */}
+              {data.no_shows > 0 ? (
+                <Tile label="Didn't attend" value={data.no_shows} />
+              ) : null}
             </div>
 
             {/* Participant progress — names + status only, no contact data. */}
@@ -168,9 +176,12 @@ export default function ClientDashboardPage() {
                       key === "time"
                         ? (p.slot_time ?? "")
                         : key === "status"
-                          ? { signed_up: 1, photographed: 2, delivered: 3 }[
-                              p.status
-                            ]
+                          ? {
+                              signed_up: 1,
+                              no_show: 2,
+                              photographed: 3,
+                              delivered: 4,
+                            }[p.status]
                           : p.name,
                     ).map((p, i) => (
                       <tr key={`${p.name}-${i}`}>

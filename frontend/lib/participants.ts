@@ -10,6 +10,8 @@ export type Participant = {
   email: string | null;
   title: string | null;
   shot_at: string | null;  // ISO timestamp when photographed; null if pending
+  /** Booked but never turned up. Mutually exclusive with shot_at. */
+  no_show_at?: string | null;
   photo_count: number;     // number of uploaded files assigned to them
   // Round-2 polish: unique files this participant has pulled from their
   // gallery. The Job detail Downloads tile sums these across the job to show
@@ -106,6 +108,42 @@ export async function resetShot(participantId: string): Promise<Participant> {
     method: "POST",
     token: authToken(),
   });
+}
+
+/** Flag (or unflag) someone who didn't turn up. */
+export async function setNoShow(
+  participantId: string,
+  noShow = true,
+): Promise<Participant> {
+  return api<Participant>(`/api/v1/participants/${participantId}/no-show`, {
+    method: "POST",
+    token: authToken(),
+    body: JSON.stringify({ no_show: noShow }),
+  });
+}
+
+/**
+ * Download the attendance report (who came, who didn't) as a CSV file.
+ * Fetched rather than linked because the endpoint needs the auth header.
+ */
+export async function downloadAttendanceCsv(
+  jobId: string,
+  filename = "attendance.csv",
+): Promise<void> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const res = await fetch(`${base}/api/v1/jobs/${jobId}/attendance.csv`, {
+    headers: { Authorization: `Bearer ${authToken()}` },
+  });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 // F5c — per-row Resend gallery email. Force-sends regardless of

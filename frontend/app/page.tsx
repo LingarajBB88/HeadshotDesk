@@ -124,6 +124,21 @@ const ROADMAP_TIMELINE: {
 }[] = [
   {
     status: "shipped",
+    title: "Walk-ins that handle themselves",
+    detail: "Print a QR card for the booth. People scan it, add themselves, and watch their live place in the queue from their desk.",
+  },
+  {
+    status: "shipped",
+    title: "No-show tracking",
+    detail: "Flag anyone who didn't turn up and hand your client an attendance report, the first thing they ask for after a shoot.",
+  },
+  {
+    status: "shipped",
+    title: "Multi-day shoots",
+    detail: "Run a job across several days, each with its own hours, slot length, and breaks.",
+  },
+  {
+    status: "shipped",
     title: "Client logos everywhere it counts",
     detail: "Upload a logo once per client; signup pages, galleries, and delivery emails carry their branding.",
   },

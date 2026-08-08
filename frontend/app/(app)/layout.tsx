@@ -54,7 +54,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh">
-      <header className="border-b border-muted-200 bg-paper">
+      {/* print:hidden keeps the app chrome off printed pages (the QR card). */}
+      <header className="border-b border-muted-200 bg-paper print:hidden">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">
           {/* Logo — wordmark hidden on small screens, only HD tile shows */}
           <Link href="/jobs">
@@ -104,7 +105,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10">{children}</main>
+      <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 print:max-w-none print:p-0">
+        {children}
+      </main>
     </div>
   );
 }

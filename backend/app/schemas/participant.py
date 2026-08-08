@@ -70,6 +70,8 @@ class ParticipantOut(BaseModel):
     email: EmailStr | None
     title: str | None
     shot_at: datetime | None
+    # Booked but never turned up. Mutually exclusive with shot_at.
+    no_show_at: datetime | None = None
     # F5c: timestamp the gallery delivery email was last sent to this
     # participant (null = never sent). The Deliver button on Job detail uses
     # this to skip already-delivered participants. Surface on the participant

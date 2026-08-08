@@ -13,6 +13,7 @@ import {
 import {
   addParticipant,
   deleteParticipant,
+  downloadAttendanceCsv,
   importCsv,
   listParticipants,
   listPublicSlots,
@@ -354,6 +355,16 @@ export function ParticipantsSection({
               onChange={setSearch}
               placeholder="Search participants…"
             />
+          ) : null}
+          {/* Clients almost always ask who didn't turn up, so the report is
+              one click from the list it describes. */}
+          {participants && participants.length > 0 ? (
+            <button
+              onClick={() => downloadAttendanceCsv(jobId)}
+              className="btn-secondary text-xs"
+            >
+              Attendance report
+            </button>
           ) : null}
           <button
             onClick={() => setAdding((v) => !v)}

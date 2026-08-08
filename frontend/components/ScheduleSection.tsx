@@ -314,6 +314,29 @@ export function ScheduleSection({
     });
   }
 
+  // HSD-71: a day's own breaks. Day two of a shoot often has lunch at a
+  // different hour (or none at all), so breaks are per-day just like hours.
+  function setDayBreaks(isoDay: string, next: SlotBreak[]) {
+    setDayConfig(isoDay, { breaks: next });
+  }
+
+  function addDayBreak(isoDay: string) {
+    const current = dayConfigFor(config, isoDay).breaks;
+    // Default after the latest existing break so repeated clicks never
+    // create duplicates.
+    const latestEnd = current
+      .filter((b) => b.end)
+      .reduce((max, b) => Math.max(max, toMins(b.end)), 0);
+    const start = latestEnd > 0 ? latestEnd + 60 : 12 * 60;
+    setDayBreaks(isoDay, [
+      ...current,
+      {
+        start: toHHMM(Math.min(start, 23 * 60)),
+        end: toHHMM(Math.min(start + 30, 23 * 60 + 30)),
+      },
+    ]);
+  }
+
   function setBreak(i: number, patch: Partial<SlotBreak>) {
     setConfig((c) => ({
       ...c,
@@ -323,33 +346,64 @@ export function ScheduleSection({
   }
 
   // Live validation: catch impossible configs as they're typed, before Save.
-  const configProblem = (() => {
-    if (!config.start || !config.end) return "Set a day start and end.";
-    if (toMins(config.end) <= toMins(config.start)) {
-      return "The day must end after it starts.";
+  // Runs over each day's resolved settings, so a break that only breaks
+  // Tuesday still gets caught, and the message names the day.
+  function dayProblem(day: DayConfig, label: string): string | null {
+    const where = label ? ` (${label})` : "";
+    if (!day.start || !day.end) return `Set a day start and end${where}.`;
+    if (toMins(day.end) <= toMins(day.start)) {
+      return `The day must end after it starts${where}.`;
     }
-    const span = toMins(config.end) - toMins(config.start);
-    if (config.slot_minutes + config.buffer_minutes > span) {
-      return "One slot plus buffer is longer than the whole day.";
+    const span = toMins(day.end) - toMins(day.start);
+    if (day.slot_minutes + day.buffer_minutes > span) {
+      return `One slot plus buffer is longer than the whole day${where}.`;
     }
-    for (const b of config.breaks) {
-      if (!b.start || !b.end) return "Fill in both times for every break.";
+    for (const b of day.breaks) {
+      if (!b.start || !b.end)
+        return `Fill in both times for every break${where}.`;
       if (toMins(b.end) <= toMins(b.start)) {
-        return "Each break must end after it starts.";
+        return `Each break must end after it starts${where}.`;
       }
-      if (toMins(b.start) < toMins(config.start) || toMins(b.end) > toMins(config.end)) {
-        return "Breaks must fall inside the day.";
+      if (toMins(b.start) < toMins(day.start) || toMins(b.end) > toMins(day.end)) {
+        return `Breaks must fall inside the day${where}.`;
       }
     }
     // Overlapping (or duplicate) breaks: confusing on the grid and always
     // a mistake — one longer break says the same thing better.
-    const sorted = [...config.breaks]
+    const sorted = [...day.breaks]
       .filter((b) => b.start && b.end)
       .sort((x, y) => toMins(x.start) - toMins(y.start));
     for (let i = 1; i < sorted.length; i++) {
       if (toMins(sorted[i].start) < toMins(sorted[i - 1].end)) {
-        return "Breaks overlap each other. Merge them into one, or adjust the times.";
+        return `Breaks overlap each other${where}. Merge them into one, or adjust the times.`;
       }
+    }
+    return null;
+  }
+
+  const configProblem = (() => {
+    const base = dayProblem(
+      {
+        start: config.start,
+        end: config.end,
+        slot_minutes: config.slot_minutes,
+        buffer_minutes: config.buffer_minutes,
+        breaks: config.breaks,
+      },
+      "",
+    );
+    if (base) return base;
+    for (const d of days) {
+      if (!config.day_overrides?.[d]) continue;
+      const problem = dayProblem(
+        dayConfigFor(config, d),
+        new Date(d).toLocaleDateString(undefined, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }),
+      );
+      if (problem) return problem;
     }
     return null;
   })();
@@ -467,12 +521,11 @@ export function ScheduleSection({
 
       {/* --- Slot settings --------------------------------------------- */}
       <div className="rounded-card border border-muted-200 bg-paper p-5">
-        <h3 className="text-sm font-semibold text-ink">
-          {multiDay ? "Default slot settings" : "Slot settings"}
-        </h3>
+        <h3 className="text-sm font-semibold text-ink">Slot settings</h3>
         {multiDay ? (
           <p className="mt-0.5 text-xs text-muted-600">
-            Used by any day that hasn&apos;t been given its own hours below.
+            These apply to all {days.length} days. Any day can be given its own
+            hours, slot length, and breaks in its section below.
           </p>
         ) : null}
         {!configured ? (
@@ -666,6 +719,36 @@ export function ScheduleSection({
           ) : null}
         </div>
 
+        {/* Legend. The green outline is the whole point: it's how you know
+            the slots are actually live rather than an unsaved draft. */}
+        {preview.length > 0 ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-600">
+            {dirty ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded border border-muted-200 bg-paper" />
+                Draft, not saved yet
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded border border-green-300 bg-paper" />
+                Live and bookable
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded border border-accent/40 bg-accent-muted" />
+              Booked
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded border border-green-500 bg-green-100" />
+              Photographed
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-3 w-3 rounded border border-amber-200 bg-amber-50" />
+              Break
+            </span>
+          </div>
+        ) : null}
+
         {configProblem ? (
           <p className="mt-2 text-sm text-red-600" role="alert">
             {configProblem}
@@ -676,7 +759,8 @@ export function ScheduleSection({
           </p>
         ) : (
           previewByDay.map(({ day, slots: daySlots }) => (
-          <div key={day} className="mt-4">
+          // id lets the day chips above scroll straight to this grid.
+          <div key={day} id={`shoot-day-${day}`} className="mt-4 scroll-mt-24">
             {/* One grid per shoot day. Single-day jobs render exactly as
                 before (no heading), so nothing changes for them. */}
             {multiDay ? (
@@ -751,20 +835,85 @@ export function ScheduleSection({
                     />
                   </label>
                 </div>
+
+                {/* This day's breaks. Day two often takes lunch at a
+                    different hour, or skips it entirely. */}
+                <div className="mt-3 border-t border-muted-200 pt-3">
+                  <span className="block text-[11px] font-medium text-muted-600">
+                    Breaks on this day
+                  </span>
+                  {dayConfigFor(config, day).breaks.map((b, i) => (
+                    <div key={i} className="mt-2 flex items-center gap-2">
+                      <TimeSelect
+                        value={b.start}
+                        onChange={(v) =>
+                          setDayBreaks(
+                            day,
+                            dayConfigFor(config, day).breaks.map((x, j) =>
+                              j === i ? { ...x, start: v } : x,
+                            ),
+                          )
+                        }
+                        ariaLabel={`Break ${i + 1} on ${day} starts`}
+                      />
+                      <span className="text-xs text-muted-600">to</span>
+                      <TimeSelect
+                        value={b.end}
+                        onChange={(v) =>
+                          setDayBreaks(
+                            day,
+                            dayConfigFor(config, day).breaks.map((x, j) =>
+                              j === i ? { ...x, end: v } : x,
+                            ),
+                          )
+                        }
+                        ariaLabel={`Break ${i + 1} on ${day} ends`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDayBreaks(
+                            day,
+                            dayConfigFor(config, day).breaks.filter(
+                              (_, j) => j !== i,
+                            ),
+                          )
+                        }
+                        className="text-xs text-muted-600 hover:text-red-600 transition"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  {dayConfigFor(config, day).breaks.length === 0 ? (
+                    <p className="mt-1 text-[11px] text-muted-600">
+                      No breaks on this day.
+                    </p>
+                  ) : null}
+                  {dayConfigFor(config, day).breaks.length < 10 ? (
+                    <button
+                      type="button"
+                      onClick={() => addDayBreak(day)}
+                      className="mt-2 text-xs font-medium text-accent hover:underline"
+                    >
+                      + Add a break to this day
+                    </button>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
             {/* Breaks render inline as amber chips so the day reads as one
                 continuous timeline: slots, lunch, slots. Deduped by time
                 window so accidental duplicates never double-render. */}
-            {config.breaks
-              .filter(
+            {dayConfigFor(config, day)
+              .breaks.filter(
                 (b, i, arr) =>
                   b.start &&
                   b.end &&
                   toMins(b.end) > toMins(b.start) &&
-                  toMins(b.start) >= toMins(config.start) &&
-                  toMins(b.start) < toMins(config.end) &&
+                  toMins(b.start) >= toMins(dayConfigFor(config, day).start) &&
+                  toMins(b.start) < toMins(dayConfigFor(config, day).end) &&
                   arr.findIndex(
                     (o) => o.start === b.start && o.end === b.end,
                   ) === i,
@@ -805,17 +954,28 @@ export function ScheduleSection({
                     "group relative rounded-md border px-1.5 py-1 min-w-0 " +
                     (fits
                       ? fits.shot
-                        ? "border-green-200 bg-green-50"
+                        ? "border-green-500 bg-green-100"
                         : "border-accent/40 bg-accent-muted"
-                      : s.isExtra
-                        ? "border-dashed border-muted-200 bg-paper"
-                        : "border-muted-200 bg-paper")
+                      : // Saved and bookable: green outline. Unsaved draft
+                        // slots stay grey, so the colour is the answer to
+                        // "did my changes actually go live?".
+                        dirty
+                        ? s.isExtra
+                          ? "border-dashed border-muted-200 bg-paper"
+                          : "border-muted-200 bg-paper"
+                        : s.isExtra
+                          ? "border-dashed border-green-300 bg-paper"
+                          : "border-green-300 bg-paper")
                   }
                 >
                   <span
                     className={
                       "block font-mono text-[11px] leading-tight " +
-                      (fits ? "text-ink" : "text-muted-400")
+                      (fits
+                        ? "text-ink"
+                        : dirty
+                          ? "text-muted-400"
+                          : "text-green-700")
                     }
                   >
                     {s.start}
@@ -824,7 +984,11 @@ export function ScheduleSection({
                   <span
                     className={
                       "block text-[11px] leading-tight truncate " +
-                      (fits ? "text-ink font-medium" : "text-muted-400")
+                      (fits
+                        ? "text-ink font-medium"
+                        : dirty
+                          ? "text-muted-400"
+                          : "text-green-700")
                     }
                   >
                     {fits ? fits.participant_name : "open"}
