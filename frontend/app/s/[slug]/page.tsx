@@ -61,6 +61,9 @@ export default function PublicSignupPage() {
   const [bookedSlot, setBookedSlot] = useState<PublicSlot | null>(null);
   const [booking, setBooking] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
+  // Which shoot day's times are on screen. Null until the participant picks
+  // one, so the default can follow availability as it changes.
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const needsSlot = job?.shoot_mode === "time_slot";
 
@@ -71,6 +74,33 @@ export default function PublicSignupPage() {
   const nextFreeSlot = upcomingSlots.find((s) => s.available) ?? null;
   // All slots gone by: the shoot is over (or the schedule is stale).
   const scheduleFinished = (slots?.length ?? 0) > 0 && upcomingSlots.length === 0;
+
+  // HSD-71: on a shoot that runs several days, pick a day first. Showing
+  // every day's times in one long column made a three-day shoot feel like
+  // scrolling a timetable, and it wasn't obvious which date a time belonged
+  // to once you'd scrolled past the heading.
+  const slotDays = [...new Set(upcomingSlots.map((s) => s.start.slice(0, 10)))];
+  const multiDay = slotDays.length > 1;
+  // Default to the first day that still has something free, so the busiest
+  // case (day one fully booked) doesn't open on a wall of dead buttons.
+  const defaultDay =
+    slotDays.find((d) =>
+      upcomingSlots.some((s) => s.start.startsWith(d) && s.available),
+    ) ??
+    slotDays[0] ??
+    null;
+  const activeDay = selectedDay ?? defaultDay;
+  const visibleSlots = multiDay
+    ? upcomingSlots.filter((s) => s.start.startsWith(activeDay ?? ""))
+    : upcomingSlots;
+
+  function dayLabel(iso: string): string {
+    return new Date(iso).toLocaleDateString(undefined, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  }
 
   async function refreshSlots() {
     try {
@@ -280,7 +310,11 @@ export default function PublicSignupPage() {
                     >
                       {booking === nextFreeSlot.start
                         ? "Booking…"
-                        : `Take the next free time (${slotTime(nextFreeSlot.start)})`}
+                        : `Take the next free time (${
+                            multiDay
+                              ? `${dayLabel(nextFreeSlot.start.slice(0, 10))}, `
+                              : ""
+                          }${slotTime(nextFreeSlot.start)})`}
                     </button>
                   ) : null}
                   {nextFreeSlot ? (
@@ -288,8 +322,17 @@ export default function PublicSignupPage() {
                       Or pick another time
                     </p>
                   ) : null}
-                  <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {upcomingSlots.map((s) => (
+                  <div className="mt-3">
+                    <DayTabs
+                      days={slotDays}
+                      active={activeDay}
+                      slots={upcomingSlots}
+                      onPick={setSelectedDay}
+                      label={dayLabel}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {visibleSlots.map((s) => (
                       <button
                         key={s.start}
                         type="button"
@@ -456,7 +499,12 @@ export default function PublicSignupPage() {
                     {nextFreeSlot ? (
                       <button
                         type="button"
-                        onClick={() => setSelectedSlot(nextFreeSlot.start)}
+                        onClick={() => {
+                          setSelectedSlot(nextFreeSlot.start);
+                          // Jump to the day it's on, so the highlighted
+                          // button is actually visible.
+                          setSelectedDay(nextFreeSlot.start.slice(0, 10));
+                        }}
                         className={
                           "mb-3 w-full rounded-md border px-3 py-2 text-sm font-medium transition " +
                           (selectedSlot === nextFreeSlot.start
@@ -465,59 +513,59 @@ export default function PublicSignupPage() {
                         }
                         aria-pressed={selectedSlot === nextFreeSlot.start}
                       >
-                        Next free time: {slotTime(nextFreeSlot.start)}
+                        Next free time:{" "}
+                        {multiDay
+                          ? `${dayLabel(nextFreeSlot.start.slice(0, 10))}, `
+                          : ""}
+                        {slotTime(nextFreeSlot.start)}
                       </button>
                     ) : null}
-                    {/* HSD-71: a shoot can span days, so times are grouped
-                        under the day they belong to. Single-day shoots show
-                        no headings and look exactly as before. */}
-                    {Object.entries(
-                      upcomingSlots.reduce<Record<string, typeof slots>>(
-                        (acc, s) => {
-                          const day = s.start.slice(0, 10);
-                          (acc[day] ||= []).push(s);
-                          return acc;
-                        },
-                        {},
-                      ),
-                    ).map(([day, daySlots], _i, groups) => (
-                      <div key={day} className={groups.length > 1 ? "mb-3" : ""}>
-                        {groups.length > 1 ? (
-                          <p className="mb-1 text-xs font-medium text-muted-600">
-                            {new Date(day).toLocaleDateString(undefined, {
-                              weekday: "long",
-                              day: "numeric",
-                              month: "long",
-                            })}
-                          </p>
-                        ) : null}
-                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                          {daySlots.map((s) => (
-                            <button
-                              key={s.start}
-                              type="button"
-                              disabled={!s.available}
-                              onClick={() =>
-                                setSelectedSlot(
-                                  selectedSlot === s.start ? null : s.start,
-                                )
-                              }
-                              className={
-                                "rounded-md border px-2 py-2 text-sm font-medium transition " +
-                                (!s.available
-                                  ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
-                                  : selectedSlot === s.start
-                                    ? "border-accent bg-accent text-accent-fg"
-                                    : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
-                              }
-                              aria-pressed={selectedSlot === s.start}
-                            >
-                              {slotTime(s.start)}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                    {/* HSD-71: pick a day, then a time on that day. */}
+                    <DayTabs
+                      days={slotDays}
+                      active={activeDay}
+                      slots={upcomingSlots}
+                      onPick={(d) => {
+                        setSelectedDay(d);
+                        // A time on another day is no longer visible, so
+                        // holding onto it would be a silent surprise.
+                        if (selectedSlot && !selectedSlot.startsWith(d)) {
+                          setSelectedSlot(null);
+                        }
+                      }}
+                      label={dayLabel}
+                    />
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {visibleSlots.map((s) => (
+                        <button
+                          key={s.start}
+                          type="button"
+                          disabled={!s.available}
+                          onClick={() =>
+                            setSelectedSlot(
+                              selectedSlot === s.start ? null : s.start,
+                            )
+                          }
+                          className={
+                            "rounded-md border px-2 py-2 text-sm font-medium transition " +
+                            (!s.available
+                              ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed line-through"
+                              : selectedSlot === s.start
+                                ? "border-accent bg-accent text-accent-fg"
+                                : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+                          }
+                          aria-pressed={selectedSlot === s.start}
+                        >
+                          {slotTime(s.start)}
+                        </button>
+                      ))}
+                    </div>
+                    {visibleSlots.every((s) => !s.available) &&
+                    visibleSlots.length > 0 ? (
+                      <p className="mt-2 text-xs text-muted-600">
+                        This day is fully booked. Try another day above.
+                      </p>
+                    ) : null}
                     {slotError ? (
                       <p className="mt-2 text-xs text-red-600" role="alert">
                         {slotError}
@@ -592,5 +640,66 @@ export default function PublicSignupPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+/**
+ * Day picker for shoots that run over several days. Renders nothing on a
+ * single-day shoot, so those pages look exactly as they did.
+ *
+ * Each tab carries its own free count. Someone choosing between Tuesday and
+ * Wednesday wants to know which one still has room before they click, not
+ * after.
+ */
+function DayTabs({
+  days,
+  active,
+  slots,
+  onPick,
+  label,
+}: {
+  days: string[];
+  active: string | null;
+  slots: PublicSlot[];
+  onPick: (day: string) => void;
+  label: (iso: string) => string;
+}) {
+  if (days.length < 2) return null;
+  return (
+    <div className="mb-3 flex flex-wrap gap-2">
+      {days.map((d) => {
+        const free = slots.filter(
+          (s) => s.start.startsWith(d) && s.available,
+        ).length;
+        const isActive = active === d;
+        return (
+          <button
+            key={d}
+            type="button"
+            onClick={() => onPick(d)}
+            aria-pressed={isActive}
+            disabled={free === 0}
+            className={
+              "rounded-md border px-3 py-1.5 text-sm font-medium transition " +
+              (free === 0
+                ? "border-muted-200 bg-muted-100 text-muted-400 cursor-not-allowed"
+                : isActive
+                  ? "border-accent bg-accent text-accent-fg"
+                  : "border-muted-200 bg-paper text-ink hover:border-accent hover:bg-accent-muted")
+            }
+          >
+            {label(d)}
+            <span
+              className={
+                "ml-1.5 text-xs font-normal " +
+                (isActive ? "opacity-80" : "text-muted-600")
+              }
+            >
+              {free === 0 ? "full" : `${free} free`}
+            </span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
