@@ -511,6 +511,24 @@ export function ScheduleSection({
   // it needs to persist: a highlight that fades after a second reads as the
   // selection being lost.
   const [activeDay, setActiveDay] = useState<string | null>(null);
+  // Collapsed days, keyed by ISO date. A week-long shoot is five full grids
+  // stacked on one page, so days fold away and only what you're working on
+  // stays open.
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(
+    {},
+  );
+  /** Days other than the one in focus start folded. */
+  function isCollapsed(iso: string): boolean {
+    return collapsedDays[iso] ?? (activeDay !== null && activeDay !== iso);
+  }
+  function toggleDay(iso: string) {
+    setCollapsedDays((c) => ({ ...c, [iso]: !isCollapsed(iso) }));
+  }
+  /** Jumping to a day always opens it. */
+  function focusDay(iso: string) {
+    setActiveDay(iso);
+    setCollapsedDays((c) => ({ ...c, [iso]: false }));
+  }
 
   function suggestFor(
     day: DayConfig,
@@ -559,7 +577,7 @@ export function ScheduleSection({
           job={job}
           onChanged={onJobChanged}
           activeDay={multiDay ? activeDay : null}
-          onSelectDay={setActiveDay}
+          onSelectDay={focusDay}
         />
       </div>
 
@@ -758,11 +776,29 @@ export function ScheduleSection({
           <h3 className="text-sm font-semibold text-ink">
             Slots{dirty ? " (preview)" : ""}
           </h3>
-          {preview.length > 0 ? (
-            <span className="text-xs text-muted-600">
-              {fittingBooked} of {preview.length} slots booked
-            </span>
-          ) : null}
+          <div className="flex items-baseline gap-4">
+            {multiDay && preview.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  const anyOpen = days.some((d) => !isCollapsed(d));
+                  setCollapsedDays(
+                    Object.fromEntries(days.map((d) => [d, anyOpen])),
+                  );
+                }}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                {days.some((d) => !isCollapsed(d))
+                  ? "Collapse all days"
+                  : "Expand all days"}
+              </button>
+            ) : null}
+            {preview.length > 0 ? (
+              <span className="text-xs text-muted-600">
+                {fittingBooked} of {preview.length} slots booked
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {/* Legend. The green outline is the whole point: it's how you know
@@ -818,21 +854,53 @@ export function ScheduleSection({
                     : "border-muted-200")
                 }
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-ink">
+                {/* The whole header is the fold toggle. */}
+                <button
+                  type="button"
+                  onClick={() => toggleDay(day)}
+                  aria-expanded={!isCollapsed(day)}
+                  className="flex w-full flex-wrap items-center gap-2 text-left"
+                >
+                  <span
+                    aria-hidden
+                    className={
+                      "text-xs text-muted-600 transition-transform " +
+                      (isCollapsed(day) ? "-rotate-90" : "")
+                    }
+                  >
+                    ▾
+                  </span>
+                  <span className="text-sm font-semibold text-ink">
                     {new Date(day).toLocaleDateString(undefined, {
                       weekday: "long",
                       day: "numeric",
                       month: "long",
                     })}
-                    <span className="ml-2 text-xs font-normal text-muted-600">
-                      {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
-                    </span>
-                  </p>
-                </div>
+                  </span>
+                  <span className="text-xs font-normal text-muted-600">
+                    {daySlots.length} slot{daySlots.length === 1 ? "" : "s"}
+                    {(() => {
+                      // Booked count matters most when the day is folded:
+                      // it's the one number you'd unfold to check.
+                      const booked = daySlots.filter((s) => {
+                        const e = bookedByKey.get(`${day}T${s.start}`);
+                        return e && fmtTime(e.slot_end) === s.end;
+                      }).length;
+                      return booked > 0 ? ` · ${booked} booked` : "";
+                    })()}
+                  </span>
+                  <span className="ml-auto text-xs text-muted-600">
+                    {isCollapsed(day) ? "Show" : "Hide"}
+                  </span>
+                </button>
                 {/* Each day sets its own hours — day two is often a
                     half-day, not a copy of day one. */}
-                <div className="mt-2 flex flex-wrap items-end gap-3">
+                <div
+                  className={
+                    "mt-2 flex-wrap items-end gap-3 " +
+                    (isCollapsed(day) ? "hidden" : "flex")
+                  }
+                >
                   <label className="block">
                     <span className="block text-[11px] font-medium text-muted-600">
                       Starts
@@ -891,7 +959,7 @@ export function ScheduleSection({
 
                 {/* Headcount for this day. Day two rarely has the same
                     number of people as day one. */}
-                <div className="mt-3">
+                <div className={"mt-3 " + (isCollapsed(day) ? "hidden" : "")}>
                   <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
                     <label className="block">
                       <span className="block text-[11px] font-medium text-muted-600">
@@ -952,7 +1020,12 @@ export function ScheduleSection({
 
                 {/* This day's breaks. Day two often takes lunch at a
                     different hour, or skips it entirely. */}
-                <div className="mt-3 border-t border-muted-200 pt-3">
+                <div
+                  className={
+                    "mt-3 border-t border-muted-200 pt-3 " +
+                    (isCollapsed(day) ? "hidden" : "")
+                  }
+                >
                   <span className="block text-[11px] font-medium text-muted-600">
                     Breaks on this day
                   </span>
@@ -1018,7 +1091,12 @@ export function ScheduleSection({
             ) : null}
           {/* Dense on purpose: a 9-to-5 day is ~50 chips and the point of
               the grid is seeing the whole day at once. */}
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1">
+          <div
+            className={
+              "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1 " +
+              (multiDay && isCollapsed(day) ? "hidden" : "grid")
+            }
+          >
             {/* Breaks render inline as amber chips so the day reads as one
                 continuous timeline: slots, lunch, slots. Deduped by time
                 window so accidental duplicates never double-render. */}
