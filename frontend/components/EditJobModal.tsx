@@ -118,7 +118,25 @@ export function EditJobModal({
           Edit job
         </h2>
 
-        <form onSubmit={onSubmit} className="mt-5" noValidate>
+        {/* Clear a field's error as soon as it's edited. */}
+        <form
+          onSubmit={onSubmit}
+          onInput={(e) => {
+            const name = (e.target as HTMLInputElement).name;
+            if (name) {
+              setFieldErrors((errs) =>
+                name in errs
+                  ? Object.fromEntries(
+                      Object.entries(errs).filter(([k]) => k !== name),
+                    )
+                  : errs,
+              );
+            }
+            setFormError(null);
+          }}
+          className="mt-5"
+          noValidate
+        >
           <div className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             <div>
               <FormField

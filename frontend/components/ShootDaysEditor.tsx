@@ -20,9 +20,14 @@ import { updateJob, type Job } from "@/lib/jobs";
 export function ShootDaysEditor({
   job,
   onChanged,
+  activeDay,
+  onSelectDay,
 }: {
   job: Job;
   onChanged: (updated: Job) => void;
+  /** The day whose grid is currently in focus, or null on single-day jobs. */
+  activeDay?: string | null;
+  onSelectDay?: (iso: string) => void;
 }) {
   const [adding, setAdding] = useState(false);
   const [newDate, setNewDate] = useState("");
@@ -81,17 +86,13 @@ export function ShootDaysEditor({
     }
   }
 
-  /** Scroll to that day's slot grid and flash it, so the jump is obvious
-   *  on a page where every day's grid looks alike. */
-  function scrollToDay(iso: string) {
-    const el = document.getElementById(`shoot-day-${iso}`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    el.classList.add("ring-2", "ring-accent/40", "rounded-card");
-    window.setTimeout(
-      () => el.classList.remove("ring-2", "ring-accent/40", "rounded-card"),
-      1200,
-    );
+  /** Select a day and scroll to its grid. The selection sticks: a highlight
+   *  that fades after a second looks like the click was undone. */
+  function selectDay(iso: string) {
+    onSelectDay?.(iso);
+    document
+      .getElementById(`shoot-day-${iso}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function removeDay(iso: string) {
@@ -118,9 +119,12 @@ export function ShootDaysEditor({
           <span
             key={d}
             className={
-              "inline-flex items-center gap-2 rounded-card border px-1 py-0.5 text-sm " +
-              (d === job.shoot_date
-                ? "border-accent/40 bg-accent-muted text-ink"
+              "inline-flex items-center gap-2 rounded-card border px-1 py-0.5 text-sm transition " +
+              // Accent marks the day you're looking at, not the first day.
+              // Tying it to the first day made every jump look like it
+              // snapped back.
+              (activeDay === d
+                ? "border-accent bg-accent-muted text-ink"
                 : "border-muted-200 bg-paper text-ink")
             }
           >
@@ -128,12 +132,12 @@ export function ShootDaysEditor({
                 that runs a week. */}
             <button
               type="button"
-              onClick={() => scrollToDay(d)}
+              onClick={() => selectDay(d)}
               title={`Jump to ${fmt(d)}`}
               className="rounded-md px-2 py-1 hover:bg-accent-muted transition"
             >
               {fmt(d)}
-              {d === job.shoot_date ? (
+              {d === job.shoot_date && allDays.length > 1 ? (
                 <span className="ml-2 text-[11px] text-muted-600">
                   first day
                 </span>

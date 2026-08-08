@@ -191,7 +191,26 @@ export default function NewJobPage() {
         </a>
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8" noValidate>
+      {/* Server-side field errors are cleared the moment a field is edited.
+          Leaving "This field is required" under a field you've just filled
+          in reads as a bug. */}
+      <form
+        onSubmit={onSubmit}
+        onInput={(e) => {
+          const name = (e.target as HTMLInputElement).name;
+          if (!name) return;
+          setFieldErrors((errs) =>
+            name in errs
+              ? Object.fromEntries(
+                  Object.entries(errs).filter(([k]) => k !== name),
+                )
+              : errs,
+          );
+          setFormError(null);
+        }}
+        className="mt-8"
+        noValidate
+      >
         {/* Two-column split: shoot details (what/where/when) on the left,
             client block (who it's for) on the right. Groups related fields
             and pre-shapes the form for HSD-36 — when the Client entity

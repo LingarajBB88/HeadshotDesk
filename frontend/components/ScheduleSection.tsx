@@ -189,6 +189,10 @@ export function ScheduleSection({
   const savedConfig = canonical(job.time_slot_config ?? DEFAULT_CONFIG);
   const configured = !!job.time_slot_config;
   const dirty = JSON.stringify(config) !== JSON.stringify(savedConfig);
+  // Green means "a participant could book this right now". A brand-new job
+  // shows a preview built from defaults, which is NOT dirty but also isn't
+  // saved, so it must stay grey until Create slots is pressed.
+  const live = configured && !dirty;
 
   // --- Draft preview ------------------------------------------------------
   // HSD-71: a shoot can run over several days. The same daily pattern
@@ -300,8 +304,23 @@ export function ScheduleSection({
   function setDayConfig(isoDay: string, patch: Partial<DayConfig>) {
     setConfig((c) => {
       const current = dayConfigFor(c, isoDay);
+      // Editing the first day also moves the job's base settings. They're
+      // what a newly added day inherits, so leaving them behind means day
+      // three would quietly copy settings nobody has used since day one was
+      // changed.
+      const isFirstDay = isoDay === days[0];
+      const base = isFirstDay
+        ? {
+            start: patch.start ?? c.start,
+            end: patch.end ?? c.end,
+            slot_minutes: patch.slot_minutes ?? c.slot_minutes,
+            buffer_minutes: patch.buffer_minutes ?? c.buffer_minutes,
+            breaks: patch.breaks ?? c.breaks,
+          }
+        : {};
       return {
         ...c,
+        ...base,
         // Removals belong to the old cadence for this day only.
         blocked: (c.blocked ?? []).filter(
           (b) => !b.startsWith(`${isoDay}@`),
@@ -484,27 +503,48 @@ export function ScheduleSection({
 
   // Slot calculator: photographers usually get "N people, 9 to 5" from the
   // client, not a slot length. Suggest the minutes per person that fits.
+  // On a multi-day shoot the count is per day, because day two rarely has
+  // the same headcount as day one.
   const [participantCount, setParticipantCount] = useState<string>("");
-  const suggestion = (() => {
-    const n = Number(participantCount);
+  const [dayCounts, setDayCounts] = useState<Record<string, string>>({});
+  // Which day's grid the chips last jumped to. Purely a navigation aid, but
+  // it needs to persist: a highlight that fades after a second reads as the
+  // selection being lost.
+  const [activeDay, setActiveDay] = useState<string | null>(null);
+
+  function suggestFor(
+    day: DayConfig,
+    raw: string,
+  ): { minutes: number; tight: boolean } | null {
+    const n = Number(raw);
     if (!Number.isFinite(n) || n < 1) return null;
-    if (!config.start || !config.end) return null;
-    const breakTotal = config.breaks.reduce(
+    if (!day.start || !day.end) return null;
+    const breakTotal = day.breaks.reduce(
       (sum, b) =>
         b.start && b.end
           ? sum + Math.max(toMins(b.end) - toMins(b.start), 0)
           : sum,
       0,
     );
-    const available = toMins(config.end) - toMins(config.start) - breakTotal;
+    const available = toMins(day.end) - toMins(day.start) - breakTotal;
     if (available <= 0) return null;
     // Each person consumes slot + buffer; the last buffer isn't needed but
     // keeping it in the division leaves healthy slack for overruns.
-    const perPerson = Math.floor(available / n) - config.buffer_minutes;
-    const clamped = Math.min(Math.max(perPerson, 1), 120);
+    const perPerson = Math.floor(available / n) - day.buffer_minutes;
     if (perPerson < 1) return { minutes: 1, tight: true };
-    return { minutes: clamped, tight: false };
-  })();
+    return { minutes: Math.min(perPerson, 120), tight: false };
+  }
+
+  const suggestion = suggestFor(
+    {
+      start: config.start,
+      end: config.end,
+      slot_minutes: config.slot_minutes,
+      buffer_minutes: config.buffer_minutes,
+      breaks: config.breaks,
+    },
+    participantCount,
+  );
 
   return (
     <CollapsibleSection
@@ -513,27 +553,33 @@ export function ScheduleSection({
       description="Set up the slot grid participants book into, and see who booked what."
       defaultOpen={!configured}
     >
-      {/* HSD-71: which days this shoot runs on. Sits above the slot
-          settings because the pattern below applies to each of them. */}
+      {/* HSD-71: which days this shoot runs on. */}
       <div className="mb-4">
-        <ShootDaysEditor job={job} onChanged={onJobChanged} />
+        <ShootDaysEditor
+          job={job}
+          onChanged={onJobChanged}
+          activeDay={multiDay ? activeDay : null}
+          onSelectDay={setActiveDay}
+        />
       </div>
 
-      {/* --- Slot settings --------------------------------------------- */}
-      <div className="rounded-card border border-muted-200 bg-paper p-5">
+      {/* Multi-day jobs edit hours per day below, so a job-wide copy of the
+          same four fields here was pure duplication. */}
+      {!configured ? (
+        <p className="mb-4 text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1 inline-block">
+          No slots yet. Adjust the preview below and hit Create slots so
+          participants can book.
+        </p>
+      ) : null}
+
+      {/* --- Slot settings (single-day jobs only) ----------------------- */}
+      <div
+        className={
+          "rounded-card border border-muted-200 bg-paper p-5 " +
+          (multiDay ? "hidden" : "")
+        }
+      >
         <h3 className="text-sm font-semibold text-ink">Slot settings</h3>
-        {multiDay ? (
-          <p className="mt-0.5 text-xs text-muted-600">
-            These apply to all {days.length} days. Any day can be given its own
-            hours, slot length, and breaks in its section below.
-          </p>
-        ) : null}
-        {!configured ? (
-          <p className="mt-1 text-xs text-amber-700 bg-amber-50 rounded-md px-2 py-1 inline-block">
-            No slots yet. Adjust the preview below and hit Create slots so
-            participants can book.
-          </p>
-        ) : null}
 
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
           <label className="block">
@@ -723,15 +769,15 @@ export function ScheduleSection({
             the slots are actually live rather than an unsaved draft. */}
         {preview.length > 0 ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-600">
-            {dirty ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="inline-block h-3 w-3 rounded border border-muted-200 bg-paper" />
-                Draft, not saved yet
-              </span>
-            ) : (
+            {live ? (
               <span className="inline-flex items-center gap-1.5">
                 <span className="inline-block h-3 w-3 rounded border border-green-300 bg-paper" />
                 Live and bookable
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded border border-muted-200 bg-paper" />
+                {configured ? "Draft, not saved yet" : "Preview, not created yet"}
               </span>
             )}
             <span className="inline-flex items-center gap-1.5">
@@ -764,7 +810,14 @@ export function ScheduleSection({
             {/* One grid per shoot day. Single-day jobs render exactly as
                 before (no heading), so nothing changes for them. */}
             {multiDay ? (
-              <div className="mb-2 rounded-card border border-muted-200 bg-muted-50 p-3">
+              <div
+                className={
+                  "mb-2 rounded-card border bg-muted-50 p-3 transition " +
+                  (activeDay === day
+                    ? "border-accent ring-2 ring-accent/25"
+                    : "border-muted-200")
+                }
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-ink">
                     {new Date(day).toLocaleDateString(undefined, {
@@ -836,6 +889,67 @@ export function ScheduleSection({
                   </label>
                 </div>
 
+                {/* Headcount for this day. Day two rarely has the same
+                    number of people as day one. */}
+                <div className="mt-3">
+                  <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+                    <label className="block">
+                      <span className="block text-[11px] font-medium text-muted-600">
+                        People this day? Let us do the math
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={dayCounts[day] ?? ""}
+                        onChange={(e) =>
+                          setDayCounts((c) => ({ ...c, [day]: e.target.value }))
+                        }
+                        placeholder="Number of participants"
+                        className="mt-1 w-48 rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent"
+                      />
+                    </label>
+                    {(() => {
+                      const sug = suggestFor(
+                        dayConfigFor(config, day),
+                        dayCounts[day] ?? "",
+                      );
+                      if (!sug) return null;
+                      return (
+                        <div className="flex items-center gap-2 pb-1.5">
+                          <span className="text-xs text-muted-600">
+                            {sug.tight ? (
+                              <>
+                                Tight fit: even at 1 minute each, they
+                                don&apos;t fit this day.
+                              </>
+                            ) : (
+                              <>
+                                ≈{" "}
+                                <strong className="text-ink">
+                                  {sug.minutes} minutes
+                                </strong>{" "}
+                                each fits them in.
+                              </>
+                            )}
+                          </span>
+                          {!sug.tight ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDayConfig(day, { slot_minutes: sug.minutes })
+                              }
+                              className="text-xs font-medium text-accent hover:underline"
+                            >
+                              Use it
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
                 {/* This day's breaks. Day two often takes lunch at a
                     different hour, or skips it entirely. */}
                 <div className="mt-3 border-t border-muted-200 pt-3">
@@ -902,7 +1016,9 @@ export function ScheduleSection({
                 </div>
               </div>
             ) : null}
-          <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+          {/* Dense on purpose: a 9-to-5 day is ~50 chips and the point of
+              the grid is seeing the whole day at once. */}
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1">
             {/* Breaks render inline as amber chips so the day reads as one
                 continuous timeline: slots, lunch, slots. Deduped by time
                 window so accidental duplicates never double-render. */}
@@ -925,13 +1041,13 @@ export function ScheduleSection({
                   style={{
                     order: toMins(b.start),
                   }}
-                  className="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-1 min-w-0"
+                  className="rounded border border-amber-200 bg-amber-50 px-1.5 py-1 min-w-0 text-center"
                 >
                   <span className="block font-mono text-[11px] leading-tight text-amber-700">
-                    {b.start} ({toMins(b.end) - toMins(b.start)}m)
+                    {b.start}
                   </span>
-                  <span className="block text-[11px] leading-tight text-amber-700">
-                    break
+                  <span className="block text-[10px] leading-tight text-amber-700">
+                    break {toMins(b.end) - toMins(b.start)}m
                   </span>
                 </div>
               ))}
@@ -951,15 +1067,15 @@ export function ScheduleSection({
                   }
                   style={{ order: toMins(s.start) }}
                   className={
-                    "group relative rounded-md border px-1.5 py-1 min-w-0 " +
+                    "group relative rounded border px-1.5 py-1 min-w-0 text-center " +
                     (fits
                       ? fits.shot
                         ? "border-green-500 bg-green-100"
                         : "border-accent/40 bg-accent-muted"
-                      : // Saved and bookable: green outline. Unsaved draft
-                        // slots stay grey, so the colour is the answer to
-                        // "did my changes actually go live?".
-                        dirty
+                      : // Saved and bookable: green outline. Draft slots stay
+                        // grey, so the colour answers "did this actually go
+                        // live?" rather than just "does a slot exist here?".
+                        !live
                         ? s.isExtra
                           ? "border-dashed border-muted-200 bg-paper"
                           : "border-muted-200 bg-paper"
@@ -973,26 +1089,22 @@ export function ScheduleSection({
                       "block font-mono text-[11px] leading-tight " +
                       (fits
                         ? "text-ink"
-                        : dirty
-                          ? "text-muted-400"
-                          : "text-green-700")
+                        : live
+                          ? "text-green-700"
+                          : "text-muted-400")
                     }
                   >
                     {s.start}
                     {s.isExtra ? ` (${toMins(s.end) - toMins(s.start)}m)` : ""}
                   </span>
-                  <span
-                    className={
-                      "block text-[11px] leading-tight truncate " +
-                      (fits
-                        ? "text-ink font-medium"
-                        : dirty
-                          ? "text-muted-400"
-                          : "text-green-700")
-                    }
-                  >
-                    {fits ? fits.participant_name : "open"}
-                  </span>
+                  {/* Only booked slots carry a second line. Ninety-six chips
+                      all repeating the word "open" is noise: the empty space
+                      already says it, and the colour says whether it's live. */}
+                  {fits ? (
+                    <span className="block text-[11px] leading-tight truncate text-ink font-medium">
+                      {fits.participant_name}
+                    </span>
+                  ) : null}
                   {/* Remove: open slots only. Booked ones need their
                       booking moved/cleared first (Participants table). */}
                   {!fits ? (
@@ -1012,32 +1124,32 @@ export function ScheduleSection({
             {/* Add a slot after the last one — custom length allowed. */}
             <div
               style={{ order: 100000 }}
-              className="rounded-md border border-dashed border-accent/50 bg-accent-muted/40 px-1.5 py-1 min-w-0"
+              className="rounded border border-dashed border-accent/50 bg-accent-muted/40 px-1.5 py-1 min-w-0 text-center"
             >
               <button
                 type="button"
                 onClick={() => addExtraSlot(day)}
                 title="Add a slot after the last one"
-                className="block w-full text-left text-[11px] font-medium leading-tight text-accent hover:underline"
+                className="block w-full text-[11px] font-medium leading-tight text-accent hover:underline"
               >
                 + Add slot
               </button>
-              <span className="flex items-center gap-1 text-[11px] leading-tight text-muted-600">
+              <span className="flex items-center justify-center gap-1 text-[10px] leading-tight text-muted-600">
                 <input
                   type="number"
                   min={1}
                   max={120}
                   value={
                     extraMinutes === ""
-                      ? String(config.slot_minutes)
+                      ? String(dayConfigFor(config, day).slot_minutes)
                       : extraMinutes
                   }
                   onChange={(e) => setExtraMinutes(e.target.value)}
                   aria-label="Minutes for the added slot"
                   title="Length of the added slot in minutes"
-                  className="w-9 bg-transparent outline-none placeholder:text-muted-400"
+                  className="w-7 bg-transparent text-right outline-none"
                 />
-                minutes
+                min
               </span>
             </div>
           </div>
