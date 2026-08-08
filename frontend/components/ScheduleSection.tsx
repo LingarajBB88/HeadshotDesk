@@ -567,7 +567,10 @@ export function ScheduleSection({
   return (
     <CollapsibleSection
       title="Schedule"
+      // "(1)" alone left you guessing whether that was days, slots or
+      // bookings. It's bookings.
       count={schedule?.length}
+      countLabel="booked"
       description="Set up the slot grid participants book into, and see who booked what."
       defaultOpen={!configured}
     >

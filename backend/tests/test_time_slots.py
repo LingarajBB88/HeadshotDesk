@@ -140,6 +140,62 @@ class TestSlotGeneration:
         assert r.json()["slots"] == []
 
 
+class TestBookingConfirmationEmail:
+    """Booking your own slot sends a confirmation. It's the participant's
+    only record of when to turn up."""
+
+    def test_booking_sends_confirmation(self, client: TestClient, monkeypatch):
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            "app.services.email_service.send_slot_confirmation_email",
+            lambda **kw: sent.append(kw),
+        )
+        a = _signup(client)
+        job = _create_slot_job(client, a["tokens"]["access_token"])
+        p = _public_signup(client, job["public_slug"], "Jane Doe", "jane@example.com")
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": p["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+        assert r.status_code == 200, r.text
+        assert len(sent) == 1
+        assert sent[0]["to_email"] == "jane@example.com"
+        assert sent[0]["participant_name"] == "Jane Doe"
+        assert sent[0]["time_label"] == slots[0]["start"][11:16]
+        assert sent[0]["minutes"] > 0
+        assert job["public_slug"] in sent[0]["signup_url"]
+
+    def test_email_failure_does_not_lose_the_booking(
+        self, client: TestClient, monkeypatch
+    ):
+        def boom(**_kw):
+            raise RuntimeError("postmark down")
+
+        monkeypatch.setattr(
+            "app.services.email_service.send_slot_confirmation_email", boom
+        )
+        a = _signup(client)
+        job = _create_slot_job(client, a["tokens"]["access_token"])
+        p = _public_signup(client, job["public_slug"], "Jane Doe", "jane@example.com")
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+
+        r = client.post(
+            f"/api/v1/public/jobs/{job['public_slug']}/book-slot",
+            json={"gallery_token": p["gallery_token"], "slot_start": slots[0]["start"]},
+        )
+        assert r.status_code == 200
+        refreshed = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        assert refreshed[0]["available"] is False
+
+
 class TestBooking:
     def test_book_and_see_unavailable(self, client: TestClient):
         a = _signup(client)

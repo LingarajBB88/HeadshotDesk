@@ -10,6 +10,7 @@ import { useState, type ReactNode } from "react";
 export function CollapsibleSection({
   title,
   count,
+  countLabel,
   description,
   actions,
   defaultOpen = true,
@@ -19,6 +20,9 @@ export function CollapsibleSection({
 }: {
   title: string;
   count?: number;
+  /** What the count counts, e.g. "booked". A bare "(1)" next to a collapsed
+   *  section is a number with no noun, which reads as a mystery. */
+  countLabel?: string;
   description?: ReactNode;
   actions?: ReactNode;
   defaultOpen?: boolean;
@@ -52,7 +56,8 @@ export function CollapsibleSection({
             {title}
             {typeof count === "number" ? (
               <span className="ml-2 text-sm font-normal text-muted-600">
-                ({count})
+                ({count}
+                {countLabel ? ` ${countLabel}` : ""})
               </span>
             ) : null}
           </h2>

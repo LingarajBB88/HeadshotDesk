@@ -1,0 +1,14 @@
+Hi {{ participant.first_name }},
+
+You're booked in for {{ job.name }}.
+
+When: {{ booking.day_label }} at {{ booking.time }}
+{% if job.location %}Where: {{ job.location }}
+{% endif %}
+It takes about {{ booking.minutes }} minutes. Come as you'd like to be seen: whatever you'd wear to meet a client works well.
+
+Need a different time? Open your signup link again and pick another slot:
+
+{{ booking.signup_url }}
+
+{{ photographer.display_name }}

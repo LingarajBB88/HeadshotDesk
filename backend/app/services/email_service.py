@@ -150,6 +150,72 @@ def send_feature_request_email(*, message: str, reply_email: str | None) -> None
     )
 
 
+def send_slot_confirmation_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    day_label: str,
+    time_label: str,
+    minutes: int,
+    signup_url: str,
+    location: str | None = None,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Confirm a booked time slot to the participant.
+
+    Sent when someone books their own slot on the public signup page. It's
+    the only record they have of when to turn up, so it carries the time,
+    the place, and a way back to change it.
+
+    Copy lives in app/templates/emails/slot_confirmation.{subject.txt, txt,
+    html}. Edit those to change the wording, not this function.
+    """
+    rendered = render_email(
+        "slot_confirmation",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {
+                "name": job_name,
+                "client_name": client_name,
+                "location": location,
+            },
+            "booking": {
+                "day_label": day_label,
+                "time": time_label,
+                "minutes": minutes,
+                "signup_url": signup_url,
+            },
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Slot confirmation",
+            to_email=to_email,
+            recipient_name=participant_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=signup_url,
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
 def send_gallery_delivery_email(
     *,
     to_email: str,

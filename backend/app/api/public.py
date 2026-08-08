@@ -169,7 +169,44 @@ def book_slot_public(
         gallery_token=payload.gallery_token,
         slot_start=payload.slot_start,
     )
+    # The confirmation is the participant's only record of when to turn up,
+    # so it goes out immediately. Best-effort: a mail hiccup must not undo a
+    # booking that's already committed.
+    try:
+        _send_slot_confirmation(db, job=job, booking=booking)
+    except Exception:  # noqa: BLE001 — the booking is what matters
+        logger.exception("Slot confirmation email failed (job=%s)", job.id)
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
+
+
+def _send_slot_confirmation(db: Session, *, job, booking) -> None:  # type: ignore[no-untyped-def]
+    """Fire the booking confirmation for a just-made slot booking."""
+    from app.config import settings
+    from app.models import Account, Participant
+
+    participant = db.get(Participant, booking.participant_id)
+    if participant is None or not participant.email:
+        return
+    account = db.get(Account, job.account_id)
+    minutes = max(
+        int((booking.slot_end - booking.slot_start).total_seconds() // 60), 1
+    )
+    email_service.send_slot_confirmation_email(
+        to_email=participant.email,
+        participant_name=participant.name,
+        photographer_name=account.name if account else "Your photographer",
+        job_name=job.name,
+        # Slots are wall-clock times stored as UTC (no photographer timezone
+        # setting yet), so format the stored value directly rather than
+        # converting and shifting it by an hour.
+        day_label=booking.slot_start.strftime("%A %-d %B"),
+        time_label=booking.slot_start.strftime("%H:%M"),
+        minutes=minutes,
+        signup_url=f"{settings.frontend_url}/s/{job.public_slug}",
+        location=job.location,
+        client_logo_url=_client_logo_url_for_job(db, job),
+        client_name=job.client_name,
+    )
 
 
 # --- Walk-up queue position -------------------------------------------------

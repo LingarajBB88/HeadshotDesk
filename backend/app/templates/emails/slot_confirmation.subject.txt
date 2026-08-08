@@ -1,0 +1,1 @@
+Your headshot is booked: {{ booking.day_label }} at {{ booking.time }}
