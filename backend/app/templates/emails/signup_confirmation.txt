@@ -1,0 +1,19 @@
+Hi {{ participant.first_name }},
+
+You're signed up for {{ job.name }}.
+
+{% if job.shoot_date %}When: {{ job.shoot_date }}
+{% endif %}{% if job.location %}Where: {{ job.location }}
+{% endif %}
+{% if signup.time_slots %}Haven't picked a time yet? You can do that here:
+
+{{ signup.url }}
+{% else %}There's no fixed time: come by whenever suits you on the day and we'll photograph you in order. You can watch how busy it is here:
+
+{{ signup.queue_url }}
+{% endif %}
+Come as you'd like to be seen: whatever you'd wear to meet a client works well.
+
+Your photos arrive by email once they're edited.
+
+{{ photographer.display_name }}

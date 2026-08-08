@@ -1,0 +1,67 @@
+{# Participant-facing. On queue jobs this is the ONLY message between
+   signing up and the gallery, so it has to stand on its own. #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  {% if client.logo_url %}
+  <p style="margin:0 0 20px;">
+    <img src="{{ client.logo_url }}" alt="{{ job.client_name or 'Company logo' }}"
+         style="max-width:160px;max-height:64px;height:auto;" />
+  </p>
+  {% endif %}
+
+  <p style="margin:0 0 16px;">Hi {{ participant.first_name }},</p>
+
+  <p style="margin:0 0 16px;">
+    You're signed up for <strong>{{ job.name }}</strong>.
+  </p>
+
+  {% if job.shoot_date or job.location %}
+  <table style="margin:0 0 20px;border-collapse:collapse;">
+    {% if job.shoot_date %}
+    <tr>
+      <td style="padding:0 16px 6px 0;color:#475569;">When</td>
+      <td style="padding:0 0 6px;font-weight:600;">{{ job.shoot_date }}</td>
+    </tr>
+    {% endif %}
+    {% if job.location %}
+    <tr>
+      <td style="padding:0 16px 0 0;color:#475569;">Where</td>
+      <td style="padding:0;font-weight:600;">{{ job.location }}</td>
+    </tr>
+    {% endif %}
+  </table>
+  {% endif %}
+
+  {% if signup.time_slots %}
+  <p style="margin:0 0 16px;">Haven't picked a time yet?</p>
+  <p style="margin:0 0 24px;">
+    <a href="{{ signup.url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Choose your time
+    </a>
+  </p>
+  {% else %}
+  <p style="margin:0 0 16px;color:#475569;">
+    There's no fixed time: come by whenever suits you on the day and we'll
+    photograph you in order.
+  </p>
+  <p style="margin:0 0 24px;">
+    <a href="{{ signup.queue_url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      See how busy it is
+    </a>
+  </p>
+  {% endif %}
+
+  <p style="margin:0 0 16px;color:#475569;">
+    Come as you'd like to be seen: whatever you'd wear to meet a client
+    works well.
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">
+    Your photos arrive by email once they're edited.
+  </p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ photographer.display_name }}
+  </p>
+</div>

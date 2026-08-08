@@ -1,0 +1,22 @@
+Hi {{ user.first_name }},
+
+Your HeadshotDesk account is ready.
+
+The quickest way to see whether this fits how you work: create a job, share the signup link with your client, and watch people add themselves. That's the part that usually eats an afternoon.
+
+{{ app.url }}/jobs
+
+Three things worth knowing on day one:
+
+1. Name your files with the participant's name and photos file themselves. The shoot queue copies each name to your clipboard, so your tethering software does it for you.
+
+2. Every participant gets their own private gallery, sent by email when you're ready.
+
+3. Your client can watch progress on a live link without asking you for updates.
+
+You've got {{ trial.days }} days to try all of it. No card, and nothing switches off mid-shoot.
+
+If something doesn't work the way you expected, reply to this email. It comes straight to me.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

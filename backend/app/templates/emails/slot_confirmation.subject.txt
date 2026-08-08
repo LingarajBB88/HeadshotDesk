@@ -1,1 +1,1 @@
-Your headshot is booked: {{ booking.day_label }} at {{ booking.time }}
+{% if booking.moved %}Your headshot has moved to {{ booking.day_label }} at {{ booking.time }}{% else %}Your headshot is booked: {{ booking.day_label }} at {{ booking.time }}{% endif %}

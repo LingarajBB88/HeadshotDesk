@@ -11,7 +11,12 @@
   <p style="margin:0 0 16px;">Hi {{ participant.first_name }},</p>
 
   <p style="margin:0 0 16px;">
+    {% if booking.moved %}
+    Your time for <strong>{{ job.name }}</strong> has changed. Here's the new
+    one.
+    {% else %}
     You're booked in for <strong>{{ job.name }}</strong>.
+    {% endif %}
   </p>
 
   <table style="margin:0 0 20px;border-collapse:collapse;">

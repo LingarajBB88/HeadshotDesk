@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 # Password reset tokens are valid for one hour.
 PASSWORD_RESET_TTL = timedelta(hours=1)
 
+# Free trial length, quoted in the welcome email. Kept here rather than
+# imported from the admin API so the service layer doesn't depend on a
+# route module. api/admin.py holds the copy used for expiry calculations.
+TRIAL_DAYS = 31
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -116,6 +121,16 @@ def signup(
     db.commit()
     db.refresh(user)
     db.refresh(account)
+
+    # Best-effort: an account that exists is worth more than an email that
+    # sent. Signup must never fail because Postmark is having a bad day.
+    try:
+        email_service.send_welcome_email(
+            to_email=user.email, user_name=user.name, trial_days=TRIAL_DAYS
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Welcome email failed (user=%s)", user.id)
+
     return user, account, tokens
 
 
@@ -268,3 +283,12 @@ def reset_password(db: Session, *, token: str, new_password: str) -> None:
         s.revoked_at = now
 
     db.commit()
+
+    # Tell them it happened. The audience is the person who DIDN'T do this:
+    # it's their only signal that someone else took the account.
+    try:
+        email_service.send_password_changed_email(
+            to_email=user.email, user_name=user.name
+        )
+    except Exception:  # noqa: BLE001 — the reset itself succeeded
+        logger.exception("Password-changed notice failed (user=%s)", user.id)

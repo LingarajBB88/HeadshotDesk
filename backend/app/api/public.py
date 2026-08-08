@@ -23,7 +23,12 @@ from app.schemas.participant import (
 )
 from app.schemas.slots import PublicBookSlotRequest, SlotListOut, SlotOut
 from app.schemas.types import StrictEmail
-from app.services import email_service, participant_service, slot_service
+from app.services import (
+    email_service,
+    notify_service,
+    participant_service,
+    slot_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +141,11 @@ def signup(
         email=payload.email,
         title=payload.title,
     )
+    # Only on a genuinely new signup. Re-submitting the form (same email)
+    # is idempotent, and mailing again would look like a duplicate booking.
+    if created:
+        job = participant_service.get_job_by_slug(db, slug=slug)
+        notify_service.participant_signed_up(db, job=job, participant=p)
     return PublicSignupResult(
         participant=ParticipantOut.model_validate(p),
         created=created,
@@ -169,44 +179,11 @@ def book_slot_public(
         gallery_token=payload.gallery_token,
         slot_start=payload.slot_start,
     )
-    # The confirmation is the participant's only record of when to turn up,
-    # so it goes out immediately. Best-effort: a mail hiccup must not undo a
-    # booking that's already committed.
-    try:
-        _send_slot_confirmation(db, job=job, booking=booking)
-    except Exception:  # noqa: BLE001 — the booking is what matters
-        logger.exception("Slot confirmation email failed (job=%s)", job.id)
+    # The confirmation is the participant's only record of when to turn up.
+    # notify_service swallows mail failures: the booking is already
+    # committed and losing it over a Postmark blip would be far worse.
+    notify_service.slot_confirmed(db, job=job, booking=booking)
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
-
-
-def _send_slot_confirmation(db: Session, *, job, booking) -> None:  # type: ignore[no-untyped-def]
-    """Fire the booking confirmation for a just-made slot booking."""
-    from app.config import settings
-    from app.models import Account, Participant
-
-    participant = db.get(Participant, booking.participant_id)
-    if participant is None or not participant.email:
-        return
-    account = db.get(Account, job.account_id)
-    minutes = max(
-        int((booking.slot_end - booking.slot_start).total_seconds() // 60), 1
-    )
-    email_service.send_slot_confirmation_email(
-        to_email=participant.email,
-        participant_name=participant.name,
-        photographer_name=account.name if account else "Your photographer",
-        job_name=job.name,
-        # Slots are wall-clock times stored as UTC (no photographer timezone
-        # setting yet), so format the stored value directly rather than
-        # converting and shifting it by an hour.
-        day_label=booking.slot_start.strftime("%A %-d %B"),
-        time_label=booking.slot_start.strftime("%H:%M"),
-        minutes=minutes,
-        signup_url=f"{settings.frontend_url}/s/{job.public_slug}",
-        location=job.location,
-        client_logo_url=_client_logo_url_for_job(db, job),
-        client_name=job.client_name,
-    )
 
 
 # --- Walk-up queue position -------------------------------------------------

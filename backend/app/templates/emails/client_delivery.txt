@@ -1,0 +1,14 @@
+Hi,
+
+The headshots from {{ job.name }} have gone out. Everyone photographed has received their own private gallery by email, so there's nothing you need to forward.
+
+{{ delivery.sent }} of {{ delivery.total }} people have their photos.
+{% if delivery.not_photographed %}{{ delivery.not_photographed }} didn't get photographed on the day.
+{% endif %}{% if dashboard.url %}
+You can see the full picture here, no login needed:
+
+{{ dashboard.url }}
+{% endif %}
+If anyone says they haven't received theirs, let me know and I'll resend it.
+
+{{ photographer.display_name }}

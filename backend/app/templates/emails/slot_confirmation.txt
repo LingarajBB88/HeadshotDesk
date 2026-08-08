@@ -1,6 +1,6 @@
 Hi {{ participant.first_name }},
 
-You're booked in for {{ job.name }}.
+{% if booking.moved %}Your time for {{ job.name }} has changed. Here's the new one.{% else %}You're booked in for {{ job.name }}.{% endif %}
 
 When: {{ booking.day_label }} at {{ booking.time }}
 {% if job.location %}Where: {{ job.location }}

@@ -5,6 +5,7 @@ across accounts.
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
@@ -17,6 +18,8 @@ from app.core.ids import new_id
 from app.core.slugs import generate_named_slug
 from app.models import Account, File, Job, Participant, User
 from app.services import email_service
+
+logger = logging.getLogger(__name__)
 
 # Maximum attempts to find an unused slug before giving up.
 # Collisions are astronomically unlikely with our alphabet/length but we still
@@ -158,6 +161,9 @@ def update_job(
     # flow. Switching away from time_slot clears existing bookings; the
     # frontend confirms with the photographer before sending that.
     clear_bookings_requested = bool(fields.pop("clear_slot_bookings", False))
+    # (participant_id, slot_start) for bookings dropped by this update, so
+    # they can be told once the transaction is safely committed.
+    cancelled_bookings: list[tuple[str, datetime]] = []
 
     # HSD-36: re-linking to a client validates ownership and syncs the
     # display name. Explicit None unlinks (client_name stays as-is).
@@ -177,8 +183,17 @@ def update_job(
                 detail="Shoot mode is locked once shooting has started.",
             )
         if job.shoot_mode == "time_slot" and new_mode == "queue":
+            from app.models import SlotBooking as _SlotBooking
             from app.services import slot_service
 
+            # Switching to a walk-up queue destroys every appointment, so
+            # everyone holding one needs to hear about it.
+            cancelled_bookings.extend(
+                (b.participant_id, b.slot_start)
+                for b in db.scalars(
+                    select(_SlotBooking).where(_SlotBooking.job_id == job.id)
+                ).all()
+            )
             slot_service.clear_bookings(db, job=job)
 
     # HSD-55: changing the slot config (or the shoot date) can strand
@@ -251,6 +266,12 @@ def update_job(
                         "schedule and would be cancelled."
                     ),
                 )
+            # Capture who loses what before the rows go: these people have
+            # a confirmation email saying they're on at a time that's about
+            # to stop existing, and nothing else would tell them otherwise.
+            cancelled_bookings.extend(
+                (b.participant_id, b.slot_start) for b in affected
+            )
             for b in affected:
                 db.delete(b)
 
@@ -276,6 +297,20 @@ def update_job(
 
     db.commit()
     db.refresh(job)
+
+    # After the commit, so nobody is told their slot is gone while the
+    # transaction could still roll back. Imported here rather than at module
+    # level to keep the service import graph acyclic.
+    from app.services import notify_service
+
+    for participant_id, slot_start in cancelled_bookings:
+        participant = db.get(Participant, participant_id)
+        if participant is None:
+            continue
+        notify_service.slot_cancelled(
+            db, job=job, participant=participant, slot_start=slot_start
+        )
+
     return job
 
 
@@ -431,6 +466,32 @@ def deliver_galleries(
         maybe_advance_status(job, "delivered")
 
     db.commit()
+
+    # Tell the client the job is done, once, when the last gallery goes out.
+    # Firing on every partial batch would mean three "delivered!" emails for
+    # one shoot. Only when there's a client email on file.
+    if sent > 0 and not eligible_unsent_remaining and job.client_email:
+        try:
+            email_service.send_client_delivery_email(
+                to_email=job.client_email,
+                photographer_name=photographer_name,
+                job_name=job.name,
+                sent=sum(1 for p in participants if p.gallery_sent_at),
+                total=len(participants),
+                not_photographed=sum(
+                    1 for p in participants if p.shot_at is None
+                ),
+                dashboard_url=(
+                    f"{settings.frontend_url}/c/{job.client_token}"
+                    if job.client_token
+                    else None
+                ),
+                client_logo_url=client_logo_url,
+                client_name=job.client_name,
+            )
+        except Exception:  # noqa: BLE001 — the galleries are what matter
+            logger.exception("Client delivery notice failed (job=%s)", job.id)
+
     return {
         "sent": sent,
         "skipped_already_delivered": skipped_already_delivered,

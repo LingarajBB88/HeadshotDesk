@@ -163,6 +163,7 @@ def send_slot_confirmation_email(
     location: str | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    moved: bool = False,
 ) -> None:
     """Confirm a booked time slot to the participant.
 
@@ -191,6 +192,9 @@ def send_slot_confirmation_email(
                 "time": time_label,
                 "minutes": minutes,
                 "signup_url": signup_url,
+                # Someone whose time was moved for them needs to be told
+                # that, not congratulated on a booking they didn't make.
+                "moved": moved,
             },
             "client": {"logo_url": client_logo_url},
             "app": _APP_CONTEXT,
@@ -199,12 +203,249 @@ def send_slot_confirmation_email(
 
     if not settings.postmark_server_token:
         _log_dev_email(
-            label="Slot confirmation",
+            label="Slot moved" if moved else "Slot confirmation",
             to_email=to_email,
             recipient_name=participant_name,
             subject=rendered["subject"],
             text_body=rendered["text"],
             extra_url=signup_url,
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_welcome_email(
+    *, to_email: str, user_name: str, trial_days: int
+) -> None:
+    """Greet a new photographer and point them at the one thing worth doing
+    first. Copy lives in app/templates/emails/welcome.{subject.txt, txt, html}.
+    """
+    rendered = render_email(
+        "welcome",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "trial": {"days": trial_days},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Welcome",
+            to_email=to_email,
+            recipient_name=user_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_password_changed_email(*, to_email: str, user_name: str) -> None:
+    """Security notice after a password reset completes.
+
+    Its real audience is the person who did NOT change their password: it's
+    the only signal they'd get that someone else took their account.
+    """
+    rendered = render_email(
+        "password_changed",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Password changed",
+            to_email=to_email,
+            recipient_name=user_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_client_delivery_email(
+    *,
+    to_email: str,
+    photographer_name: str,
+    job_name: str,
+    sent: int,
+    total: int,
+    not_photographed: int,
+    dashboard_url: str | None = None,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Tell the photographer's client that galleries have gone out.
+
+    Counts only: the client sees how many people got their photos, never who.
+    Copy lives in app/templates/emails/client_delivery.{subject.txt, txt, html}.
+    """
+    rendered = render_email(
+        "client_delivery",
+        {
+            "photographer": {"display_name": photographer_name},
+            "job": {"name": job_name, "client_name": client_name},
+            "delivery": {
+                "sent": sent,
+                "total": total,
+                "not_photographed": not_photographed,
+            },
+            "dashboard": {"url": dashboard_url},
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Client delivery",
+            to_email=to_email,
+            recipient_name=client_name or "Client",
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=dashboard_url,
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_slot_cancelled_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    day_label: str,
+    time_label: str,
+    signup_url: str,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Tell a participant their booked time is gone.
+
+    Copy lives in app/templates/emails/slot_cancelled.{subject.txt, txt, html}.
+    """
+    rendered = render_email(
+        "slot_cancelled",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {"name": job_name, "client_name": client_name},
+            "booking": {
+                "day_label": day_label,
+                "time": time_label,
+                "signup_url": signup_url,
+            },
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Slot cancelled",
+            to_email=to_email,
+            recipient_name=participant_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=signup_url,
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_signup_confirmation_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    signup_url: str,
+    queue_url: str,
+    time_slots: bool,
+    shoot_date: str | None = None,
+    location: str | None = None,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Acknowledge a public signup.
+
+    On queue-mode jobs this is the only message a participant receives until
+    their gallery arrives, so it carries the date, place, and their live
+    queue link. On slot jobs it's followed by a booking confirmation.
+
+    Copy lives in app/templates/emails/signup_confirmation.{subject.txt, txt,
+    html}.
+    """
+    rendered = render_email(
+        "signup_confirmation",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {
+                "name": job_name,
+                "client_name": client_name,
+                "shoot_date": shoot_date,
+                "location": location,
+            },
+            "signup": {
+                "url": signup_url,
+                "queue_url": queue_url,
+                "time_slots": time_slots,
+            },
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Signup confirmation",
+            to_email=to_email,
+            recipient_name=participant_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=signup_url if time_slots else queue_url,
         )
         return
 

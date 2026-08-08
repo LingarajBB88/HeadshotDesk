@@ -1,0 +1,11 @@
+Hi {{ participant.first_name }},
+
+Your headshot slot for {{ job.name }} on {{ booking.day_label }} at {{ booking.time }} has been cancelled, so please don't come at that time.
+
+You're still on the list. Pick a new time here:
+
+{{ booking.signup_url }}
+
+Sorry for the change.
+
+{{ photographer.display_name }}

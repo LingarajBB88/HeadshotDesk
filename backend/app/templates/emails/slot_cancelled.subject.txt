@@ -1,0 +1,1 @@
+Your headshot time on {{ booking.day_label }} has been cancelled

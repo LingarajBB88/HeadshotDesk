@@ -1,0 +1,35 @@
+{# Participant-facing. Deliberately blunt at the top: the one thing that
+   must survive a glance on a phone is "don't come at that time". #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  {% if client.logo_url %}
+  <p style="margin:0 0 20px;">
+    <img src="{{ client.logo_url }}" alt="{{ job.client_name or 'Company logo' }}"
+         style="max-width:160px;max-height:64px;height:auto;" />
+  </p>
+  {% endif %}
+
+  <p style="margin:0 0 16px;">Hi {{ participant.first_name }},</p>
+
+  <p style="margin:0 0 16px;">
+    Your headshot slot for <strong>{{ job.name }}</strong> on
+    <strong>{{ booking.day_label }} at {{ booking.time }}</strong> has been
+    cancelled, so please don't come at that time.
+  </p>
+
+  <p style="margin:0 0 16px;">
+    You're still on the list.
+  </p>
+
+  <p style="margin:0 0 24px;">
+    <a href="{{ booking.signup_url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Pick a new time
+    </a>
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">Sorry for the change.</p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ photographer.display_name }}
+  </p>
+</div>

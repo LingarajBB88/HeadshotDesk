@@ -14,7 +14,12 @@ from app.schemas.job import (
     JobUpdate,
 )
 from app.schemas.slots import BookSlotForParticipantRequest, ScheduleEntryOut, ScheduleOut
-from app.services import job_service, participant_service, slot_service
+from app.services import (
+    job_service,
+    notify_service,
+    participant_service,
+    slot_service,
+)
 
 
 class DeliveryResult(BaseModel):
@@ -214,6 +219,13 @@ def book_slot_for_participant(
     booking = slot_service.book_slot_for_participant(
         db, job=job, participant=participant, slot_start=payload.slot_start
     )
+    # Someone whose time was assigned or moved for them has no other way of
+    # finding out. `notify=false` lets the UI stay quiet while a schedule is
+    # still being built.
+    if payload.notify:
+        notify_service.slot_confirmed(
+            db, job=job, booking=booking, moved_by_photographer=True
+        )
     return ScheduleEntryOut(
         slot_start=booking.slot_start,
         slot_end=booking.slot_end,
@@ -230,6 +242,7 @@ def book_slot_for_participant(
 def cancel_participant_booking(
     job_id: str,
     participant_id: str,
+    notify: bool = True,
     account: Account = Depends(get_current_account),
     db: Session = Depends(get_db),
 ) -> None:
@@ -241,4 +254,16 @@ def cancel_participant_booking(
     )
     if participant.job_id != job.id:
         raise HTTPException(status_code=404, detail="Participant not found.")
-    slot_service.cancel_participant_booking(db, job=job, participant=participant)
+    # Read the booking before it's deleted: the email has to name the time
+    # being cancelled, otherwise "your slot is cancelled" is useless to
+    # someone who booked two shoots.
+    existing = slot_service.get_participant_booking(
+        db, job=job, participant=participant
+    )
+    removed = slot_service.cancel_participant_booking(
+        db, job=job, participant=participant
+    )
+    if removed and existing is not None and notify:
+        notify_service.slot_cancelled(
+            db, job=job, participant=participant, slot_start=existing
+        )

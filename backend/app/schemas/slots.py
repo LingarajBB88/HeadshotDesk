@@ -153,6 +153,10 @@ class BookSlotForParticipantRequest(BaseModel):
     """Owner-side slot assignment: the photographer books a time for a
     participant from the job page. Auth comes from the session; no token."""
     slot_start: datetime
+    # Default on: someone whose time was set for them has no other way of
+    # knowing. Turned off while a schedule is still being drafted, so the
+    # photographer can shuffle people without mailing them each time.
+    notify: bool = True
 
 
 class ScheduleEntryOut(BaseModel):

@@ -239,6 +239,20 @@ def job_schedule(db: Session, *, job: Job) -> list[dict]:
     ]
 
 
+def get_participant_booking(
+    db: Session, *, job: Job, participant: Participant
+) -> datetime | None:
+    """The participant's booked start time on this job, or None. Used to name
+    the time in a cancellation email before the row is deleted."""
+    existing = db.scalar(
+        select(SlotBooking).where(
+            SlotBooking.participant_id == participant.id,
+            SlotBooking.job_id == job.id,
+        )
+    )
+    return existing.slot_start if existing else None
+
+
 def cancel_participant_booking(
     db: Session, *, job: Job, participant: Participant
 ) -> bool:

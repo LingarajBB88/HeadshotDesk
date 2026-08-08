@@ -1,0 +1,52 @@
+{# Photographer-facing. Signed by a person because the reply is the point:
+   the first week is when we learn what's broken. #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
+
+  <p style="margin:0 0 16px;">Your HeadshotDesk account is ready.</p>
+
+  <p style="margin:0 0 16px;">
+    The quickest way to see whether this fits how you work: create a job,
+    share the signup link with your client, and watch people add themselves.
+    That's the part that usually eats an afternoon.
+  </p>
+
+  <p style="margin:0 0 24px;">
+    <a href="{{ app.url }}/jobs"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Create your first job
+    </a>
+  </p>
+
+  <p style="margin:0 0 8px;font-weight:600;">Three things worth knowing</p>
+  <ol style="margin:0 0 20px;padding-left:20px;color:#475569;">
+    <li style="margin-bottom:8px;">
+      Name your files with the participant's name and photos file themselves.
+      The shoot queue copies each name to your clipboard, so your tethering
+      software does it for you.
+    </li>
+    <li style="margin-bottom:8px;">
+      Every participant gets their own private gallery, sent by email when
+      you're ready.
+    </li>
+    <li>
+      Your client can watch progress on a live link without asking you for
+      updates.
+    </li>
+  </ol>
+
+  <p style="margin:0 0 16px;color:#475569;">
+    You've got {{ trial.days }} days to try all of it. No card, and nothing
+    switches off mid-shoot.
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">
+    If something doesn't work the way you expected, reply to this email. It
+    comes straight to me.
+  </p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ app.sender_name }}<br />
+    <span style="color:#475569;">{{ app.sender_role }}, {{ app.name }}</span>
+  </p>
+</div>
