@@ -209,8 +209,10 @@ export default function ShootQueuePage() {
 
       {/* Search: fast way to find someone who turns up out of order. */}
       <div className="mt-6 relative max-w-sm">
+        {/* type="text", not "search": Chrome draws its own ✕ on search
+            inputs, which sat next to ours and looked like a bug. */}
         <input
-          type="search"
+          type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by name, email or title"
@@ -232,8 +234,10 @@ export default function ShootQueuePage() {
       <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         {/* Pending */}
         <section>
+          {/* While searching, show both numbers: "3" alone next to a filtered
+              list reads as the whole job shrinking. */}
           <h2 className="font-display text-xl font-semibold tracking-tight">
-            Pending ({pending.length})
+            Pending ({q ? `${pending.length} of ${pendingTotal}` : pending.length})
           </h2>
           {pending.length === 0 ? (
             q ? (
@@ -300,12 +304,20 @@ export default function ShootQueuePage() {
         {/* Already shot */}
         <section>
           <h2 className="font-display text-xl font-semibold tracking-tight text-muted-600">
-            Already shot ({shot.length})
+            Already shot (
+            {q
+              ? `${shot.length} of ${participants.filter((p) => p.shot_at).length}`
+              : shot.length}
+            )
           </h2>
           {shot.length === 0 ? (
             <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-8 text-center">
               <p className="text-sm text-muted-600">
-                Nobody photographed yet. Click someone in the Pending list to start.
+                {q
+                  ? // Without this, searching a name that hasn't been shot
+                    // yet claimed nobody had been photographed at all.
+                    `Nobody photographed matches “${search}”.`
+                  : "Nobody photographed yet. Click someone in the Pending list to start."}
               </p>
             </div>
           ) : (
