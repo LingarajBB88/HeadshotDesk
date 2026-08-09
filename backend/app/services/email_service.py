@@ -464,12 +464,21 @@ def send_gallery_delivery_email(
     photographer_name: str,
     job_name: str,
     gallery_url: str,
+    photo_count: int = 0,
+    download_cap: int | None = None,
+    picks_enabled: bool = False,
     client_logo_url: str | None = None,
     client_name: str | None = None,
 ) -> None:
     """Send (or log) the F5c gallery delivery email — the one-way notification
     that tells a participant their headshots are ready, with a CTA back into
     the gallery.
+
+    The rules differ per job: how many photos are waiting, how many the
+    person may keep, whether they're being asked to star favourites. Saying
+    "download the one you like" to someone entitled to three is the kind of
+    small wrongness that generates a support email, so all of it is passed
+    in and the template adapts.
 
     The actual copy lives in app/templates/emails/gallery_delivery.{subject.txt,
     txt, html}. To change voice or wording, edit those files — don't touch
@@ -484,7 +493,14 @@ def send_gallery_delivery_email(
             },
             "photographer": {"display_name": photographer_name},
             "job": {"name": job_name, "client_name": client_name},
-            "gallery": {"url": gallery_url},
+            "gallery": {
+                "url": gallery_url,
+                "photo_count": photo_count,
+                # None means unlimited. Zero would mean "none", which is a
+                # different sentence, so the template checks for null.
+                "download_cap": download_cap,
+                "picks_enabled": picks_enabled,
+            },
             # HSD-36: client branding in the email header, when set.
             "client": {"logo_url": client_logo_url},
             "app": _APP_CONTEXT,

@@ -237,6 +237,9 @@ def resend_gallery_email(
             photographer_name=photographer_name,
             job_name=job.name,
             gallery_url=gallery_url,
+            photo_count=photo_count,
+            download_cap=job.download_cap,
+            picks_enabled=bool(job.picks_enabled),
             client_logo_url=client_logo_url,
             client_name=job.client_name,
         )

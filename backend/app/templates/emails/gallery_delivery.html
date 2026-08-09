@@ -1,5 +1,10 @@
 {# Participant-facing, so it carries the client's brand when set and reads
-   as a note from the photographer. Inline styles only. #}
+   as a note from the photographer. Inline styles only.
+
+   The rules are per job: how many photos are there, how many the person
+   may keep, whether they're being asked to star favourites. Telling
+   someone to "pick the one you like" when they're entitled to three is
+   exactly the kind of small wrongness that generates a support email. #}
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
   {% if client.logo_url %}
   <p style="margin:0 0 20px;">
@@ -21,9 +26,33 @@
     </a>
   </p>
 
+  <p style="margin:0 0 16px;color:#475569;">
+    {% if gallery.photo_count %}
+      {% if gallery.photo_count == 1 %}
+        There's 1 photo waiting for you.
+      {% else %}
+        There are {{ gallery.photo_count }} photos waiting for you.
+      {% endif %}
+    {% endif %}
+    {% if gallery.download_cap is none %}
+      Download as many as you like.
+    {% elif gallery.download_cap == 1 %}
+      Pick the one you want and download it.
+    {% else %}
+      You can download <strong>{{ gallery.download_cap }}</strong> of them.
+    {% endif %}
+  </p>
+
+  {% if gallery.picks_enabled %}
+  <p style="margin:0 0 16px;color:#475569;">
+    Star your favourites while you're there. That tells your photographer
+    which ones to retouch{% if gallery.download_cap and gallery.download_cap > 1 %},
+    so choose the {{ gallery.download_cap }} you'd actually use{% endif %}.
+  </p>
+  {% endif %}
+
   <p style="margin:0 0 24px;color:#475569;">
-    Everything there is yours: have a look, pick the one you like, and
-    download it. The link keeps working, so you can come back for it later.
+    The link keeps working, so you can come back for it later.
   </p>
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">

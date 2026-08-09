@@ -143,6 +143,70 @@ class TestParticipantEmails:
         assert p["gallery_token"] in sent["queue_url"]
 
 
+class TestGalleryEmailCopy:
+    """The gallery email states this job's rules. Telling someone entitled
+    to three photos to "pick the one you like" is the kind of small
+    wrongness that generates a support email."""
+
+    def _render(self, **gallery) -> str:
+        from app.services.email_service import render_email
+
+        return render_email(
+            "gallery_delivery",
+            {
+                "participant": {"first_name": "Jane", "name": "Jane Doe"},
+                "photographer": {"display_name": "Pat"},
+                "job": {"name": "STX", "client_name": "STX"},
+                "client": {"logo_url": None},
+                "app": {"name": "HeadshotDesk"},
+                "gallery": {
+                    "url": "https://example.com/g/tok",
+                    "photo_count": 12,
+                    "download_cap": 3,
+                    "picks_enabled": False,
+                    **gallery,
+                },
+            },
+        )["text"]
+
+    def test_multi_download_cap_is_stated(self):
+        body = self._render(download_cap=3)
+        assert "download 3 of them" in body
+        assert "12 photos" in body
+
+    def test_single_download_reads_naturally(self):
+        body = self._render(download_cap=1)
+        assert "Pick the one you want" in body
+        assert "download 1 of them" not in body
+
+    def test_no_cap_means_unlimited(self):
+        body = self._render(download_cap=None)
+        assert "as many as you like" in body
+
+    def test_one_photo_is_singular(self):
+        body = self._render(photo_count=1)
+        assert "is 1 photo" in body
+
+    def test_favourites_only_mentioned_when_enabled(self):
+        assert "Star your favourites" not in self._render(picks_enabled=False)
+        assert "Star your favourites" in self._render(picks_enabled=True)
+
+    def test_delivery_passes_the_job_rules(self, client: TestClient, outbox):
+        """Not just the template: the delivery path must actually send them."""
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={
+                "name": "STX",
+                "shoot_date": _future_date(),
+                "download_cap": 3,
+            },
+            headers=_auth(tok),
+        ).json()
+        assert job["download_cap"] == 3
+
+
 class TestSlotChangeEmails:
     def _booked(self, client: TestClient, token: str) -> tuple[dict, dict, str]:
         job = _slot_job(client, token)

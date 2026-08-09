@@ -444,6 +444,12 @@ def deliver_galleries(
                 photographer_name=photographer_name,
                 job_name=job.name,
                 gallery_url=gallery_url,
+                # This job's rules, not generic copy: how many photos are
+                # there, how many they may keep, whether they're being asked
+                # to star favourites.
+                photo_count=photo_counts.get(p.id, 0),
+                download_cap=job.download_cap,
+                picks_enabled=bool(job.picks_enabled),
                 client_logo_url=client_logo_url,
                 client_name=job.client_name,
             )
