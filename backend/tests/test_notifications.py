@@ -207,6 +207,54 @@ class TestGalleryEmailCopy:
         assert job["download_cap"] == 3
 
 
+class TestCapInvariant:
+    """Starring and downloading are one allowance. The gallery showed both
+    numbers, so any divergence was visible on a single screen."""
+
+    def _job(self, client: TestClient, tok: str, **extra) -> dict:
+        return client.post(
+            "/api/v1/jobs",
+            json={"name": "Caps", "shoot_date": _future_date(), **extra},
+            headers=_auth(tok),
+        ).json()
+
+    def test_changing_the_download_cap_moves_the_pick_cap(
+        self, client: TestClient
+    ):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = self._job(client, tok, download_cap=3)
+        client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"picks_enabled": True},
+            headers=_auth(tok),
+        )
+
+        updated = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"download_cap": 4},
+            headers=_auth(tok),
+        ).json()
+
+        assert updated["download_cap"] == 4
+        assert updated["pick_cap"] == 4
+
+    def test_an_explicit_pick_cap_still_wins(self, client: TestClient):
+        """The invariant is a default, not a cage: sending both is honoured."""
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = self._job(client, tok, download_cap=3)
+
+        updated = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"download_cap": 4, "pick_cap": 2},
+            headers=_auth(tok),
+        ).json()
+
+        assert updated["download_cap"] == 4
+        assert updated["pick_cap"] == 2
+
+
 class TestSlotChangeEmails:
     def _booked(self, client: TestClient, token: str) -> tuple[dict, dict, str]:
         job = _slot_job(client, token)

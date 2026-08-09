@@ -295,6 +295,15 @@ def update_job(
         if hasattr(job, key):
             setattr(job, key, value)
 
+    # Starring and downloading are the same allowance seen from two sides:
+    # you star the ones you want, you download the ones you starred. They
+    # were stored as two numbers kept in step only by the frontend at the
+    # moment picks were switched on, so changing the download cap afterwards
+    # left the gallery saying "download up to 4" and "star up to 3" on the
+    # same screen. The server owns the invariant now.
+    if "download_cap" in fields and "pick_cap" not in fields:
+        job.pick_cap = job.download_cap
+
     db.commit()
     db.refresh(job)
 

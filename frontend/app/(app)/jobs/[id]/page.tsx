@@ -641,13 +641,11 @@ function PicksDetail({
     setSaving(true);
     setError(null);
     try {
-      onChanged(
-        await updateJob(job.id, {
-          picks_enabled: next,
-          // Keep the stored cap in step with the download allowance.
-          pick_cap: job.download_cap,
-        }),
-      );
+      // pick_cap deliberately not sent: the server keeps it equal to the
+      // download cap. Setting it here only worked at the moment picks were
+      // switched on, so changing the download cap later left the gallery
+      // showing two different numbers.
+      onChanged(await updateJob(job.id, { picks_enabled: next }));
     } catch {
       setError("Couldn't save. Try again.");
     } finally {

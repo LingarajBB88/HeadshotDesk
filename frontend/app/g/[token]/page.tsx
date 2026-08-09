@@ -431,14 +431,18 @@ export default function PublicGalleryPage() {
             photographer what to retouch, downloading is what you keep. */}
         {gallery.picks_enabled && gallery.files.length > 0 ? (
           <div className="mt-4 rounded-card border border-muted-200 bg-paper p-4">
+            {/* The star limit and the download limit are the same allowance
+                seen twice, so this box names the count once and says what
+                starring is *for*, rather than repeating a second number
+                next to the first. */}
             <p className="text-sm font-semibold text-ink">
               {gallery.pick_cap === 0
                 ? "Star the ones you like"
-                : `Star your favourite${gallery.pick_cap === 1 ? "" : "s"} (up to ${gallery.pick_cap})`}
+                : "Star the ones you want"}
             </p>
             <p className="mt-1 text-sm text-muted-700">
-              Tap the star on a photo to tell your photographer which shots
-              you want. You can change your mind any time.
+              Tap the star on a photo to tell your photographer which shots to
+              retouch. You can change your mind any time.
               {gallery.pick_cap > 0 ? (
                 <>
                   {" "}
