@@ -32,6 +32,17 @@ class MyReferralOut(BaseModel):
     converted: int
     # Quoted in the UI so the pitch is accurate without hardcoding it there.
     bonus_days: int
+    # True when this account is a beta tester AND the pool still has room,
+    # so their link currently hands out a free seat rather than bonus days.
+    # The UI has to say which, or the photographer will promise the wrong
+    # thing to a friend.
+    grants_seat: bool
+    seats_remaining: int
+    # Free months earned from referrals who started paying, and how many
+    # each one is worth. Both shown so the offer is legible before anyone
+    # has earned anything.
+    credit_months: int
+    reward_months_each: int
 
 
 @router.get("/me/referral", response_model=MyReferralOut)
@@ -49,6 +60,10 @@ def my_referral(
         signups=stats["signups"],
         converted=stats["converted"],
         bonus_days=referral_service.REFERRAL_BONUS_DAYS,
+        grants_seat=referral_service.claim_seat_for_referral(db, referrer=account),
+        seats_remaining=referral_service.seats_remaining(db),
+        credit_months=account.credit_months or 0,
+        reward_months_each=referral_service.reward_months(),
     )
 
 
@@ -90,11 +105,32 @@ class InviteCodeOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ChainNodeOut(BaseModel):
+    """One account in the invite tree. Flat with a parent pointer; the
+    frontend nests it."""
+    account_id: str
+    name: str
+    plan: str
+    parent_id: str | None
+    joined_at: datetime | None
+
+
+class OutstandingRewardOut(BaseModel):
+    referral_id: str
+    referrer_account_id: str
+    referrer_name: str
+    months: int
+    converted_at: datetime | None
+
+
 class ReferralOverviewOut(BaseModel):
     funnel: FunnelOut
     seats: SeatsOut
     top_referrers: list[TopReferrerOut]
     invite_codes: list[InviteCodeOut]
+    chain: list[ChainNodeOut]
+    outstanding_rewards: list[OutstandingRewardOut]
+    reward_months_each: int
 
 
 @admin_router.get("/referrals", response_model=ReferralOverviewOut)
@@ -122,6 +158,12 @@ def referral_overview(
             TopReferrerOut(**r) for r in referral_service.top_referrers(db)
         ],
         invite_codes=[InviteCodeOut.model_validate(c) for c in codes],
+        chain=[ChainNodeOut(**n) for n in referral_service.invite_chain(db)],
+        outstanding_rewards=[
+            OutstandingRewardOut(**r)
+            for r in referral_service.outstanding_rewards(db)
+        ],
+        reward_months_each=referral_service.reward_months(),
     )
 
 
@@ -149,6 +191,23 @@ def create_invite(
         expires_at=payload.expires_at,
     )
     return InviteCodeOut.model_validate(invite)
+
+
+@admin_router.post("/referrals/{referral_id}/settle-reward")
+def settle_reward(referral_id: str, db: Session = Depends(get_db)) -> dict:
+    """Mark a reward as applied to a bill and take it off the balance.
+
+    Manual until billing can do it itself. Recording it here is what stops
+    the same free month being given twice by two people looking at the same
+    list a week apart.
+    """
+    row = referral_service.settle_reward(db, referral_id=referral_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Referral not found.")
+    return {
+        "referral_id": row.id,
+        "settled_at": row.reward_settled_at,
+    }
 
 
 @admin_router.post("/invite-codes/{invite_id}/revoke", response_model=InviteCodeOut)

@@ -48,6 +48,17 @@ class Referral(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Free months owed to the referrer for this conversion. Recorded at the
+    # moment it's earned rather than computed later, so changing the reward
+    # rate never rewrites what someone was already promised.
+    reward_months: Mapped[int] = mapped_column(nullable=False, default=0)
+    # When the reward was actually applied to a bill. Until Stripe ships
+    # that's a manual step, so "earned" and "settled" are separate facts and
+    # the admin view can show what's outstanding.
+    reward_settled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Coarse attribution context. Kept for spotting one person clicking their
     # own link fifty times, not for profiling: no cookies beyond the
     # attribution one, no third-party pixels.

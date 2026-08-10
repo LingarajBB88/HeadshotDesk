@@ -205,6 +205,168 @@ class TestFreeSeats:
         assert a["account"]["plan"] == "trial"
 
 
+class TestBetaTestersPassSeatsOn:
+    """During beta, a tester's link is the invite. One link per person
+    rather than a code alongside it."""
+
+    def test_beta_referrer_grants_a_seat(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.services import referral_service
+
+        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        invite = referral_service.create_invite_code(db_session, max_uses=1)
+        tester = _signup(client, invite_code=invite.code)
+        assert tester["account"]["plan"] == "beta"
+
+        code = _my_code(client, tester["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+
+        assert friend["account"]["plan"] == "beta"
+
+    def test_trial_referrer_grants_days_not_a_seat(
+        self, client: TestClient, monkeypatch
+    ):
+        """Otherwise a trial user could give away seats meant for testers."""
+        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        a = _signup(client)
+        assert a["account"]["plan"] == "trial"
+
+        code = _my_code(client, a["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+
+        assert friend["account"]["plan"] == "trial"
+
+    def test_empty_pool_falls_back_to_bonus_days(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Account
+        from app.services import referral_service
+
+        monkeypatch.setattr("app.config.settings.free_seat_cap", 1)
+        invite = referral_service.create_invite_code(db_session, max_uses=1)
+        tester = _signup(client, invite_code=invite.code)
+        # The tester took the only seat.
+        code = _my_code(client, tester["tokens"]["access_token"])
+
+        friend = _signup(client, referral_code=code)
+        assert friend["account"]["plan"] == "trial"
+        # Still credited, and still got the bonus.
+        row = db_session.get(Account, friend["account"]["id"])
+        assert row.trial_ends_at is not None
+
+
+class TestRewards:
+    def _convert(self, db_session, account_id: str) -> None:
+        from app.models import Account
+        from app.services import referral_service
+
+        referral_service.mark_converted(
+            db_session, account=db_session.get(Account, account_id)
+        )
+
+    def test_referrer_earns_months_when_a_referral_pays(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Account
+
+        monkeypatch.setattr("app.config.settings.referral_reward_months", 1)
+        a = _signup(client)
+        code = _my_code(client, a["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+
+        self._convert(db_session, friend["account"]["id"])
+
+        referrer = db_session.get(Account, a["account"]["id"])
+        db_session.refresh(referrer)
+        assert referrer.credit_months == 1
+
+    def test_converting_twice_does_not_pay_twice(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        """The obvious future caller is a Stripe webhook, and webhooks
+        get retried."""
+        from app.models import Account
+
+        monkeypatch.setattr("app.config.settings.referral_reward_months", 1)
+        a = _signup(client)
+        code = _my_code(client, a["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+
+        self._convert(db_session, friend["account"]["id"])
+        self._convert(db_session, friend["account"]["id"])
+
+        referrer = db_session.get(Account, a["account"]["id"])
+        db_session.refresh(referrer)
+        assert referrer.credit_months == 1
+
+    def test_settling_clears_the_balance_once(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Account
+        from app.services import referral_service
+
+        monkeypatch.setattr("app.config.settings.referral_reward_months", 2)
+        a = _signup(client)
+        code = _my_code(client, a["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+        self._convert(db_session, friend["account"]["id"])
+
+        owed = referral_service.outstanding_rewards(db_session)
+        assert len(owed) == 1 and owed[0]["months"] == 2
+
+        referral_service.settle_reward(
+            db_session, referral_id=owed[0]["referral_id"]
+        )
+        referral_service.settle_reward(
+            db_session, referral_id=owed[0]["referral_id"]
+        )
+
+        referrer = db_session.get(Account, a["account"]["id"])
+        db_session.refresh(referrer)
+        assert referrer.credit_months == 0
+        assert referral_service.outstanding_rewards(db_session) == []
+
+    def test_zero_rate_records_conversion_without_paying(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Account
+
+        monkeypatch.setattr("app.config.settings.referral_reward_months", 0)
+        a = _signup(client)
+        code = _my_code(client, a["tokens"]["access_token"])
+        friend = _signup(client, referral_code=code)
+
+        self._convert(db_session, friend["account"]["id"])
+
+        referrer = db_session.get(Account, a["account"]["id"])
+        db_session.refresh(referrer)
+        assert referrer.credit_months == 0
+        stats = client.get(
+            "/api/v1/me/referral", headers=_auth(a["tokens"]["access_token"])
+        ).json()
+        assert stats["converted"] == 1
+
+
+class TestInviteChain:
+    def test_chain_records_who_invited_whom(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.services import referral_service
+
+        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        a = _signup(client)
+        code_a = _my_code(client, a["tokens"]["access_token"])
+        b = _signup(client, referral_code=code_a)
+        code_b = _my_code(client, b["tokens"]["access_token"])
+        c = _signup(client, referral_code=code_b)
+
+        nodes = {n["account_id"]: n for n in referral_service.invite_chain(db_session)}
+        assert nodes[b["account"]["id"]]["parent_id"] == a["account"]["id"]
+        assert nodes[c["account"]["id"]]["parent_id"] == b["account"]["id"]
+        assert nodes[a["account"]["id"]]["parent_id"] is None
+
+
 class TestAdminGate:
     def test_referral_overview_needs_admin(self, client: TestClient):
         a = _signup(client)

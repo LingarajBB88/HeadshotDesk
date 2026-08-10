@@ -11,6 +11,29 @@ export type MyReferral = {
   converted: number;
   /** Extra trial days the referred person gets. Quoted in the pitch copy. */
   bonus_days: number;
+  /** True when this link currently hands out a free beta seat instead. */
+  grants_seat: boolean;
+  seats_remaining: number;
+  /** Free months banked from referrals who became paying customers. */
+  credit_months: number;
+  /** What each paying referral is worth. */
+  reward_months_each: number;
+};
+
+export type ChainNode = {
+  account_id: string;
+  name: string;
+  plan: string;
+  parent_id: string | null;
+  joined_at: string | null;
+};
+
+export type OutstandingReward = {
+  referral_id: string;
+  referrer_account_id: string;
+  referrer_name: string;
+  months: number;
+  converted_at: string | null;
 };
 
 export type ReferralFunnel = {
@@ -52,6 +75,9 @@ export type ReferralOverview = {
   seats: BetaSeats;
   top_referrers: TopReferrer[];
   invite_codes: InviteCode[];
+  chain: ChainNode[];
+  outstanding_rewards: OutstandingReward[];
+  reward_months_each: number;
 };
 
 function authToken(): string {
@@ -81,6 +107,13 @@ export async function createInviteCode(input: {
       label: input.label || null,
       max_uses: input.max_uses ?? 1,
     }),
+  });
+}
+
+export async function settleReward(referralId: string): Promise<void> {
+  await api(`/api/v1/admin/referrals/${referralId}/settle-reward`, {
+    method: "POST",
+    token: authToken(),
   });
 }
 

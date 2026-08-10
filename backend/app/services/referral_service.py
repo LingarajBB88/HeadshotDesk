@@ -165,15 +165,81 @@ def attach_signup(
     return row
 
 
+def reward_months() -> int:
+    """Free months a referrer earns per referral that starts paying."""
+    from app.config import settings
+
+    return max(int(getattr(settings, "referral_reward_months", 0) or 0), 0)
+
+
 def mark_converted(db: Session, *, account: Account) -> None:
-    """Called when a referred account first pays. Idempotent."""
+    """Called when a referred account first pays.
+
+    Credits the referrer with free months and banks them on the account.
+    Idempotent: converting twice can't pay twice, which matters because the
+    obvious future caller is a Stripe webhook and webhooks get retried.
+
+    The reward is written onto the referral row as well as the balance, so
+    changing the rate later never rewrites what someone was already
+    promised, and the admin view can show what's owed but not yet applied.
+    """
     row = db.scalar(
         select(Referral).where(Referral.referred_account_id == account.id)
     )
     if row is None or row.converted_at is not None:
         return
     row.converted_at = _utcnow()
+
+    months = reward_months()
+    if months > 0:
+        referrer = db.get(Account, row.referrer_account_id)
+        if referrer is not None:
+            row.reward_months = months
+            referrer.credit_months = (referrer.credit_months or 0) + months
     db.commit()
+
+
+def settle_reward(db: Session, *, referral_id: str) -> Referral | None:
+    """Mark a reward as applied to a bill, and take it off the balance.
+
+    Manual until billing can do it: the point is that the admin view stops
+    showing it as outstanding, and the balance reflects what's still owed.
+    """
+    row = db.get(Referral, referral_id)
+    if row is None or row.reward_settled_at is not None or not row.reward_months:
+        return row
+    row.reward_settled_at = _utcnow()
+    referrer = db.get(Account, row.referrer_account_id)
+    if referrer is not None:
+        referrer.credit_months = max(
+            (referrer.credit_months or 0) - row.reward_months, 0
+        )
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def outstanding_rewards(db: Session) -> list[dict]:
+    """Rewards earned but not yet applied to a bill."""
+    rows = db.execute(
+        select(Referral, Account)
+        .join(Account, Account.id == Referral.referrer_account_id)
+        .where(
+            Referral.reward_months > 0,
+            Referral.reward_settled_at.is_(None),
+        )
+        .order_by(Referral.converted_at.asc())
+    ).all()
+    return [
+        {
+            "referral_id": r.id,
+            "referrer_account_id": a.id,
+            "referrer_name": a.name,
+            "months": r.reward_months,
+            "converted_at": r.converted_at,
+        }
+        for r, a in rows
+    ]
 
 
 # --- Free beta seats --------------------------------------------------------
@@ -201,6 +267,22 @@ def seat_cap(db: Session) -> int:
 
 def seats_remaining(db: Session) -> int:
     return max(seat_cap(db) - seats_used(db), 0)
+
+
+def claim_seat_for_referral(db: Session, *, referrer: Account) -> bool:
+    """Should a person referred by `referrer` get a free beta seat?
+
+    Only beta testers pass their seat along. That's the deal during beta:
+    you're in for free, and so is whoever you vouch for. A trial user's link
+    still works, it just grants the bonus days instead, so nobody can give
+    away seats that were meant for testers.
+
+    Returns False when the pool is empty, which is not a failure: the caller
+    falls back to the bonus trial and the person still gets an account.
+    """
+    if referrer.plan != "beta":
+        return False
+    return seats_remaining(db) > 0
 
 
 def redeem_invite_code(db: Session, *, code: str | None) -> InviteCode | None:
@@ -303,6 +385,51 @@ def funnel(db: Session) -> dict:
         "click_to_signup_pct": round(signups / len(rows) * 100) if rows else 0,
         "signup_to_paid_pct": round(converted / signups * 100) if signups else 0,
     }
+
+
+def invite_chain(db: Session) -> list[dict]:
+    """Who invited whom, as a flat list of nodes with parent pointers.
+
+    Flat rather than nested: the frontend renders the tree, and a flat list
+    survives the case that always eventually happens, a cycle or an orphan,
+    without recursing forever.
+
+    Only accounts that actually signed up appear. A click that went nowhere
+    belongs in the funnel numbers, not in a family tree.
+    """
+    rows = db.execute(
+        select(Referral, Account)
+        .join(Account, Account.id == Referral.referred_account_id)
+        .order_by(Referral.signed_up_at.asc())
+    ).all()
+
+    # Everyone who has referred someone, so roots can be named too.
+    referrer_ids = {r.referrer_account_id for r, _ in rows}
+    referrers = {
+        a.id: a
+        for a in db.scalars(
+            select(Account).where(Account.id.in_(referrer_ids))
+        ).all()
+    } if referrer_ids else {}
+
+    nodes: dict[str, dict] = {}
+    for account_id, account in referrers.items():
+        nodes[account_id] = {
+            "account_id": account_id,
+            "name": account.name,
+            "plan": account.plan,
+            "parent_id": None,
+            "joined_at": account.created_at,
+        }
+    for referral, referred in rows:
+        nodes[referred.id] = {
+            "account_id": referred.id,
+            "name": referred.name,
+            "plan": referred.plan,
+            "parent_id": referral.referrer_account_id,
+            "joined_at": referral.signed_up_at or referred.created_at,
+        }
+    return list(nodes.values())
 
 
 def top_referrers(db: Session, *, limit: int = 20) -> list[dict]:

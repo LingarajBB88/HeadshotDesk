@@ -38,6 +38,12 @@ class Account(Base):
     # beta seat. Kept for the seat count and for knowing which batch of
     # invites actually landed.
     invite_code: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    # Free months banked from referrals that turned into paying customers.
+    # A running balance rather than a list of grants: the detail lives on
+    # the referral rows, this is the number billing needs to read.
+    credit_months: Mapped[int] = mapped_column(
+        nullable=False, default=0, server_default="0"
+    )
 
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 

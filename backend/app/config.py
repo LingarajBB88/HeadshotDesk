@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     # without a deploy; 0 means no free seats are available.
     free_seat_cap: int = Field(default=25)
 
+    # --- Referral rewards ---
+    # Free months a referrer earns each time someone they introduced starts
+    # paying. Recorded on the referral row when earned, so changing this
+    # never rewrites a reward somebody was already promised. 0 turns
+    # rewards off without removing the tracking.
+    referral_reward_months: int = Field(default=1)
+
     # --- Auth ---
     jwt_secret: str = Field(default="dev-secret-change-me")
     jwt_algorithm: str = "HS256"

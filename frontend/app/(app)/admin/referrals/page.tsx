@@ -11,6 +11,8 @@ import {
   createInviteCode,
   getReferralOverview,
   revokeInviteCode,
+  settleReward,
+  type ChainNode,
   type ReferralOverview,
 } from "@/lib/referrals";
 
@@ -223,6 +225,72 @@ export default function AdminReferralsPage() {
         </div>
       )}
 
+      {/* Rewards owed. Settling is manual until billing can do it, and
+          recording it is what stops the same free month being given twice
+          by two people looking at this list a week apart. */}
+      {data.outstanding_rewards.length > 0 ? (
+        <>
+          <h2 className="mt-12 font-display text-xl font-semibold tracking-tight">
+            Rewards to apply
+          </h2>
+          <p className="mt-1 text-sm text-muted-600">
+            Earned when a referral started paying. Mark each one once
+            you&apos;ve taken it off their invoice.
+          </p>
+          <div className="mt-4 overflow-x-auto rounded-card border border-muted-200 bg-paper">
+            <table className="w-full text-sm">
+              <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
+                <tr>
+                  <th className="px-4 py-2.5">Referrer</th>
+                  <th className="px-4 py-2.5">Owed</th>
+                  <th className="px-4 py-2.5">Since</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-muted-200">
+                {data.outstanding_rewards.map((r) => (
+                  <tr key={r.referral_id}>
+                    <td className="px-4 py-2.5 text-ink">{r.referrer_name}</td>
+                    <td className="px-4 py-2.5 text-muted-600">
+                      {r.months} month{r.months === 1 ? "" : "s"}
+                    </td>
+                    <td className="px-4 py-2.5 text-muted-600">
+                      {r.converted_at
+                        ? new Date(r.converted_at).toLocaleDateString()
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={async () => {
+                          await settleReward(r.referral_id);
+                          await refresh();
+                        }}
+                        className="text-xs text-accent hover:underline"
+                      >
+                        Mark applied
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+
+      {/* Who invited whom. Direct counts don't show that one tester brought
+          in a branch of six. */}
+      {data.chain.length > 0 ? (
+        <>
+          <h2 className="mt-12 font-display text-xl font-semibold tracking-tight">
+            Invite chain
+          </h2>
+          <div className="mt-4 rounded-card border border-muted-200 bg-paper p-4">
+            <InviteTree nodes={data.chain} />
+          </div>
+        </>
+      ) : null}
+
       {/* Who's actually referring */}
       <h2 className="mt-12 font-display text-xl font-semibold tracking-tight">
         Top referrers
@@ -274,6 +342,52 @@ export default function AdminReferralsPage() {
       )}
     </div>
   );
+}
+
+/**
+ * Renders the flat parent-pointer list as a tree.
+ *
+ * Iterative rather than recursive on the render side, and it tracks which
+ * nodes it has already drawn: a cycle in referral data is unlikely but not
+ * impossible, and an admin page that hangs the browser is worse than one
+ * that quietly drops a duplicate.
+ */
+function InviteTree({ nodes }: { nodes: ChainNode[] }) {
+  const byParent = new Map<string | null, ChainNode[]>();
+  for (const n of nodes) {
+    const key = nodes.some((o) => o.account_id === n.parent_id)
+      ? n.parent_id
+      : null; // orphan: its referrer isn't in the set, so treat it as a root
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key)!.push(n);
+  }
+
+  const drawn = new Set<string>();
+
+  function render(parentId: string | null, depth: number): React.ReactNode[] {
+    return (byParent.get(parentId) ?? []).flatMap((n) => {
+      if (drawn.has(n.account_id)) return [];
+      drawn.add(n.account_id);
+      return [
+        <li key={n.account_id} style={{ paddingLeft: depth * 20 }}>
+          <span className="text-sm text-ink">{n.name}</span>
+          <span className="ml-2 text-xs text-muted-600">
+            {n.plan === "beta" ? "free beta" : n.plan}
+            {n.joined_at
+              ? ` · ${new Date(n.joined_at).toLocaleDateString()}`
+              : ""}
+          </span>
+          {(byParent.get(n.account_id) ?? []).length > 0 ? (
+            <ul className="mt-1 space-y-1">
+              {render(n.account_id, depth + 1)}
+            </ul>
+          ) : null}
+        </li>,
+      ];
+    });
+  }
+
+  return <ul className="space-y-1">{render(null, 0)}</ul>;
 }
 
 function Tile({

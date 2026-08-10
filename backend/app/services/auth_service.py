@@ -144,12 +144,21 @@ def signup(
                 account.invite_code = invite.code
                 invited = True
         if referral_code:
-            referred = (
-                referral_service.attach_signup(
-                    db, code=referral_code, account=account
-                )
-                is not None
+            row = referral_service.attach_signup(
+                db, code=referral_code, account=account
             )
+            referred = row is not None
+            # A beta tester's link passes their seat along: that's the deal
+            # during beta, and it means one link per person rather than a
+            # separate invite code alongside it. Trial users' links grant
+            # the bonus days instead, so seats meant for testers can't leak.
+            if row is not None and not invited:
+                referrer = db.get(Account, row.referrer_account_id)
+                if referrer is not None and referral_service.claim_seat_for_referral(
+                    db, referrer=referrer
+                ):
+                    account.plan = "beta"
+                    invited = True
         account.trial_ends_at = referral_service.trial_end_for(
             referred=referred, invited=invited
         )
