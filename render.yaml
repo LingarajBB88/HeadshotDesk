@@ -17,10 +17,21 @@ services:
     rootDir: backend
     region: frankfurt
     plan: starter
+    # Two instances so a deploy, a crash, or an OOM isn't a full outage.
+    # A photographer mid-shoot has no way to wait for a restart, and the
+    # cost of the second instance is far less than one ruined event.
+    numInstances: 2
+    # /health verifies the database, so an instance whose connection has
+    # died gets pulled and restarted instead of quietly 500ing everything.
     healthCheckPath: /health
-    # start.sh runs migrations then execs uvicorn. Kept as a script — a
-    # quoted sh -c one-liner here breaks because Render already wraps
-    # dockerCommand in a shell (the quotes arrive literally, exit 127).
+    # Migrations run once per deploy, before any new instance takes
+    # traffic, and a failure here aborts the deploy while the old version
+    # keeps serving. They used to run inside the web process on every boot,
+    # which meant a locked migration took the API down entirely.
+    preDeployCommand: alembic upgrade head
+    # start.sh now only execs uvicorn. Kept as a script — a quoted sh -c
+    # one-liner here breaks because Render already wraps dockerCommand in a
+    # shell (the quotes arrive literally, exit 127).
     dockerCommand: ./start.sh
     envVars:
       - key: ENV
@@ -31,6 +42,10 @@ services:
         value: https://api.headshotdesk.com
       - key: FRONTEND_URL
         value: https://headshotdesk.com
+      # Error tracking. Paste the DSN in the dashboard; leaving it unset
+      # disables Sentry rather than breaking the boot.
+      - key: SENTRY_DSN
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: headshotdesk-db

@@ -298,8 +298,10 @@ export class FolderWatcher {
           if (!initial) this.events.onFileSkipped(name, "not-shot-yet");
         } else {
           ready.push(file);
-          this.seen.set(name, fp);
-          // file_id is set after the upload completes; see the catch block below.
+          // Deliberately NOT marked seen yet. Marking before the upload
+          // meant a single 500 silently retired those frames: the next scan
+          // skipped them as already handled and the only recovery was
+          // unmapping the folder. They're marked once the server has them.
         }
       } else {
         this.pending.set(name, fp);
@@ -318,6 +320,10 @@ export class FolderWatcher {
       const fileIdByName = new Map(
         outcome.files.map((u) => [u.name, u.file_id]),
       );
+      // Only now is a file "seen". Anything the server didn't take stays
+      // unseen and gets picked up by the next scan, which is what makes a
+      // transient failure self-healing instead of silently lossy.
+      const accepted = new Set(outcome.files.map((u) => u.name));
       for (const f of ready) {
         const fid = fileIdByName.get(f.name);
         if (fid) {
@@ -325,6 +331,24 @@ export class FolderWatcher {
             fpKey({ size: f.size, lastModified: f.lastModified }),
             fid,
           );
+        }
+        if (accepted.has(f.name)) {
+          this.seen.set(f.name, {
+            size: f.size,
+            lastModified: f.lastModified,
+          });
+        }
+      }
+      // Duplicates count as handled too: the server already has that
+      // content, so rescanning them forever would be pointless churn.
+      if (outcome.duplicates > 0) {
+        for (const f of ready) {
+          if (!accepted.has(f.name)) {
+            this.seen.set(f.name, {
+              size: f.size,
+              lastModified: f.lastModified,
+            });
+          }
         }
       }
       this.onFingerprintsChanged?.(Object.fromEntries(this.fileIdByFingerprint));

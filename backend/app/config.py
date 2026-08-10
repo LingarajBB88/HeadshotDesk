@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     # rewards off without removing the tracking.
     referral_reward_months: int = Field(default=1)
 
+    # --- Observability ---
+    # Empty disables Sentry entirely, which is the right default for local
+    # development and for tests: nobody needs their own typos in the
+    # production error feed.
+    sentry_dsn: str = Field(default="")
+    # Fraction of requests traced. Full sampling on a starter instance costs
+    # more than the insight is worth at this volume.
+    sentry_traces_sample_rate: float = Field(default=0.1)
+
     # --- Auth ---
     jwt_secret: str = Field(default="dev-secret-change-me")
     jwt_algorithm: str = "HS256"

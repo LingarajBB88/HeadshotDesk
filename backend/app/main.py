@@ -6,7 +6,7 @@ Run via tasks: see scripts/dev.sh
 """
 import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
@@ -23,6 +23,21 @@ from app.api import (
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Error tracking. Initialised before the app so startup failures are caught
+# too. Without a DSN this is a no-op, so local development and tests never
+# send anything.
+if settings.sentry_dsn:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.env,
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+        # Participant names, emails and photos flow through this API. An
+        # error report is not a reason to copy any of it to a third party.
+        send_default_pii=False,
+    )
 
 app = FastAPI(
     title="HeadshotDesk API",
@@ -42,12 +57,56 @@ app.add_middleware(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health(response: Response) -> dict[str, object]:
+    """Readiness, not just liveness.
+
+    This is what Render polls, so it has to mean "can serve real traffic".
+    It used to return 200 unconditionally without touching the database,
+    which meant an instance whose Postgres connection had died looked
+    perfectly healthy: never restarted, never alerted on, 500ing every
+    request until somebody noticed by hand.
+
+    Returns 503 when the database is unreachable so the platform can act on
+    it. Storage is checked separately at /health/storage because a storage
+    outage shouldn't take the whole API down: the shoot queue keeps working
+    without it.
+    """
+    from sqlalchemy import text
+
+    from app.db import SessionLocal
+
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Health check failed: database unreachable")
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {
+            "status": "error",
+            "env": settings.env,
+            "database": "unreachable",
+            "detail": f"{type(exc).__name__}",
+        }
+    return {"status": "ok", "env": settings.env, "database": "ok"}
+
+
+@app.get("/health/live")
+def health_live() -> dict[str, str]:
+    """Liveness: is the process running at all?
+
+    Separate from /health on purpose. If the database is down, restarting
+    the container doesn't help and thrashing it makes recovery slower, so
+    this stays cheap and always-200 for anything that just needs to know
+    the process hasn't wedged.
+    """
     return {"status": "ok", "env": settings.env}
 
 
 @app.get("/health/storage")
-def health_storage() -> dict[str, object]:
+def health_storage(response: Response) -> dict[str, object]:
     """Round-trip a tiny object through the storage backend.
 
     Photo and logo uploads fail *silently* when storage writes fail (the
@@ -65,6 +124,7 @@ def health_storage() -> dict[str, object]:
         got = storage_service.read(key=key)
         storage_service.delete(key=key)
         if got != payload:
+            response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
             return {"status": "error", "mode": mode, "detail": "read mismatch"}
         return {
             "status": "ok",
@@ -74,6 +134,10 @@ def health_storage() -> dict[str, object]:
         }
     except Exception as exc:  # noqa: BLE001
         logger.exception("Storage health check failed")
+        # A real status code, so an uptime monitor can watch this without
+        # parsing the body. Previously it returned 200 with an error inside,
+        # which is invisible to every alerting tool there is.
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return {
             "status": "error",
             "mode": mode,

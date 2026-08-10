@@ -207,6 +207,41 @@ class TestGalleryEmailCopy:
         assert job["download_cap"] == 3
 
 
+class TestHealthChecks:
+    """The health check is what Render acts on, so it has to mean
+    'can serve real traffic', not 'the process started'."""
+
+    def test_health_reports_database_state(self, client: TestClient):
+        r = client.get("/health")
+        assert r.status_code == 200
+        assert r.json()["database"] == "ok"
+
+    def test_health_is_503_when_the_database_is_gone(
+        self, client: TestClient, monkeypatch
+    ):
+        """Without this, a dead connection looks healthy forever."""
+
+        def broken():
+            raise RuntimeError("connection refused")
+
+        monkeypatch.setattr("app.db.SessionLocal", broken)
+        r = client.get("/health")
+        assert r.status_code == 503
+        assert r.json()["database"] == "unreachable"
+
+    def test_liveness_stays_up_when_the_database_is_gone(
+        self, client: TestClient, monkeypatch
+    ):
+        """Restarting the container doesn't fix Postgres, and thrashing it
+        makes recovery slower."""
+
+        def broken():
+            raise RuntimeError("connection refused")
+
+        monkeypatch.setattr("app.db.SessionLocal", broken)
+        assert client.get("/health/live").status_code == 200
+
+
 class TestCapInvariant:
     """Starring and downloading are one allowance. The gallery showed both
     numbers, so any divergence was visible on a single screen."""
