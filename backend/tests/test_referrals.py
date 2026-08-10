@@ -116,6 +116,23 @@ class TestAttribution:
         # Allow a day of slack: the two signups aren't simultaneous.
         assert gained >= referral_service.REFERRAL_BONUS_DAYS - 1
 
+    def test_the_referrer_gets_no_extra_trial_days(
+        self, client: TestClient, db_session
+    ):
+        """Only the joiner's trial is extended. The referrer's reward is a
+        free month once that person pays, not more trial for themselves."""
+        from app.models import Account
+
+        a = _signup(client)
+        before = db_session.get(Account, a["account"]["id"]).trial_ends_at
+        code = _my_code(client, a["tokens"]["access_token"])
+
+        _signup(client, referral_code=code)
+
+        db_session.expire_all()
+        after = db_session.get(Account, a["account"]["id"]).trial_ends_at
+        assert after == before
+
     def test_bad_code_does_not_break_signup(self, client: TestClient):
         a = _signup(client, referral_code="TOTALLYWRONG")
         assert a["tokens"]["access_token"]

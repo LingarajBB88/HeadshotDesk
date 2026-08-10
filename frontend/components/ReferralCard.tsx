@@ -48,24 +48,54 @@ export function ReferralCard() {
   return (
     <div className="rounded-card border border-muted-200 bg-paper p-5">
       <h3 className="text-sm font-semibold text-ink">Invite another photographer</h3>
-      {/* What the link grants depends on who's holding it and whether the
-          beta pool still has room. Saying the wrong one means someone
-          promises a friend something that doesn't arrive. */}
       <p className="mt-1 text-sm text-muted-600">
-        {data.grants_seat ? (
-          <>
-            Share this link. Anyone who signs up through it joins the beta
-            free, same as you. {data.seats_remaining} place
-            {data.seats_remaining === 1 ? "" : "s"} left.
-          </>
-        ) : (
-          <>
-            Share this link. Anyone who signs up through it gets{" "}
-            {data.bonus_days} extra days of trial, and we&apos;ll know they
-            came from you.
-          </>
-        )}
+        Share this link with another photographer.
       </p>
+
+      {/* The two sides sit together, labelled. Split across the card with
+          the link box between them, "14 extra days" and "1 free month" read
+          as one vague offer and it's easy to think both people get both. */}
+      <dl className="mt-3 space-y-1.5 text-sm">
+        <div className="flex gap-2">
+          <dt className="w-20 shrink-0 text-muted-600">They get</dt>
+          <dd className="text-ink">
+            {/* What the link grants depends on who's holding it and whether
+                the beta pool still has room. Saying the wrong one means
+                someone promises a friend something that doesn't arrive. */}
+            {data.grants_seat ? (
+              <>
+                <strong>Free access</strong> while HeadshotDesk is in beta,
+                same as you.{" "}
+                <span className="text-muted-600">
+                  {data.seats_remaining} place
+                  {data.seats_remaining === 1 ? "" : "s"} left.
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>
+                  {data.bonus_days} extra days
+                </strong>{" "}
+                on their trial.
+              </>
+            )}
+          </dd>
+        </div>
+        {data.reward_months_each > 0 ? (
+          <div className="flex gap-2">
+            <dt className="w-20 shrink-0 text-muted-600">You get</dt>
+            <dd className="text-ink">
+              <strong>
+                {data.reward_months_each} free month
+                {data.reward_months_each === 1 ? "" : "s"}
+              </strong>{" "}
+              <span className="text-muted-600">
+                , once they start paying.
+              </span>
+            </dd>
+          </div>
+        ) : null}
+      </dl>
 
       <div className="mt-4 flex flex-wrap items-center gap-2 rounded-card border border-muted-200 bg-muted-50 p-3">
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-accent">
@@ -75,19 +105,6 @@ export function ReferralCard() {
           {copied ? "Copied!" : "Copy link"}
         </button>
       </div>
-
-      {/* The reward is stated before anyone has earned anything, otherwise
-          it's a secret and nobody shares the link for it. */}
-      {data.reward_months_each > 0 ? (
-        <p className="mt-3 text-sm text-muted-600">
-          When someone you introduced starts paying, you get{" "}
-          <strong className="text-ink">
-            {data.reward_months_each} free month
-            {data.reward_months_each === 1 ? "" : "s"}
-          </strong>
-          .
-        </p>
-      ) : null}
 
       <dl className="mt-4 grid grid-cols-3 gap-3 text-center">
         <Stat label="Opened" value={data.clicks} />
