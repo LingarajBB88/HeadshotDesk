@@ -54,7 +54,18 @@ def upgrade() -> None:
     )
 
     # 'beta' joins the allowed plans.
-    op.drop_constraint("ck_accounts_plan", "accounts", type_="check")
+    #
+    # The old constraint has two possible names. 0001_initial_schema.sql
+    # declared it inline on the column without a name, so Postgres generated
+    # `accounts_plan_check`. The SQLAlchemy model names it `ck_accounts_plan`
+    # in __table_args__, which is what the test database gets because that's
+    # built with create_all rather than by running migrations. Production and
+    # test therefore disagree, and a plain drop_constraint passes locally and
+    # fails on deploy — which is exactly what happened.
+    #
+    # Drop whichever is there, then create the named one so both converge.
+    op.execute("ALTER TABLE accounts DROP CONSTRAINT IF EXISTS ck_accounts_plan")
+    op.execute("ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_plan_check")
     op.create_check_constraint(
         "ck_accounts_plan",
         "accounts",
@@ -120,7 +131,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("invite_codes")
     op.drop_table("referrals")
-    op.drop_constraint("ck_accounts_plan", "accounts", type_="check")
+    op.execute("ALTER TABLE accounts DROP CONSTRAINT IF EXISTS ck_accounts_plan")
     op.create_check_constraint(
         "ck_accounts_plan",
         "accounts",
