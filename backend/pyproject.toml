@@ -50,3 +50,8 @@ select = ["E", "F", "W", "I", "N", "B", "UP", "C4", "SIM"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    # Opts out of conftest's auto_verify_signups fixture, so the test gets a
+    # genuinely unverified account. Only the verification tests want this.
+    "unverified: leave accounts unverified for this test",
+]

@@ -185,7 +185,11 @@ class TestParticipantEmails:
         a = _signup(client)
         job = client.post(
             "/api/v1/jobs",
-            json={"name": "Walk-up day", "shoot_date": _future_date()},
+            json={
+                "name": "Walk-up day",
+                "shoot_date": _future_date(),
+                "location": "Acme HQ",
+            },
             headers=_auth(a["tokens"]["access_token"]),
         ).json()
         p = _public_signup(client, job["public_slug"], "Ann One", "ann@example.com")
@@ -252,6 +256,7 @@ class TestGalleryEmailCopy:
             json={
                 "name": "STX",
                 "shoot_date": _future_date(),
+                "location": "Acme HQ",
                 "download_cap": 3,
             },
             headers=_auth(tok),
@@ -301,7 +306,12 @@ class TestCapInvariant:
     def _job(self, client: TestClient, tok: str, **extra) -> dict:
         return client.post(
             "/api/v1/jobs",
-            json={"name": "Caps", "shoot_date": _future_date(), **extra},
+            json={
+                "name": "Caps",
+                "shoot_date": _future_date(),
+                "location": "Acme HQ",
+                **extra,
+            },
             headers=_auth(tok),
         ).json()
 

@@ -155,7 +155,11 @@ class TestShootReminders:
 
         job = client.post(
             "/api/v1/jobs",
-            json={"name": "Acme", "shoot_date": shoot_date.isoformat()},
+            json={
+                "name": "Acme",
+                "shoot_date": shoot_date.isoformat(),
+                "location": "Acme HQ",
+            },
             headers=_auth(tok),
         ).json()
         return a, tok, job
@@ -219,6 +223,7 @@ class TestShootReminders:
         ]
         assert len(mine) == 1
 
+    @pytest.mark.unverified
     def test_unverified_accounts_send_nothing(
         self, client: TestClient, db_session, outbox
     ):
@@ -233,6 +238,7 @@ class TestShootReminders:
             json={
                 "name": "Unverified",
                 "shoot_date": (date.today() + timedelta(days=1)).isoformat(),
+                "location": "Acme HQ",
             },
             headers=_auth(tok),
         ).json()
@@ -283,7 +289,11 @@ class TestNudges:
         tok = a["tokens"]["access_token"]
         job = client.post(
             "/api/v1/jobs",
-            json={"name": "Nudge", "shoot_date": date.today().isoformat()},
+            json={
+                "name": "Nudge",
+                "shoot_date": date.today().isoformat(),
+                "location": "Acme HQ",
+            },
             headers=_auth(tok),
         ).json()
         p = client.post(
@@ -328,7 +338,11 @@ class TestNudges:
         tok = a["tokens"]["access_token"]
         job = client.post(
             "/api/v1/jobs",
-            json={"name": "Late", "shoot_date": date.today().isoformat()},
+            json={
+                "name": "Late",
+                "shoot_date": date.today().isoformat(),
+                "location": "Acme HQ",
+            },
             headers=_auth(tok),
         ).json()
         p = client.post(

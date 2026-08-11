@@ -12,6 +12,7 @@ The only routes that stay open are the ones needed to get through it.
 import uuid
 from datetime import date, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -44,6 +45,7 @@ def _token_for(db_session, account_id: str) -> str:
     return raw
 
 
+@pytest.mark.unverified
 class TestVerificationFlow:
     def test_new_accounts_start_unverified(self, client: TestClient):
         a = _signup(client)
@@ -109,6 +111,7 @@ class TestVerificationFlow:
         assert r.status_code == 204
 
 
+@pytest.mark.unverified
 class TestTheGate:
     """Nothing works before verification. The narrow version of this let
     fake accounts create jobs and upload photos, which meant they still
@@ -120,6 +123,7 @@ class TestTheGate:
             json={
                 "name": "Acme",
                 "shoot_date": (date.today() + timedelta(days=7)).isoformat(),
+                "location": "Acme HQ",
             },
             headers=_auth(tok),
         )

@@ -152,16 +152,32 @@ class TestAttribution:
         assert row is None
 
 
+def _cap_of(db_session, headroom: int) -> int:
+    """A seat cap relative to what's already taken.
+
+    The suite shares one database, so an absolute cap like 5 silently
+    depends on how many beta accounts earlier tests created. That made
+    these pass alone and fail in a full run.
+    """
+    from app.services import referral_service
+
+    return referral_service.seats_used(db_session) + headroom
+
+
 class TestFreeSeats:
     def test_invite_claims_a_seat(self, client: TestClient, db_session, monkeypatch):
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 5)
+        before = referral_service.seats_used(db_session)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 5)
+        )
         invite = referral_service.create_invite_code(db_session, label="Test")
 
         a = _signup(client, invite_code=invite.code)
         assert a["account"]["plan"] == "beta"
-        assert referral_service.seats_used(db_session) == 1
+        # Relative, for the same reason as _cap_of: the database is shared.
+        assert referral_service.seats_used(db_session) == before + 1
 
     def test_exhausted_pool_falls_back_to_a_normal_trial(
         self, client: TestClient, db_session, monkeypatch
@@ -169,7 +185,9 @@ class TestFreeSeats:
         """Running out of seats must not turn anyone away."""
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 1)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 1)
+        )
         invite = referral_service.create_invite_code(db_session, max_uses=10)
 
         first = _signup(client, invite_code=invite.code)
@@ -183,7 +201,9 @@ class TestFreeSeats:
     ):
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 50)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 50)
+        )
         invite = referral_service.create_invite_code(db_session, max_uses=1)
 
         first = _signup(client, invite_code=invite.code)
@@ -199,7 +219,9 @@ class TestFreeSeats:
 
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 50)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 50)
+        )
         invite = referral_service.create_invite_code(db_session, max_uses=5)
         invite.revoked_at = datetime.now(timezone.utc)
         db_session.commit()
@@ -232,7 +254,9 @@ class TestBetaTestersPassSeatsOn:
     ):
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 10)
+        )
         invite = referral_service.create_invite_code(db_session, max_uses=1)
         tester = _signup(client, invite_code=invite.code)
         assert tester["account"]["plan"] == "beta"
@@ -246,7 +270,9 @@ class TestBetaTestersPassSeatsOn:
         self, client: TestClient, monkeypatch
     ):
         """Otherwise a trial user could give away seats meant for testers."""
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 10)
+        )
         a = _signup(client)
         assert a["account"]["plan"] == "trial"
 
@@ -263,7 +289,9 @@ class TestBetaTestersPassSeatsOn:
         from app.models import Account
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 1)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 1)
+        )
         invite = referral_service.create_invite_code(db_session, max_uses=1)
         tester = _signup(client, invite_code=invite.code)
         # The tester took the only seat.
@@ -377,7 +405,9 @@ class TestInviteChain:
     ):
         from app.services import referral_service
 
-        monkeypatch.setattr("app.config.settings.free_seat_cap", 10)
+        monkeypatch.setattr(
+            "app.config.settings.free_seat_cap", _cap_of(db_session, 10)
+        )
         a = _signup(client)
         code_a = _my_code(client, a["tokens"]["access_token"])
         b = _signup(client, referral_code=code_a)

@@ -80,3 +80,41 @@ def db_session():
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture(autouse=True)
+def auto_verify_signups(request, monkeypatch):
+    """Treat accounts created during tests as verified.
+
+    Verification is a hard gate on the whole authenticated API, so without
+    this every test in the suite would have to perform the same three-line
+    verification dance before it could assert anything about jobs, files or
+    galleries. That buries what each test is actually about, and two hundred
+    copies of the same setup is two hundred chances to get it subtly wrong.
+
+    The gate itself is real and tested properly in test_email_verification.py.
+    Tests that need an unverified account opt out:
+
+        @pytest.mark.unverified
+        def test_something(...): ...
+    """
+    if "unverified" in request.keywords:
+        return
+
+    from datetime import datetime, timezone
+
+    from app.services import auth_service
+
+    real_signup = auth_service.signup
+
+    def verified_signup(db, **kwargs):
+        user, account, tokens = real_signup(db, **kwargs)
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(user)
+        return user, account, tokens
+
+    # The route resolves auth_service.signup at call time, so patching the
+    # module attribute is enough.
+    monkeypatch.setattr(auth_service, "signup", verified_signup)
