@@ -1,0 +1,10 @@
+{{ signup.user_name }} signed up.
+
+Studio:  {{ signup.studio_name }}
+Email:   {{ signup.email }}
+Plan:    {{ signup.plan }}
+{% if signup.referrer_name %}Referred by: {{ signup.referrer_name }}
+{% endif %}{% if signup.invite_code %}Invite code: {{ signup.invite_code }}
+{% endif %}{% if signup.seats_left is not none %}Free seats left: {{ signup.seats_left }}
+{% endif %}
+{{ signup.admin_url }}

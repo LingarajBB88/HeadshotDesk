@@ -141,6 +141,9 @@ def signup(
     from app.services import referral_service
 
     invited = False
+    # Captured for the admin notification below: "who is this and how did
+    # they find us" is the whole point of that email.
+    referrer_name: str | None = None
     try:
         if invite_code:
             invite = referral_service.redeem_invite_code(db, code=invite_code)
@@ -152,6 +155,9 @@ def signup(
             row = referral_service.attach_signup(
                 db, code=referral_code, account=account
             )
+            if row is not None:
+                referring = db.get(Account, row.referrer_account_id)
+                referrer_name = referring.name if referring else None
             # A beta tester's link passes their seat along: that's the deal
             # during beta, and it means one link per person rather than a
             # separate invite code alongside it. Everyone else's link is
@@ -186,6 +192,27 @@ def signup(
         send_verification_email(db, user=user)
     except Exception:  # noqa: BLE001
         logger.exception("Verification email failed (user=%s)", user.id)
+
+    # Tell the team. Last, and best-effort like the rest: an internal
+    # notification is never worth failing a registration over.
+    try:
+        email_service.send_admin_new_signup_email(
+            user_name=user.name,
+            studio_name=account.name,
+            email=user.email,
+            plan=account.plan,
+            referrer_name=referrer_name,
+            invite_code=account.invite_code,
+            # Only relevant when a seat was actually taken, and it's the
+            # number worth seeing at that moment.
+            seats_left=(
+                referral_service.seats_remaining(db)
+                if account.plan == "beta"
+                else None
+            ),
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Admin signup notification failed (account=%s)", account.id)
 
     return user, account, tokens
 

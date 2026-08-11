@@ -565,6 +565,64 @@ def send_undelivered_nudge_email(
     )
 
 
+def send_admin_new_signup_email(
+    *,
+    user_name: str,
+    studio_name: str,
+    email: str,
+    plan: str,
+    referrer_name: str | None = None,
+    invite_code: str | None = None,
+    seats_left: int | None = None,
+) -> None:
+    """Tell the team someone signed up.
+
+    Goes to the team inbox, not to the person who signed up. Carries where
+    they came from, because "who is this and how did they find us" is the
+    only question worth answering on a phone at the weekend.
+    """
+    via = None
+    if invite_code:
+        via = "invited"
+    elif referrer_name:
+        via = f"via {referrer_name}"
+
+    rendered = render_email(
+        "admin_new_signup",
+        {
+            "signup": {
+                "user_name": user_name,
+                "studio_name": studio_name,
+                "email": email,
+                "plan": plan,
+                "referrer_name": referrer_name,
+                "invite_code": invite_code,
+                "seats_left": seats_left,
+                "via": via,
+                "admin_url": f"{_APP_CONTEXT['url']}/admin",
+            },
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Admin: new signup",
+            to_email=settings.feedback_to_email,
+            recipient_name="Team",
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+        )
+        return
+
+    _send_via_postmark(
+        to_email=settings.feedback_to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
 def _deliver(
     *,
     label: str,

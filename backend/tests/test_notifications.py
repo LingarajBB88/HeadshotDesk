@@ -19,7 +19,7 @@ def _future_date() -> str:
     return (date.today() + timedelta(days=14)).isoformat()
 
 
-def _signup(client: TestClient, email: str | None = None) -> dict:
+def _signup(client: TestClient, email: str | None = None, **extra) -> dict:
     import uuid
 
     return client.post(
@@ -29,6 +29,7 @@ def _signup(client: TestClient, email: str | None = None) -> dict:
             "password": "correct horse battery staple",
             "name": "Pat Photographer",
             "account_name": "Panther Studios",
+            **extra,
         },
     ).json()
 
@@ -70,6 +71,7 @@ def outbox(monkeypatch) -> dict[str, list[dict]]:
         "send_slot_confirmation_email",
         "send_slot_cancelled_email",
         "send_client_delivery_email",
+        "send_admin_new_signup_email",
     ):
         box[fn] = []
         monkeypatch.setattr(
@@ -102,6 +104,56 @@ class TestPhotographerEmails:
             },
         )
         assert r.status_code in (200, 201), r.text
+        assert r.json()["tokens"]["access_token"]
+
+
+class TestAdminSignupNotification:
+    """Goes to the team inbox, not the person signing up. Its job is to
+    answer 'who is this and how did they find us'."""
+
+    def test_every_signup_notifies_the_team(self, client: TestClient, outbox):
+        a = _signup(client, "brand.new@example.com")
+        sent = outbox["send_admin_new_signup_email"]
+        assert len(sent) == 1
+        assert sent[0]["email"] == "brand.new@example.com"
+        assert sent[0]["plan"] == "trial"
+        assert sent[0]["referrer_name"] is None
+
+    def test_it_names_the_referrer(self, client: TestClient, outbox):
+        a = _signup(client)
+        code = client.get(
+            "/api/v1/me/referral", headers=_auth(a["tokens"]["access_token"])
+        ).json()["code"]
+        outbox["send_admin_new_signup_email"].clear()
+
+        _signup(client, referral_code=code)
+
+        sent = outbox["send_admin_new_signup_email"]
+        assert len(sent) == 1
+        assert sent[0]["referrer_name"] == "Panther Studios"
+
+    def test_a_failure_here_cannot_break_signup(
+        self, client: TestClient, monkeypatch
+    ):
+        """An internal notification is never worth failing a registration
+        over."""
+
+        def boom(**_kw):
+            raise RuntimeError("postmark down")
+
+        monkeypatch.setattr(
+            "app.services.email_service.send_admin_new_signup_email", boom
+        )
+        r = client.post(
+            "/api/v1/auth/signup",
+            json={
+                "email": "resilient2@example.com",
+                "password": "correct horse battery staple",
+                "name": "Pat",
+                "account_name": "Studio",
+            },
+        )
+        assert r.status_code in (200, 201)
         assert r.json()["tokens"]["access_token"]
 
 
