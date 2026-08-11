@@ -1,0 +1,1 @@
+{{ nudge.count }} galleries from {{ job.name }} haven't gone out

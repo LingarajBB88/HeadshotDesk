@@ -110,15 +110,21 @@ export async function resetShot(participantId: string): Promise<Participant> {
   });
 }
 
-/** Flag (or unflag) someone who didn't turn up. */
+/**
+ * Flag (or unflag) someone who didn't turn up.
+ *
+ * Flagging sends them a "we missed you" follow-up with a rebooking link.
+ * `notify: false` suppresses it, for correcting a mis-tap.
+ */
 export async function setNoShow(
   participantId: string,
   noShow = true,
+  notify = true,
 ): Promise<Participant> {
   return api<Participant>(`/api/v1/participants/${participantId}/no-show`, {
     method: "POST",
     token: authToken(),
-    body: JSON.stringify({ no_show: noShow }),
+    body: JSON.stringify({ no_show: noShow, notify }),
   });
 }
 

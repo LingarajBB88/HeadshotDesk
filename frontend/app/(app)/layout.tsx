@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/Logo";
-import { VerifyEmailBanner } from "@/components/VerifyEmailBanner";
+import { VerifyEmailGate } from "@/components/VerifyEmailGate";
 import { type Account, type User, fetchMe, logout } from "@/lib/auth";
 
 // Layout for authenticated pages. Redirects to /login if no valid session.
@@ -53,13 +53,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Nothing behind this until the address is confirmed. The API returns
+  // 403 for every authenticated route anyway; this is the readable version
+  // of that, and it keeps the person one click from a resend.
+  if (state.user.email_verified_at === null) {
+    return <VerifyEmailGate email={state.user.email} />;
+  }
+
   return (
     <div className="min-h-dvh">
-      {/* Above the nav, so it's the first thing on the page until it's
-          dealt with. It blocks nothing here; the API is the real gate. */}
-      {state.user.email_verified_at === null ? (
-        <VerifyEmailBanner email={state.user.email} />
-      ) : null}
       {/* print:hidden keeps the app chrome off printed pages (the QR card). */}
       <header className="border-b border-muted-200 bg-paper print:hidden">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-6 h-14 flex items-center gap-3 sm:gap-6">

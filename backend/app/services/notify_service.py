@@ -121,6 +121,35 @@ def slot_cancelled(
         logger.exception("Slot cancellation email failed (job=%s)", job.id)
 
 
+def marked_no_show(db: Session, *, job: Job, participant: Participant) -> None:
+    """Follow up with someone who didn't turn up.
+
+    Sent when the photographer flags them, not on a schedule: the moment
+    they press the button is when the information is freshest and the
+    rebooking is most likely to happen.
+    """
+    if not participant.email:
+        return
+    ctx = _context(db, job)
+    try:
+        email_service.send_no_show_followup_email(
+            to_email=participant.email,
+            participant_name=participant.name,
+            photographer_name=ctx["photographer_name"],
+            job_name=ctx["job_name"],
+            signup_url=ctx["signup_url"],
+            # Only offer a self-serve rebooking when there's actually a
+            # schedule to book into. On a walk-up job "pick a new time" is
+            # a link to a page with no times on it.
+            can_rebook=job.shoot_mode == "time_slot"
+            and job.archived_at is None,
+            client_logo_url=ctx["client_logo_url"],
+            client_name=ctx["client_name"],
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("No-show follow-up failed (job=%s)", job.id)
+
+
 def participant_signed_up(
     db: Session, *, job: Job, participant: Participant
 ) -> None:

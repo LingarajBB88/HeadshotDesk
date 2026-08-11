@@ -43,6 +43,11 @@ class Participant(Base):
     reminder_sent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # One-shot nudge for a gallery that was delivered but never opened.
+    # Never a second: the target is people who forgot, not people who chose.
+    gallery_nudge_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     no_show_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

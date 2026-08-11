@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_account, require_verified_email
+from app.api.deps import get_current_account
 from app.db import get_db
-from app.models import Account, User
+from app.models import Account
 from app.schemas.participant import (
     CsvImportResult,
     ParticipantCreate,
@@ -146,6 +146,10 @@ def reset_shot(
 
 class NoShowRequest(BaseModel):
     no_show: bool = True
+    # Send the "we missed you" follow-up. Default on, because the whole
+    # point of flagging someone is that they still want a headshot. The
+    # shoot screen turns it off when correcting a mis-tap.
+    notify: bool = True
 
 
 @router.post(
@@ -158,12 +162,25 @@ def set_no_show(
     db: Session = Depends(get_db),
 ) -> ParticipantOut:
     """Flag someone who didn't turn up (or clear the flag)."""
+    no_show = payload.no_show if payload else True
+    notify = payload.notify if payload else True
     p = participant_service.set_no_show(
         db,
         account=account,
         participant_id=participant_id,
-        no_show=payload.no_show if payload else True,
+        no_show=no_show,
     )
+    # Only on flagging, never on clearing: "we missed you" followed by
+    # nothing when the photographer fixes a mis-tap would be worse than
+    # silence. Off by default is wrong here, but the flag exists for the
+    # photographer who's correcting a mistake mid-shoot.
+    if no_show and notify:
+        from app.models import Job
+        from app.services import notify_service
+
+        job = db.get(Job, p.job_id)
+        if job is not None:
+            notify_service.marked_no_show(db, job=job, participant=p)
     return ParticipantOut.model_validate(p)
 
 
@@ -195,7 +212,6 @@ def attendance_report(
 def resend_gallery(
     participant_id: str,
     account: Account = Depends(get_current_account),
-    _verified: User = Depends(require_verified_email),
     db: Session = Depends(get_db),
 ) -> ParticipantOut:
     """Force-resend the gallery delivery email to one participant. Overrides

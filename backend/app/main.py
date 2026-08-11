@@ -6,7 +6,7 @@ Run via tasks: see scripts/dev.sh
 """
 import logging
 
-from fastapi import FastAPI, Response, status
+from fastapi import Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import (
@@ -20,6 +20,7 @@ from app.api import (
     public,
     referrals,
 )
+from app.api.deps import require_verified_email
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -147,25 +148,55 @@ def health_storage(response: Response) -> dict[str, object]:
 
 
 # v0.1 routers
+#
+# `verified` gates the entire authenticated API. Applied here rather than
+# endpoint by endpoint so a new route can't accidentally ship unguarded:
+# forgetting one decorator is how a "no fake accounts" rule quietly stops
+# being true.
+#
+# Auth stays open — it's how you get verified in the first place — and the
+# public routers are token-only surfaces for participants and clients, who
+# have no HeadshotDesk account at all.
+verified = [Depends(require_verified_email)]
+
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
+app.include_router(
+    jobs.router, prefix="/api/v1/jobs", tags=["jobs"], dependencies=verified
+)
 # Participants router has nested + direct routes; mount at /api/v1.
-app.include_router(participants.router, prefix="/api/v1", tags=["participants"])
+app.include_router(
+    participants.router,
+    prefix="/api/v1",
+    tags=["participants"],
+    dependencies=verified,
+)
 app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
 # F5b.1 public gallery — token-only auth, no JWT.
 app.include_router(gallery.router, prefix="/api/v1/public/gallery", tags=["gallery"])
 # Files router has nested + direct routes; mount at /api/v1.
-app.include_router(files.router, prefix="/api/v1", tags=["files"])
+app.include_router(
+    files.router, prefix="/api/v1", tags=["files"], dependencies=verified
+)
 # HSD-66 operator dashboard — admin-only, gated in the router's deps.
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 # Referrals: the photographer's own link under /api/v1, the funnel and the
 # free-seat pool under /api/v1/admin (that router carries the admin gate).
-app.include_router(referrals.router, prefix="/api/v1", tags=["referrals"])
+app.include_router(
+    referrals.router,
+    prefix="/api/v1",
+    tags=["referrals"],
+    dependencies=verified,
+)
 app.include_router(
     referrals.admin_router, prefix="/api/v1/admin", tags=["admin"]
 )
 # HSD-36 clients (branding owner for jobs).
-app.include_router(clients.router, prefix="/api/v1/clients", tags=["clients"])
+app.include_router(
+    clients.router,
+    prefix="/api/v1/clients",
+    tags=["clients"],
+    dependencies=verified,
+)
 
 # Wired up as features ship:
 # app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])

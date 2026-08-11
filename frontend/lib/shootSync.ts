@@ -142,7 +142,9 @@ function callFor(kind: PendingAction["kind"], participantId: string) {
     case "no-show":
       return setNoShow(participantId, true);
     case "un-no-show":
-      return setNoShow(participantId, false);
+      // notify=false: un-flagging is a correction, and there's no
+      // "actually, ignore that" email worth sending.
+      return setNoShow(participantId, false, false);
   }
 }
 

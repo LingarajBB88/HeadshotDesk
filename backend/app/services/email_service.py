@@ -459,6 +459,112 @@ def send_referral_reward_email(
     )
 
 
+def send_no_show_followup_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    signup_url: str,
+    can_rebook: bool,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Follow up with someone who didn't turn up.
+
+    Blame-free by design: half of no-shows are a meeting that overran, and
+    an email that reads like a telling-off doesn't get a reply.
+    """
+    rendered = render_email(
+        "no_show_followup",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {"name": job_name, "client_name": client_name},
+            "followup": {"signup_url": signup_url, "can_rebook": can_rebook},
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="No-show follow-up",
+        to_email=to_email,
+        recipient_name=participant_name,
+        rendered=rendered,
+        extra_url=signup_url,
+    )
+
+
+def send_gallery_nudge_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    gallery_url: str,
+    download_cap: int | None = None,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Remind someone their gallery is sitting unopened.
+
+    One nudge, never a second: the target is people who forgot, not people
+    who decided.
+    """
+    rendered = render_email(
+        "gallery_nudge",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {"name": job_name, "client_name": client_name},
+            "gallery": {"url": gallery_url, "download_cap": download_cap},
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Gallery nudge",
+        to_email=to_email,
+        recipient_name=participant_name,
+        rendered=rendered,
+        extra_url=gallery_url,
+    )
+
+
+def send_undelivered_nudge_email(
+    *,
+    to_email: str,
+    user_name: str,
+    job_name: str,
+    job_url: str,
+    count: int,
+    days_ago: int,
+) -> None:
+    """Tell a photographer a shot job still hasn't been delivered."""
+    rendered = render_email(
+        "undelivered_nudge",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "job": {"name": job_name},
+            "nudge": {"job_url": job_url, "count": count, "days_ago": days_ago},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Undelivered nudge",
+        to_email=to_email,
+        recipient_name=user_name,
+        rendered=rendered,
+        extra_url=job_url,
+    )
+
+
 def _deliver(
     *,
     label: str,

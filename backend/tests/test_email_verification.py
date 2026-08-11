@@ -1,10 +1,13 @@
 """
 Email verification.
 
-The gate is deliberately narrow: an unverified photographer can work, they
-just can't make us email strangers. Locking them out entirely would strand
-someone who signs up an hour before a shoot, which is a support call at the
-worst possible moment.
+A hard gate: nothing in the authenticated API works until the address is
+confirmed. The earlier, narrower version let unverified accounts create
+jobs and upload photos, which meant fake signups still accumulated real
+data and real storage cost. If the point is to stop junk accounts, the gate
+belongs at the door.
+
+The only routes that stay open are the ones needed to get through it.
 """
 import uuid
 from datetime import date, timedelta
@@ -107,7 +110,11 @@ class TestVerificationFlow:
 
 
 class TestTheGate:
-    def _job(self, client: TestClient, tok: str) -> dict:
+    """Nothing works before verification. The narrow version of this let
+    fake accounts create jobs and upload photos, which meant they still
+    accumulated real data and real storage cost."""
+
+    def _create_job(self, client: TestClient, tok: str):
         return client.post(
             "/api/v1/jobs",
             json={
@@ -115,57 +122,52 @@ class TestTheGate:
                 "shoot_date": (date.today() + timedelta(days=7)).isoformat(),
             },
             headers=_auth(tok),
-        ).json()
-
-    def test_unverified_can_still_do_the_work(self, client: TestClient):
-        """Creating jobs and running a shoot must not be blocked."""
-        a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = self._job(client, tok)
-        assert job["id"]
-
-        r = client.post(
-            f"/api/v1/jobs/{job['id']}/participants",
-            json={"name": "Jane Doe", "email": "jane@example.com"},
-            headers=_auth(tok),
         )
-        assert r.status_code == 201
 
-    def test_unverified_cannot_deliver_galleries(self, client: TestClient):
+    def test_unverified_cannot_create_a_job(self, client: TestClient):
         a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = self._job(client, tok)
-
-        r = client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(tok))
+        r = self._create_job(client, a["tokens"]["access_token"])
         assert r.status_code == 403
         assert "Confirm your email" in r.json()["detail"]
 
-    def test_unverified_signup_page_is_not_public(self, client: TestClient):
-        """404, not 403: a stranger guessing a slug shouldn't learn anything
-        about the account behind it."""
+    def test_unverified_cannot_list_jobs(self, client: TestClient):
         a = _signup(client)
-        job = self._job(client, a["tokens"]["access_token"])
+        r = client.get(
+            "/api/v1/jobs", headers=_auth(a["tokens"]["access_token"])
+        )
+        assert r.status_code == 403
 
-        r = client.get(f"/api/v1/public/jobs/{job['public_slug']}")
-        assert r.status_code == 404
-
-    def test_verifying_opens_the_signup_page(self, client: TestClient, db_session):
+    def test_unverified_cannot_reach_clients_or_referrals(
+        self, client: TestClient
+    ):
         a = _signup(client)
         tok = a["tokens"]["access_token"]
-        job = self._job(client, tok)
+        assert client.get("/api/v1/clients", headers=_auth(tok)).status_code == 403
+        assert (
+            client.get("/api/v1/me/referral", headers=_auth(tok)).status_code == 403
+        )
+
+    def test_the_routes_needed_to_get_verified_stay_open(
+        self, client: TestClient
+    ):
+        """Otherwise there's no way out of the gate."""
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        assert client.get("/api/v1/auth/me", headers=_auth(tok)).status_code == 200
+        assert (
+            client.post(
+                "/api/v1/auth/resend-verification", headers=_auth(tok)
+            ).status_code
+            == 204
+        )
+
+    def test_verifying_opens_everything(self, client: TestClient, db_session):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
         raw = _token_for(db_session, a["account"]["id"])
         client.post("/api/v1/auth/verify-email", json={"token": raw})
 
-        r = client.get(f"/api/v1/public/jobs/{job['public_slug']}")
-        assert r.status_code == 200
-
-    def test_verifying_allows_delivery(self, client: TestClient, db_session):
-        a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = self._job(client, tok)
-        raw = _token_for(db_session, a["account"]["id"])
-        client.post("/api/v1/auth/verify-email", json={"token": raw})
-
-        r = client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(tok))
-        # Nothing to deliver, but the gate is open.
+        job = self._create_job(client, tok)
+        assert job.status_code == 201
+        r = client.get(f"/api/v1/public/jobs/{job.json()['public_slug']}")
         assert r.status_code == 200

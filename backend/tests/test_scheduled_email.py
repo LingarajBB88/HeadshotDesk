@@ -247,3 +247,110 @@ class TestShootReminders:
             m["to_email"] == "nope@example.com"
             for m in outbox["send_shoot_reminder_email"]
         )
+
+
+class TestNudges:
+    """One-shot nudges. A reminder that repeats gets filtered, and once a
+    sender is filtered the useful mail goes with it."""
+
+    def _verified(self, client: TestClient, db_session) -> dict:
+        from sqlalchemy import select
+
+        from app.core.security import generate_refresh_token, hash_refresh_token
+        from app.models import User
+
+        a = _signup(client)
+        raw = generate_refresh_token()
+        user = db_session.scalar(
+            select(User).where(User.account_id == a["account"]["id"])
+        )
+        user.email_verification_token_hash = hash_refresh_token(raw)
+        db_session.commit()
+        client.post("/api/v1/auth/verify-email", json={"token": raw})
+        return a
+
+    def test_gallery_nudge_only_after_the_wait(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Participant
+        from app.services import email_service, scheduled_email_service
+
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            email_service, "send_gallery_nudge_email", lambda **kw: sent.append(kw)
+        )
+        a = self._verified(client, db_session)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={"name": "Nudge", "shoot_date": date.today().isoformat()},
+            headers=_auth(tok),
+        ).json()
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Jane", "email": "jane.nudge@example.com"},
+            headers=_auth(tok),
+        ).json()
+
+        row = db_session.get(Participant, p["id"])
+        # Delivered just now: too soon to nag.
+        row.gallery_sent_at = datetime.now(timezone.utc)
+        db_session.commit()
+        scheduled_email_service.send_gallery_nudges(db_session)
+        assert sent == []
+
+        # Delivered a week ago and still untouched.
+        row.gallery_sent_at = datetime.now(timezone.utc) - timedelta(days=7)
+        db_session.commit()
+        scheduled_email_service.send_gallery_nudges(db_session)
+        assert any(m["to_email"] == "jane.nudge@example.com" for m in sent)
+
+        # And never twice.
+        before = len(sent)
+        scheduled_email_service.send_gallery_nudges(db_session)
+        assert len(sent) == before
+
+    def test_undelivered_nudge_needs_someone_actually_shot(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        """A job with no photographed participants isn't late, it just
+        hasn't happened."""
+        from app.models import Job, Participant
+        from app.services import email_service, scheduled_email_service
+
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            email_service,
+            "send_undelivered_nudge_email",
+            lambda **kw: sent.append(kw),
+        )
+        a = self._verified(client, db_session)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={"name": "Late", "shoot_date": date.today().isoformat()},
+            headers=_auth(tok),
+        ).json()
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Jane", "email": "jane.late@example.com"},
+            headers=_auth(tok),
+        ).json()
+
+        row = db_session.get(Job, job["id"])
+        row.shoot_date = date.today() - timedelta(days=5)
+        db_session.commit()
+
+        # Nobody shot yet: silence.
+        scheduled_email_service.send_undelivered_nudges(db_session)
+        assert sent == []
+
+        db_session.get(Participant, p["id"]).shot_at = datetime.now(timezone.utc)
+        db_session.commit()
+        scheduled_email_service.send_undelivered_nudges(db_session)
+        assert len(sent) == 1
+        assert sent[0]["count"] == 1
+
+        # One nudge per job, forever.
+        scheduled_email_service.send_undelivered_nudges(db_session)
+        assert len(sent) == 1

@@ -75,24 +75,25 @@ def get_current_account(
 
 
 def require_verified_email(user: User = Depends(get_current_user)) -> User:
-    """Gate for anything that makes HeadshotDesk send mail to a third party.
+    """Nothing works until the address is confirmed.
 
-    Deliberately narrow. An unverified photographer can log in, create jobs,
-    upload photos and run a shoot: locking them out entirely would strand
-    someone who signs up an hour before an event and doesn't get the email,
-    and that's a support call at the worst possible moment.
+    Applied at router level across the whole authenticated API, not per
+    endpoint. The narrow version of this gate let an unverified account
+    create jobs and upload photos, which meant fake signups could still
+    accumulate real data and real storage cost. If the point is to stop
+    junk accounts, the gate has to be at the door.
 
-    What they cannot do is cause us to email people who never asked for it,
-    or publish a public signup page. That's the actual abuse vector, and
-    it's the one that would cost us our sending reputation — which we'd lose
-    for every photographer on the platform at once, not just the offender.
+    The handful of routes that stay open are the ones needed to get
+    verified: /auth/me, /auth/verify-email, /auth/resend-verification and
+    /auth/logout. Everything else 403s with a message the frontend turns
+    into the "check your inbox" screen.
     """
     if user.email_verified_at is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
-                "Confirm your email address first. We've sent you a link; "
-                "check your inbox, or request a new one from the banner."
+                "Confirm your email address to start using HeadshotDesk. "
+                "We've sent you a link."
             ),
         )
     return user

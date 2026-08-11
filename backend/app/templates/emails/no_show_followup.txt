@@ -1,0 +1,10 @@
+Hi {{ participant.first_name }},
+
+We didn't manage to photograph you at {{ job.name }}. No problem, these things happen on a busy day.
+
+{% if followup.can_rebook %}If you'd still like your headshot, pick a new time here:
+
+{{ followup.signup_url }}
+{% else %}If you'd still like your headshot, reply to this email and we'll find a time.
+{% endif %}
+{{ photographer.display_name }}

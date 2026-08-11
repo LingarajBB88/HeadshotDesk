@@ -1,0 +1,10 @@
+Hi {{ user.first_name }},
+
+You shot {{ job.name }} {{ nudge.days_ago }} days ago and {{ nudge.count }} {{ 'gallery is' if nudge.count == 1 else 'galleries are' }} still waiting to be delivered.
+
+{{ nudge.job_url }}
+
+If you're still editing, ignore this. If it slipped, it's one button.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

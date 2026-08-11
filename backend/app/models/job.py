@@ -81,6 +81,11 @@ class Job(Base):
         Integer, nullable=False, default=1, server_default="1"
     )
 
+    # One-shot nudge when a shot job still hasn't been delivered days later.
+    undelivered_nudge_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # HSD-55: shoot-day mode. "queue" (default, walk-up) or "time_slot"
     # (participants self-book during signup).
     shoot_mode: Mapped[str] = mapped_column(

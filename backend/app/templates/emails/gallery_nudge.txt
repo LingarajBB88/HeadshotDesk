@@ -1,0 +1,9 @@
+Hi {{ participant.first_name }},
+
+Your photos from {{ job.name }} are still sitting in your gallery, unopened.
+
+{{ gallery.url }}
+
+{% if gallery.download_cap is none %}Download whichever ones you like.{% elif gallery.download_cap == 1 %}Pick the one you want and download it.{% else %}You can download {{ gallery.download_cap }} of them.{% endif %} It takes a minute, and the link keeps working.
+
+{{ photographer.display_name }}
