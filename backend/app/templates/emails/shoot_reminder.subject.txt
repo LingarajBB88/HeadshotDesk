@@ -1,0 +1,1 @@
+{% if reminder.time %}Your headshot is tomorrow at {{ reminder.time }}{% else %}Headshots tomorrow: {{ job.name }}{% endif %}

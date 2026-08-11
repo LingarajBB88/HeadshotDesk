@@ -1,0 +1,12 @@
+Hi {{ user.first_name }},
+
+One quick thing before you send anything to your clients: confirm this is your email address.
+
+{{ verify.url }}
+
+Until you do, you can set up jobs and look around, but HeadshotDesk won't send anything to your participants and your signup link stays private. That's there to protect everyone's delivery: one bad sender ruins email for every photographer on the platform.
+
+The link works for {{ verify.days }} days.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

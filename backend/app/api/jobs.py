@@ -3,7 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_account, get_current_user
+from app.api.deps import (
+    get_current_account,
+    get_current_user,
+    require_verified_email,
+)
 from app.db import get_db
 from app.models import Account, User
 from app.schemas.job import (
@@ -121,6 +125,9 @@ def deliver(
     job_id: str,
     payload: DeliverRequest | None = None,
     account: Account = Depends(get_current_account),
+    # Sends mail to people who never signed up with us directly, so it
+    # needs a confirmed sender behind it.
+    _verified: User = Depends(require_verified_email),
     db: Session = Depends(get_db),
 ) -> DeliveryResult:
     """F5c — Bulk send the gallery delivery email to every eligible participant

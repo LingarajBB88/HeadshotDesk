@@ -2,6 +2,7 @@
 import ipaddress
 
 from fastapi import APIRouter, Depends, Request, Response, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_account, get_current_user
@@ -134,6 +135,39 @@ def reset_password(
     auth_service.reset_password(
         db, token=payload.token, new_password=payload.new_password
     )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/verify-email", status_code=status.HTTP_204_NO_CONTENT)
+def verify_email(
+    payload: VerifyEmailRequest,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Consume a verification link.
+
+    Unauthenticated on purpose: people click these from an email client on
+    a phone that isn't logged in, and forcing a login first is how a
+    verification flow becomes a support ticket.
+    """
+    auth_service.verify_email(db, token=payload.token)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/resend-verification", status_code=status.HTTP_204_NO_CONTENT)
+def resend_verification(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Send a fresh verification link.
+
+    Quiet 204 whether or not anything was sent: already-verified is not an
+    error worth surfacing, it's just nothing to do.
+    """
+    auth_service.send_verification_email(db, user=user)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -1,0 +1,32 @@
+{# Same principle as the warning: lead with what still works. Someone whose
+   trial just lapsed is worried about the shoot they delivered last week. #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
+
+  <p style="margin:0 0 16px;">
+    Your trial for <strong>{{ trial.studio_name }}</strong> has ended.
+  </p>
+
+  <p style="margin:0 0 16px;color:#475569;">
+    Everything you made is still there. Your jobs, photos and galleries are
+    untouched, and every gallery link you've sent a participant still works.
+    Nobody on your last shoot will notice anything.
+  </p>
+
+  <p style="margin:0 0 20px;">
+    <a href="{{ trial.pricing_url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Pick a plan
+    </a>
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">
+    If you've decided it's not for you, that's fine, and I'd still like to
+    hear what was missing. Just reply.
+  </p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ app.sender_name }}<br />
+    <span style="color:#475569;">{{ app.sender_role }}, {{ app.name }}</span>
+  </p>
+</div>

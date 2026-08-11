@@ -253,6 +253,48 @@ def send_welcome_email(
     )
 
 
+def send_email_verification_email(
+    *, to_email: str, user_name: str, verify_url: str
+) -> None:
+    """Ask a new photographer to confirm their address.
+
+    Its own message rather than a link inside the welcome email: it needs a
+    subject line that says what it wants, and it needs to be findable again
+    a week later.
+    """
+    from app.services.auth_service import EMAIL_VERIFICATION_TTL
+
+    rendered = render_email(
+        "email_verification",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "verify": {
+                "url": verify_url,
+                "days": EMAIL_VERIFICATION_TTL.days,
+            },
+            "app": _APP_CONTEXT,
+        },
+    )
+
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label="Email verification",
+            to_email=to_email,
+            recipient_name=user_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=verify_url,
+        )
+        return
+
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
 def send_password_changed_email(*, to_email: str, user_name: str) -> None:
     """Security notice after a password reset completes.
 
@@ -277,6 +319,169 @@ def send_password_changed_email(*, to_email: str, user_name: str) -> None:
         )
         return
 
+    _send_via_postmark(
+        to_email=to_email,
+        subject=rendered["subject"],
+        text_body=rendered["text"],
+        html_body=rendered["html"],
+    )
+
+
+def send_trial_ending_email(
+    *,
+    to_email: str,
+    user_name: str,
+    studio_name: str,
+    days_left: int,
+    ends_on: str,
+    pricing_url: str,
+) -> None:
+    """Warn a photographer their trial is nearly up.
+
+    Copy lives in app/templates/emails/trial_ending.{subject.txt, txt, html}.
+    """
+    rendered = render_email(
+        "trial_ending",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "trial": {
+                "studio_name": studio_name,
+                "days_left": days_left,
+                "ends_on": ends_on,
+                "pricing_url": pricing_url,
+            },
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Trial ending",
+        to_email=to_email,
+        recipient_name=user_name,
+        rendered=rendered,
+        extra_url=pricing_url,
+    )
+
+
+def send_trial_ended_email(
+    *, to_email: str, user_name: str, studio_name: str, pricing_url: str
+) -> None:
+    """Tell a photographer their trial has run out."""
+    rendered = render_email(
+        "trial_ended",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "trial": {"studio_name": studio_name, "pricing_url": pricing_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Trial ended",
+        to_email=to_email,
+        recipient_name=user_name,
+        rendered=rendered,
+        extra_url=pricing_url,
+    )
+
+
+def send_shoot_reminder_email(
+    *,
+    to_email: str,
+    participant_name: str,
+    photographer_name: str,
+    job_name: str,
+    queue_url: str,
+    signup_url: str,
+    time_label: str | None = None,
+    location: str | None = None,
+    client_logo_url: str | None = None,
+    client_name: str | None = None,
+) -> None:
+    """Remind a participant they're being photographed tomorrow.
+
+    The cheapest thing in the product that reduces no-shows.
+    """
+    rendered = render_email(
+        "shoot_reminder",
+        {
+            "participant": {
+                "name": participant_name,
+                "first_name": _first_name(participant_name),
+            },
+            "photographer": {"display_name": photographer_name},
+            "job": {
+                "name": job_name,
+                "location": location,
+                "client_name": client_name,
+            },
+            "reminder": {
+                "time": time_label,
+                "queue_url": queue_url,
+                "signup_url": signup_url,
+            },
+            "client": {"logo_url": client_logo_url},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Shoot reminder",
+        to_email=to_email,
+        recipient_name=participant_name,
+        rendered=rendered,
+        extra_url=signup_url,
+    )
+
+
+def send_referral_reward_email(
+    *,
+    to_email: str,
+    user_name: str,
+    referred_name: str,
+    months: int,
+) -> None:
+    """Tell a referrer they've earned free months.
+
+    Worth sending even though it needs no action: a reward nobody is told
+    about doesn't make anyone share the link a second time.
+    """
+    rendered = render_email(
+        "referral_reward",
+        {
+            "user": {"name": user_name, "first_name": _first_name(user_name)},
+            "reward": {"referred_name": referred_name, "months": months},
+            "app": _APP_CONTEXT,
+        },
+    )
+    _deliver(
+        label="Referral reward",
+        to_email=to_email,
+        recipient_name=user_name,
+        rendered=rendered,
+    )
+
+
+def _deliver(
+    *,
+    label: str,
+    to_email: str,
+    recipient_name: str,
+    rendered: dict,
+    extra_url: str | None = None,
+) -> None:
+    """Log in development, send in production.
+
+    Factored out because every sender above it repeated the same six lines,
+    and a copy-paste slip there means an email that silently never sends.
+    """
+    if not settings.postmark_server_token:
+        _log_dev_email(
+            label=label,
+            to_email=to_email,
+            recipient_name=recipient_name,
+            subject=rendered["subject"],
+            text_body=rendered["text"],
+            extra_url=extra_url,
+        )
+        return
     _send_via_postmark(
         to_email=to_email,
         subject=rendered["subject"],

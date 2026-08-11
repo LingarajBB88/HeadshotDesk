@@ -31,6 +31,16 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Email verification — same shape as the reset token: hash stored, raw
+    # token emailed. Long-lived (7 days) because the failure mode is
+    # someone coming back to it on Monday, not an attacker.
+    email_verification_token_hash: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )
+    email_verification_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

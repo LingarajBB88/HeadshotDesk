@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 # Password reset tokens are valid for one hour.
 PASSWORD_RESET_TTL = timedelta(hours=1)
 
+# Verification links last a week. Long, deliberately: the realistic failure
+# is someone signing up on Friday and coming back to it on Monday, not an
+# attacker sitting on a stolen inbox. A short expiry here buys nothing and
+# costs support emails.
+EMAIL_VERIFICATION_TTL = timedelta(days=7)
+
 # Free trial length, quoted in the welcome email. Kept here rather than
 # imported from the admin API so the service layer doesn't depend on a
 # route module. api/admin.py holds the copy used for expiry calculations.
@@ -174,6 +180,13 @@ def signup(
     except Exception:  # noqa: BLE001
         logger.exception("Welcome email failed (user=%s)", user.id)
 
+    # Verification goes out as its own message rather than a link buried in
+    # the welcome: it needs a subject line that says what it wants.
+    try:
+        send_verification_email(db, user=user)
+    except Exception:  # noqa: BLE001
+        logger.exception("Verification email failed (user=%s)", user.id)
+
     return user, account, tokens
 
 
@@ -254,6 +267,60 @@ def logout(db: Session, *, refresh_token: str) -> None:
 # ============================================================================
 # Password reset
 # ============================================================================
+
+def send_verification_email(db: Session, *, user: User) -> None:
+    """Issue a fresh verification token and email it.
+
+    Best-effort like every other send: a mail failure leaves the token
+    valid, so a resend works once the provider recovers.
+    """
+    if user.email_verified_at is not None:
+        return
+    raw_token = generate_refresh_token()
+    user.email_verification_token_hash = hash_refresh_token(raw_token)
+    user.email_verification_sent_at = _utcnow()
+    db.commit()
+
+    try:
+        email_service.send_email_verification_email(
+            to_email=user.email,
+            user_name=user.name,
+            verify_url=f"{settings.frontend_url}/verify-email?token={raw_token}",
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Verification email to %s failed to send", user.email)
+
+
+def verify_email(db: Session, *, token: str) -> User:
+    """Consume a verification token.
+
+    Deliberately explicit about failure, unlike password reset: there's no
+    enumeration risk here (the token IS the secret) and a vague error on a
+    link someone just clicked is infuriating.
+    """
+    token_hash = hash_refresh_token(token)
+    user = db.scalar(
+        select(User).where(User.email_verification_token_hash == token_hash)
+    )
+    if user is None or user.deleted_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link isn't valid. Ask for a new one.",
+        )
+    sent = user.email_verification_sent_at
+    if sent is not None and _utcnow() - sent > EMAIL_VERIFICATION_TTL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification link has expired. Ask for a new one.",
+        )
+
+    user.email_verified_at = _utcnow()
+    # One use only.
+    user.email_verification_token_hash = None
+    db.commit()
+    db.refresh(user)
+    return user
+
 
 def request_password_reset(db: Session, *, email: str) -> None:
     """

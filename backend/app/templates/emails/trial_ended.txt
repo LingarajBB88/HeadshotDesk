@@ -1,0 +1,14 @@
+Hi {{ user.first_name }},
+
+Your trial for {{ trial.studio_name }} has ended.
+
+Everything you made is still there. Your jobs, photos and galleries are untouched, and every gallery link you've sent a participant still works. Nobody on your last shoot will notice anything.
+
+To start a new job, pick a plan:
+
+{{ trial.pricing_url }}
+
+If you've decided it's not for you, that's fine, and I'd still like to hear what was missing. Just reply.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

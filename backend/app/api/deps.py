@@ -72,3 +72,27 @@ def get_current_account(
             status_code=status.HTTP_404_NOT_FOUND, detail="Account not found."
         )
     return account
+
+
+def require_verified_email(user: User = Depends(get_current_user)) -> User:
+    """Gate for anything that makes HeadshotDesk send mail to a third party.
+
+    Deliberately narrow. An unverified photographer can log in, create jobs,
+    upload photos and run a shoot: locking them out entirely would strand
+    someone who signs up an hour before an event and doesn't get the email,
+    and that's a support call at the worst possible moment.
+
+    What they cannot do is cause us to email people who never asked for it,
+    or publish a public signup page. That's the actual abuse vector, and
+    it's the one that would cost us our sending reputation — which we'd lose
+    for every photographer on the platform at once, not just the offender.
+    """
+    if user.email_verified_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Confirm your email address first. We've sent you a link; "
+                "check your inbox, or request a new one from the banner."
+            ),
+        )
+    return user

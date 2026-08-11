@@ -10,6 +10,41 @@
 # sync: false must be pasted in the dashboard (see docs/DEPLOY.md).
 
 services:
+  # Daily scheduled email: shoot reminders, trial warnings.
+  #
+  # A cron job rather than a worker + queue. Redis and RQ are already
+  # dependencies, but nothing here needs sub-minute latency — everything is
+  # "some time today" — and a cron is one moving part instead of three.
+  # When it fails you get a failed job in the dashboard rather than silence
+  # and a queue nobody is watching.
+  #
+  # 06:00 UTC: participants get their reminder over breakfast the day
+  # before, not at midnight.
+  #
+  # Every send is gated on a NULL timestamp set immediately after, so this
+  # is safe to re-run by hand.
+  - type: cron
+    name: headshotdesk-daily-email
+    runtime: docker
+    rootDir: backend
+    region: frankfurt
+    plan: starter
+    schedule: "0 6 * * *"
+    dockerCommand: python scripts/send_scheduled_emails.py
+    envVars:
+      - key: ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://headshotdesk.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: headshotdesk-db
+          property: connectionString
+      - key: POSTMARK_SERVER_TOKEN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+
   - type: web
     name: headshotdesk-api
     runtime: docker

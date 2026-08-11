@@ -38,6 +38,12 @@ class Participant(Base):
 
     # Booked but never turned up. Kept as a timestamp so a straggler who
     # appears later can simply be marked shot, which clears this.
+    # Day-before shoot reminder. Null means not sent; the daily job selects
+    # on it, so a re-run can't remind anyone twice.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     no_show_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

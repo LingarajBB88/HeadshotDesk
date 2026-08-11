@@ -7,9 +7,9 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_account
+from app.api.deps import get_current_account, require_verified_email
 from app.db import get_db
-from app.models import Account
+from app.models import Account, User
 from app.schemas.participant import (
     CsvImportResult,
     ParticipantCreate,
@@ -195,6 +195,7 @@ def attendance_report(
 def resend_gallery(
     participant_id: str,
     account: Account = Depends(get_current_account),
+    _verified: User = Depends(require_verified_email),
     db: Session = Depends(get_db),
 ) -> ParticipantOut:
     """Force-resend the gallery delivery email to one participant. Overrides

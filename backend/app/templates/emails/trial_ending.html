@@ -1,0 +1,34 @@
+{# Says what does NOT break, first. The fear behind "your trial is ending"
+   is losing work, and answering that before the sales ask is both true and
+   the only way the rest gets read. #}
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
+  <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
+
+  <p style="margin:0 0 16px;">
+    Your HeadshotDesk trial ends on <strong>{{ trial.ends_on }}</strong>,
+    which is {{ trial.days_left }} days from now.
+  </p>
+
+  <p style="margin:0 0 16px;color:#475569;">
+    Nothing disappears when it does. Your jobs, photos, and galleries stay
+    exactly where they are, and any gallery link you've already sent a
+    participant keeps working. What stops is creating new jobs.
+  </p>
+
+  <p style="margin:0 0 20px;">
+    <a href="{{ trial.pricing_url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      See the plans
+    </a>
+  </p>
+
+  <p style="margin:0 0 24px;color:#475569;">
+    If it isn't earning its keep, I'd genuinely like to know why. Reply to
+    this email and tell me what got in the way.
+  </p>
+
+  <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {{ app.sender_name }}<br />
+    <span style="color:#475569;">{{ app.sender_role }}, {{ app.name }}</span>
+  </p>
+</div>

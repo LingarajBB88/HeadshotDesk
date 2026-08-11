@@ -45,6 +45,16 @@ class Account(Base):
         nullable=False, default=0, server_default="0"
     )
 
+    # Scheduled email markers. Timestamps rather than booleans so "when did
+    # we tell them" is answerable, and so the daily job can select on NULL
+    # and never send twice.
+    trial_ending_email_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    trial_ended_email_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(

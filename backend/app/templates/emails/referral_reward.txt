@@ -1,0 +1,10 @@
+Hi {{ user.first_name }},
+
+{{ reward.referred_name }} signed up through your link and has started paying, so you've earned {{ reward.months }} free month{{ '' if reward.months == 1 else 's' }}.
+
+We'll take {{ 'it' if reward.months == 1 else 'them' }} off your next invoice{{ '' if reward.months == 1 else 's' }}. Nothing for you to do.
+
+Thanks for the introduction. Word from another photographer is worth more than anything we could write ourselves.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

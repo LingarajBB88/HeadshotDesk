@@ -1,0 +1,14 @@
+Hi {{ user.first_name }},
+
+Your HeadshotDesk trial ends on {{ trial.ends_on }}, which is {{ trial.days_left }} days from now.
+
+Nothing disappears when it does. Your jobs, photos, and galleries stay exactly where they are, and any gallery link you've already sent a participant keeps working. What stops is creating new jobs.
+
+If it's earning its keep, you can pick a plan here:
+
+{{ trial.pricing_url }}
+
+If it isn't, I'd genuinely like to know why. Reply to this email and tell me what got in the way.
+
+{{ app.sender_name }}
+{{ app.sender_role }}, {{ app.name }}

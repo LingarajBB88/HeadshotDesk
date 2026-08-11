@@ -194,12 +194,45 @@ def mark_converted(db: Session, *, account: Account) -> None:
     row.converted_at = _utcnow()
 
     months = reward_months()
+    referrer = None
     if months > 0:
         referrer = db.get(Account, row.referrer_account_id)
         if referrer is not None:
             row.reward_months = months
             referrer.credit_months = (referrer.credit_months or 0) + months
     db.commit()
+
+    # Tell them. A reward nobody hears about doesn't get anyone to share
+    # the link a second time. After the commit, and best-effort: the credit
+    # is banked either way.
+    if referrer is not None and months > 0:
+        try:
+            _notify_reward(db, referrer=referrer, referred=account, months=months)
+        except Exception:  # noqa: BLE001
+            logger.exception("Referral reward email failed (account=%s)", referrer.id)
+
+
+def _notify_reward(
+    db: Session, *, referrer: Account, referred: Account, months: int
+) -> None:
+    from app.models import User
+    from app.services import email_service
+
+    owner = db.scalar(
+        select(User)
+        .where(User.account_id == referrer.id, User.deleted_at.is_(None))
+        .order_by(User.created_at.asc())
+    )
+    if owner is None or not owner.email:
+        return
+    email_service.send_referral_reward_email(
+        to_email=owner.email,
+        user_name=owner.name,
+        # The studio name, not the person's: it's what the referrer would
+        # recognise, since that's who they introduced.
+        referred_name=referred.name,
+        months=months,
+    )
 
 
 def settle_reward(db: Session, *, referral_id: str) -> Referral | None:

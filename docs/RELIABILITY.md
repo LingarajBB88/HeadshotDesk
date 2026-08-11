@@ -101,6 +101,27 @@ Still to set up by hand, outside this repo:
 - [ ] Verify the Postgres backup **restore**, not just that backups exist.
       An untested backup is a hypothesis.
 
+## Scheduled email
+
+`headshotdesk-daily-email`, a Render cron at 06:00 UTC running
+`backend/scripts/send_scheduled_emails.py`. Currently sends shoot reminders
+(the day before), trial warnings (7 days out), and trial-ended notices.
+
+A cron rather than a queue on purpose. Redis and RQ are already
+dependencies, but nothing here needs sub-minute latency, and a cron is one
+moving part instead of three. When it fails you get a failed job in the
+Render dashboard rather than silence and a queue nobody is watching.
+
+Every send is gated on a NULL timestamp column set immediately *after* a
+successful send. Two consequences, both deliberate:
+
+- Re-running the job by hand can't double-send.
+- A provider outage means "try again tomorrow" rather than "never mention
+  it", because the marker is only written once the mail actually left.
+
+`--dry` reports what would go out without sending. Worth using the first
+time this runs against production data.
+
 ## What we deliberately haven't built
 
 - Multi-region Postgres, read replicas, autoscaling. At this volume they

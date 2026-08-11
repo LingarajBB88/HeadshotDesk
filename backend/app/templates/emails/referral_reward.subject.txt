@@ -1,0 +1,1 @@
+You've earned {{ reward.months }} free month{{ '' if reward.months == 1 else 's' }}

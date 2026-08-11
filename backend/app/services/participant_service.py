@@ -604,12 +604,42 @@ def _resolve_slot_time(job: Job, raw: str):  # type: ignore[no-untyped-def]
 # Public (no auth) — for the signup form at /s/{slug}
 # ============================================================================
 
+def _owner_is_verified(db: Session, job: Job) -> bool:
+    """Has anyone on this job's account confirmed their email?
+
+    Gate for the public surfaces. A signup page is a form that collects
+    strangers' names and emails and then mails them, so it stays private
+    until there's a confirmed human behind it.
+    """
+    from app.models import User as _User
+
+    return (
+        db.scalar(
+            select(_User.id).where(
+                _User.account_id == job.account_id,
+                _User.email_verified_at.is_not(None),
+                _User.deleted_at.is_(None),
+            )
+        )
+        is not None
+    )
+
+
 def get_job_by_slug(db: Session, *, slug: str) -> Job:
     """Public-safe lookup by slug. 404 if not found OR if not accepting signups."""
     job = db.scalar(select(Job).where(Job.public_slug == slug))
     if job is None or job.archived_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="This signup link is not active."
+        )
+    # Same 404 as a missing job, deliberately. Telling a stranger "the
+    # photographer hasn't confirmed their email" leaks account state to
+    # anyone who guesses a slug, and there's nothing they could do with it.
+    # The photographer sees the real reason in their own dashboard.
+    if not _owner_is_verified(db, job):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This signup link is not active.",
         )
     return job
 
