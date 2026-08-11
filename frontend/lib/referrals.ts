@@ -9,9 +9,7 @@ export type MyReferral = {
   clicks: number;
   signups: number;
   converted: number;
-  /** Extra trial days the referred person gets. Quoted in the pitch copy. */
-  bonus_days: number;
-  /** True when this link currently hands out a free beta seat instead. */
+  /** True when this link currently hands out a free beta seat. */
   grants_seat: boolean;
   seats_remaining: number;
   /** Free months banked from referrals who became paying customers. */

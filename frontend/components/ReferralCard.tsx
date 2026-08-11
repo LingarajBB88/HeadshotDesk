@@ -48,54 +48,38 @@ export function ReferralCard() {
   return (
     <div className="rounded-card border border-muted-200 bg-paper p-5">
       <h3 className="text-sm font-semibold text-ink">Invite another photographer</h3>
+      {/* One sentence, one reward. There used to be a two-sided offer here
+          and nobody could hold it in their head: "14 extra days" for them
+          next to "1 free month" for you read as one vague thing, and the
+          obvious reading was that both people got both. */}
       <p className="mt-1 text-sm text-muted-600">
-        Share this link with another photographer.
+        {data.reward_months_each > 0 ? (
+          <>
+            Share this link with another photographer. When they sign up and
+            start paying, you get{" "}
+            <strong className="text-ink">
+              {data.reward_months_each} free month
+              {data.reward_months_each === 1 ? "" : "s"}
+            </strong>
+            .
+          </>
+        ) : (
+          <>
+            Share this link with another photographer. We&apos;ll know they
+            came from you.
+          </>
+        )}
       </p>
 
-      {/* The two sides sit together, labelled. Split across the card with
-          the link box between them, "14 extra days" and "1 free month" read
-          as one vague offer and it's easy to think both people get both. */}
-      <dl className="mt-3 space-y-1.5 text-sm">
-        <div className="flex gap-2">
-          <dt className="w-20 shrink-0 text-muted-600">They get</dt>
-          <dd className="text-ink">
-            {/* What the link grants depends on who's holding it and whether
-                the beta pool still has room. Saying the wrong one means
-                someone promises a friend something that doesn't arrive. */}
-            {data.grants_seat ? (
-              <>
-                <strong>Free access</strong> while HeadshotDesk is in beta,
-                same as you.{" "}
-                <span className="text-muted-600">
-                  {data.seats_remaining} place
-                  {data.seats_remaining === 1 ? "" : "s"} left.
-                </span>
-              </>
-            ) : (
-              <>
-                <strong>
-                  {data.bonus_days} extra days
-                </strong>{" "}
-                on their trial.
-              </>
-            )}
-          </dd>
-        </div>
-        {data.reward_months_each > 0 ? (
-          <div className="flex gap-2">
-            <dt className="w-20 shrink-0 text-muted-600">You get</dt>
-            <dd className="text-ink">
-              <strong>
-                {data.reward_months_each} free month
-                {data.reward_months_each === 1 ? "" : "s"}
-              </strong>{" "}
-              <span className="text-muted-600">
-                , once they start paying.
-              </span>
-            </dd>
-          </div>
-        ) : null}
-      </dl>
+      {/* Beta testers pass their seat along, which is a different offer and
+          worth saying out loud so nobody promises the wrong thing. */}
+      {data.grants_seat ? (
+        <p className="mt-1 text-sm text-muted-600">
+          While you&apos;re on a beta seat, anyone who joins through your link
+          gets free access too. {data.seats_remaining} place
+          {data.seats_remaining === 1 ? "" : "s"} left.
+        </p>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-2 rounded-card border border-muted-200 bg-muted-50 p-3">
         <span className="min-w-0 flex-1 truncate font-mono text-xs text-accent">

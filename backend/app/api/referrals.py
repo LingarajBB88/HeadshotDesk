@@ -30,8 +30,6 @@ class MyReferralOut(BaseModel):
     clicks: int
     signups: int
     converted: int
-    # Quoted in the UI so the pitch is accurate without hardcoding it there.
-    bonus_days: int
     # True when this account is a beta tester AND the pool still has room,
     # so their link currently hands out a free seat rather than bonus days.
     # The UI has to say which, or the photographer will promise the wrong
@@ -59,7 +57,6 @@ def my_referral(
         clicks=stats["clicks"],
         signups=stats["signups"],
         converted=stats["converted"],
-        bonus_days=referral_service.REFERRAL_BONUS_DAYS,
         grants_seat=referral_service.claim_seat_for_referral(db, referrer=account),
         seats_remaining=referral_service.seats_remaining(db),
         credit_months=account.credit_months or 0,

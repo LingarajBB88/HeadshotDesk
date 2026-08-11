@@ -34,11 +34,14 @@ logger = logging.getLogger(__name__)
 REFERRAL_COOKIE = "hd_ref"
 REFERRAL_COOKIE_DAYS = 30
 
-# Trial length for a normal signup, and the bonus a referred person gets.
-# The referrer gets recognition rather than credit: nothing in the product
-# is worth gaming a friend's signup for.
+# Trial length. Everyone gets the same one.
+#
+# There used to be a bonus for arriving through a referral link, which made
+# the offer two-sided and hard to state: the joiner's trial was longer, the
+# referrer's wasn't, and "14 extra days" sat next to "1 free month" in a way
+# nobody could hold in their head. One reward, on the side that matters:
+# refer someone, they start paying, you get a free month.
 TRIAL_DAYS = 31
-REFERRAL_BONUS_DAYS = 14
 
 # Codes are read aloud and typed by hand, so the alphabet drops the
 # characters people confuse: 0/O, 1/I/l.
@@ -342,16 +345,16 @@ def create_invite_code(
 
 # --- Trial length -----------------------------------------------------------
 
-def trial_end_for(*, referred: bool, invited: bool) -> datetime | None:
+def trial_end_for(*, invited: bool) -> datetime | None:
     """When a new account's trial should end.
 
     None for a free beta seat: it doesn't expire, which is the whole point
-    of the seat.
+    of the seat. Everyone else gets the same trial whether or not they
+    arrived through someone's link.
     """
     if invited:
         return None
-    days = TRIAL_DAYS + (REFERRAL_BONUS_DAYS if referred else 0)
-    return _utcnow() + timedelta(days=days)
+    return _utcnow() + timedelta(days=TRIAL_DAYS)
 
 
 # --- Reporting --------------------------------------------------------------

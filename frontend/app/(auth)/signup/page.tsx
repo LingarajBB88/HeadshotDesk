@@ -104,9 +104,13 @@ function SignupForm() {
           HeadshotDesk is in beta.
         </p>
       ) : referralCode ? (
+        // No longer promises anything: the trial is the same length for
+        // everyone, and the reward goes to whoever made the introduction.
+        // Still worth acknowledging, so arriving on someone's link isn't
+        // silent.
         <p className="mb-4 rounded-md bg-accent-muted px-3 py-2 text-sm text-accent">
-          A photographer sent you here, so you get two extra weeks on your
-          trial.
+          A photographer sent you here. We&apos;ll let them know you signed
+          up.
         </p>
       ) : null}
 

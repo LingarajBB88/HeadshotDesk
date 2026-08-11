@@ -134,7 +134,6 @@ def signup(
     # registration.
     from app.services import referral_service
 
-    referred = False
     invited = False
     try:
         if invite_code:
@@ -147,11 +146,11 @@ def signup(
             row = referral_service.attach_signup(
                 db, code=referral_code, account=account
             )
-            referred = row is not None
             # A beta tester's link passes their seat along: that's the deal
             # during beta, and it means one link per person rather than a
-            # separate invite code alongside it. Trial users' links grant
-            # the bonus days instead, so seats meant for testers can't leak.
+            # separate invite code alongside it. Everyone else's link is
+            # attribution only, so seats meant for testers can't leak and
+            # the trial is the same length for everybody.
             if row is not None and not invited:
                 referrer = db.get(Account, row.referrer_account_id)
                 if referrer is not None and referral_service.claim_seat_for_referral(
@@ -159,9 +158,7 @@ def signup(
                 ):
                     account.plan = "beta"
                     invited = True
-        account.trial_ends_at = referral_service.trial_end_for(
-            referred=referred, invited=invited
-        )
+        account.trial_ends_at = referral_service.trial_end_for(invited=invited)
         db.commit()
         db.refresh(account)
     except Exception:  # noqa: BLE001 — the account is what matters

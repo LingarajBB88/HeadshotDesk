@@ -95,11 +95,13 @@ class TestAttribution:
         stats = client.get("/api/v1/me/referral", headers=_auth(tok)).json()
         assert stats["signups"] == 1
 
-    def test_referred_account_gets_a_longer_trial(
+    def test_a_referral_does_not_change_the_trial_length(
         self, client: TestClient, db_session
     ):
+        """One reward, on one side. Arriving through a link is attribution,
+        not a discount: the two-sided version was impossible to state
+        without people assuming both parties got both halves."""
         from app.models import Account
-        from app.services import referral_service
 
         a = _signup(client)
         code = _my_code(client, a["tokens"]["access_token"])
@@ -112,9 +114,8 @@ class TestAttribution:
             Account, referred["account"]["id"]
         ).trial_ends_at
         assert plain_end is not None and referred_end is not None
-        gained = (referred_end - plain_end).days
-        # Allow a day of slack: the two signups aren't simultaneous.
-        assert gained >= referral_service.REFERRAL_BONUS_DAYS - 1
+        # Same length. Signups aren't simultaneous, so allow a day of slack.
+        assert abs((referred_end - plain_end).days) <= 1
 
     def test_the_referrer_gets_no_extra_trial_days(
         self, client: TestClient, db_session
@@ -254,9 +255,11 @@ class TestBetaTestersPassSeatsOn:
 
         assert friend["account"]["plan"] == "trial"
 
-    def test_empty_pool_falls_back_to_bonus_days(
+    def test_empty_pool_falls_back_to_a_normal_trial(
         self, client: TestClient, db_session, monkeypatch
     ):
+        """Running out of seats must not turn anyone away, and the referral
+        is still credited."""
         from app.models import Account
         from app.services import referral_service
 
@@ -268,9 +271,12 @@ class TestBetaTestersPassSeatsOn:
 
         friend = _signup(client, referral_code=code)
         assert friend["account"]["plan"] == "trial"
-        # Still credited, and still got the bonus.
         row = db_session.get(Account, friend["account"]["id"])
         assert row.trial_ends_at is not None
+        stats = client.get(
+            "/api/v1/me/referral", headers=_auth(tester["tokens"]["access_token"])
+        ).json()
+        assert stats["signups"] == 1
 
 
 class TestRewards:
