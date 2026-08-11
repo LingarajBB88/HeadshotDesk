@@ -267,7 +267,7 @@ class TestBetaTestersPassSeatsOn:
         assert friend["account"]["plan"] == "beta"
 
     def test_trial_referrer_grants_days_not_a_seat(
-        self, client: TestClient, monkeypatch
+        self, client: TestClient, db_session, monkeypatch
     ):
         """Otherwise a trial user could give away seats meant for testers."""
         monkeypatch.setattr(
@@ -363,20 +363,28 @@ class TestRewards:
         friend = _signup(client, referral_code=code)
         self._convert(db_session, friend["account"]["id"])
 
-        owed = referral_service.outstanding_rewards(db_session)
-        assert len(owed) == 1 and owed[0]["months"] == 2
+        # Scoped to this referrer: the table is shared with every other
+        # test in the run, so a global assertion here is order-dependent.
+        mine = [
+            r
+            for r in referral_service.outstanding_rewards(db_session)
+            if r["referrer_account_id"] == a["account"]["id"]
+        ]
+        assert len(mine) == 1 and mine[0]["months"] == 2
 
-        referral_service.settle_reward(
-            db_session, referral_id=owed[0]["referral_id"]
-        )
-        referral_service.settle_reward(
-            db_session, referral_id=owed[0]["referral_id"]
-        )
+        # Twice on purpose: settling is manual, and two people looking at
+        # the same list a week apart must not pay it twice.
+        referral_service.settle_reward(db_session, referral_id=mine[0]["referral_id"])
+        referral_service.settle_reward(db_session, referral_id=mine[0]["referral_id"])
 
         referrer = db_session.get(Account, a["account"]["id"])
         db_session.refresh(referrer)
         assert referrer.credit_months == 0
-        assert referral_service.outstanding_rewards(db_session) == []
+        assert not [
+            r
+            for r in referral_service.outstanding_rewards(db_session)
+            if r["referrer_account_id"] == a["account"]["id"]
+        ]
 
     def test_zero_rate_records_conversion_without_paying(
         self, client: TestClient, db_session, monkeypatch

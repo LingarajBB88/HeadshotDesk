@@ -35,21 +35,38 @@ def _signup(client: TestClient, email: str | None = None, **extra) -> dict:
 
 
 def _slot_job(client: TestClient, token: str, **extra) -> dict:
-    body = {
-        "name": "Acme headshots",
-        "shoot_date": _future_date(),
-        "location": "Acme HQ",
-        "shoot_mode": "time_slot",
-        "time_slot_config": {
-            "start": "09:00",
-            "end": "10:00",
-            "slot_minutes": 10,
-            "buffer_minutes": 0,
-            "breaks": [],
+    """A time-slot job with an actual grid.
+
+    Two calls, not one: JobCreate doesn't accept time_slot_config, only
+    JobUpdate does. Passing it at create silently produced a time_slot job
+    with zero slots, which failed later and a long way from the cause.
+    """
+    job = client.post(
+        "/api/v1/jobs",
+        json={
+            "name": "Acme headshots",
+            "shoot_date": _future_date(),
+            "location": "Acme HQ",
+            "shoot_mode": "time_slot",
+            **extra,
         },
-        **extra,
-    }
-    return client.post("/api/v1/jobs", json=body, headers=_auth(token)).json()
+        headers=_auth(token),
+    ).json()
+    r = client.patch(
+        f"/api/v1/jobs/{job['id']}",
+        json={
+            "time_slot_config": {
+                "start": "09:00",
+                "end": "10:00",
+                "slot_minutes": 10,
+                "buffer_minutes": 0,
+                "breaks": [],
+            }
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
 def _public_signup(client: TestClient, slug: str, name: str, email: str) -> dict:

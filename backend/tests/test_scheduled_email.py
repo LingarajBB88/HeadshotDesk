@@ -223,30 +223,35 @@ class TestShootReminders:
         ]
         assert len(mine) == 1
 
-    @pytest.mark.unverified
     def test_unverified_accounts_send_nothing(
         self, client: TestClient, db_session, outbox
     ):
         """Same rule as the signup page: no mail to strangers until the
-        photographer has confirmed who they are."""
+        photographer has confirmed who they are.
+
+        The job is created while verified and the account un-verified
+        afterwards, because the hard gate means an unverified account can't
+        create one in the first place. That makes this guard belt-and-braces
+        rather than the only defence, which is the point of keeping it.
+        """
+        from sqlalchemy import select
+
+        from app.models import User
         from app.services import scheduled_email_service
 
-        a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = client.post(
-            "/api/v1/jobs",
-            json={
-                "name": "Unverified",
-                "shoot_date": (date.today() + timedelta(days=1)).isoformat(),
-                "location": "Acme HQ",
-            },
-            headers=_auth(tok),
-        ).json()
+        tomorrow = date.today() + timedelta(days=1)
+        a, tok, job = self._verified_job(client, db_session, tomorrow)
         client.post(
             f"/api/v1/jobs/{job['id']}/participants",
             json={"name": "Nope", "email": "nope@example.com"},
             headers=_auth(tok),
         )
+
+        user = db_session.scalar(
+            select(User).where(User.account_id == a["account"]["id"])
+        )
+        user.email_verified_at = None
+        db_session.commit()
 
         scheduled_email_service.send_shoot_reminders(db_session)
         assert not any(
