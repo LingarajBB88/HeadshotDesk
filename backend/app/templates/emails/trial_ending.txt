@@ -11,4 +11,4 @@ If it's earning its keep, you can pick a plan here:
 If it isn't, I'd genuinely like to know why. Reply to this email and tell me what got in the way.
 
 {{ app.sender_name }}
-{{ app.sender_role }}, {{ app.name }}
+{{ app.signature_line }}

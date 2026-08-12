@@ -1,9 +1,12 @@
-{# Photographer-facing. Signed by a person because the reply is the point:
-   the first week is when we learn what's broken. #}
+{# Photographer-facing, sent AFTER verification so everything it suggests is
+   actually possible. Signed by a person because the reply is the point: the
+   first week is when we learn what's broken. #}
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#0B0F1A;max-width:520px;">
   <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
 
-  <p style="margin:0 0 16px;">Your HeadshotDesk account is ready.</p>
+  <p style="margin:0 0 16px;">
+    Your email is confirmed, so everything's open.
+  </p>
 
   <p style="margin:0 0 16px;">
     The quickest way to see whether this fits how you work: create a job,
@@ -11,11 +14,20 @@
     That's the part that usually eats an afternoon.
   </p>
 
-  <p style="margin:0 0 24px;">
+  <p style="margin:0 0 20px;">
     <a href="{{ app.url }}/jobs"
        style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
       Create your first job
     </a>
+    <a href="{{ app.url }}/help"
+       style="display:inline-block;margin-left:8px;border:1px solid #E5E7EB;color:#0B0F1A;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Browse the help centre
+    </a>
+  </p>
+
+  <p style="margin:0 0 20px;color:#475569;">
+    The help centre walks through every screen, with the Capture One and
+    Lightroom setup written out step by step.
   </p>
 
   <p style="margin:0 0 8px;font-weight:600;">Three things worth knowing</p>
@@ -47,6 +59,6 @@
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
     {{ app.sender_name }}<br />
-    <span style="color:#475569;">{{ app.sender_role }}, {{ app.name }}</span>
+    <span style="color:#475569;">{{ app.signature_line }}</span>
   </p>
 </div>

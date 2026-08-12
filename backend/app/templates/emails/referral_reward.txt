@@ -7,4 +7,4 @@ We'll take {{ 'it' if reward.months == 1 else 'them' }} off your next invoice{{ 
 Thanks for the introduction. Word from another photographer is worth more than anything we could write ourselves.
 
 {{ app.sender_name }}
-{{ app.sender_role }}, {{ app.name }}
+{{ app.signature_line }}

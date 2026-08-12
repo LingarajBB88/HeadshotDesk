@@ -118,7 +118,9 @@ class Settings(BaseSettings):
     # it and makes replying feel natural, which is how we hear about
     # problems early.
     email_sender_name: str = Field(default="Lingaraj")
-    email_sender_role: str = Field(default="HeadshotDesk")
+    # The role, NOT the company: templates render "<role>, <company>", so
+    # setting this to "HeadshotDesk" produced "HeadshotDesk, HeadshotDesk".
+    email_sender_role: str = Field(default="Founder")
     # Contact address printed in the signature. NOT a Reply-To header —
     # replies go to EMAIL_FROM. Empty falls back to feedback_to_email.
     email_support_address: str = Field(default="")

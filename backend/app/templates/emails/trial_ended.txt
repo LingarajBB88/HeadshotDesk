@@ -11,4 +11,4 @@ To start a new job, pick a plan:
 If you've decided it's not for you, that's fine, and I'd still like to hear what was missing. Just reply.
 
 {{ app.sender_name }}
-{{ app.sender_role }}, {{ app.name }}
+{{ app.signature_line }}

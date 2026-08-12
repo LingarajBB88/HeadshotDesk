@@ -27,6 +27,18 @@ _APP_CONTEXT = {
     "support_email": settings.email_support_address or settings.feedback_to_email,
 }
 
+# The line under the sender's name. Computed once here rather than assembled
+# as "<role>, <company>" in seven templates, because doing it there produced
+# "HeadshotDesk, HeadshotDesk" the moment the role was misconfigured, and it
+# would have had to be fixed seven times.
+_APP_CONTEXT["signature_line"] = (
+    _APP_CONTEXT["name"]
+    if not _APP_CONTEXT["sender_role"]
+    or _APP_CONTEXT["sender_role"].strip().lower()
+    == _APP_CONTEXT["name"].strip().lower()
+    else f"{_APP_CONTEXT['sender_role']}, {_APP_CONTEXT['name']}"
+)
+
 
 def _first_name(full_name: str | None) -> str:
     """Robustly pull the first name. Falls back to 'there' so a name-less

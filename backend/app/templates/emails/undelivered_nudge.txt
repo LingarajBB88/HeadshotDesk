@@ -7,4 +7,4 @@ You shot {{ job.name }} {{ nudge.days_ago }} days ago and {{ nudge.count }} {{ '
 If you're still editing, ignore this. If it slipped, it's one button.
 
 {{ app.sender_name }}
-{{ app.sender_role }}, {{ app.name }}
+{{ app.signature_line }}

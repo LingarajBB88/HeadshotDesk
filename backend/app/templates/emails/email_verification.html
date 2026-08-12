@@ -4,8 +4,7 @@
   <p style="margin:0 0 16px;">Hi {{ user.first_name }},</p>
 
   <p style="margin:0 0 16px;">
-    One quick thing before you send anything to your clients: confirm this
-    is your email address.
+    Before anything else, confirm this is your email address.
   </p>
 
   <p style="margin:0 0 20px;">
@@ -16,10 +15,9 @@
   </p>
 
   <p style="margin:0 0 16px;color:#475569;">
-    Until you do, you can set up jobs and look around, but HeadshotDesk
-    won't send anything to your participants and your signup link stays
-    private. That's there to protect everyone's delivery: one bad sender
-    ruins email for every photographer on the platform.
+    This is the first step, and nothing else works until it's done. It
+    keeps the platform free of throwaway accounts, which is what protects
+    everyone's email from landing in spam.
   </p>
 
   <p style="margin:0 0 24px;color:#475569;">
@@ -28,6 +26,6 @@
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
     {{ app.sender_name }}<br />
-    <span style="color:#475569;">{{ app.sender_role }}, {{ app.name }}</span>
+    <span style="color:#475569;">{{ app.signature_line }}</span>
   </p>
 </div>

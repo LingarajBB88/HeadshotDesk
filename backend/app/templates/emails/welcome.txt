@@ -1,10 +1,14 @@
 Hi {{ user.first_name }},
 
-Your HeadshotDesk account is ready.
+Your email is confirmed, so everything's open.
 
 The quickest way to see whether this fits how you work: create a job, share the signup link with your client, and watch people add themselves. That's the part that usually eats an afternoon.
 
 {{ app.url }}/jobs
+
+Want the guided version first? The help centre walks through every screen, with the Capture One and Lightroom setup written out step by step:
+
+{{ app.url }}/help
 
 Three things worth knowing on day one:
 
@@ -19,4 +23,4 @@ You've got {{ trial.days }} days to try all of it. No card, and nothing switches
 If something doesn't work the way you expected, reply to this email. It comes straight to me.
 
 {{ app.sender_name }}
-{{ app.sender_role }}, {{ app.name }}
+{{ app.signature_line }}

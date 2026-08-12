@@ -177,17 +177,10 @@ def signup(
         db.rollback()
         logger.exception("Referral/invite handling failed (account=%s)", account.id)
 
-    # Best-effort: an account that exists is worth more than an email that
-    # sent. Signup must never fail because Postmark is having a bad day.
-    try:
-        email_service.send_welcome_email(
-            to_email=user.email, user_name=user.name, trial_days=TRIAL_DAYS
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception("Welcome email failed (user=%s)", user.id)
-
-    # Verification goes out as its own message rather than a link buried in
-    # the welcome: it needs a subject line that says what it wants.
+    # Verification is the ONLY email at signup. The welcome used to go out
+    # here too and arrived first, so "here's how to create your first job"
+    # landed before "you can't do anything yet". It now follows
+    # verification, where its advice is actually actionable.
     try:
         send_verification_email(db, user=user)
     except Exception:  # noqa: BLE001
@@ -346,6 +339,19 @@ def verify_email(db: Session, *, token: str) -> User:
     user.email_verification_token_hash = None
     db.commit()
     db.refresh(user)
+
+    # Now the welcome makes sense: everything it tells them to do, they can
+    # actually do. Best-effort, and only once, since the token is consumed
+    # above so this branch can't be re-entered.
+    try:
+        email_service.send_welcome_email(
+            to_email=user.email,
+            user_name=user.name,
+            trial_days=TRIAL_DAYS,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("Welcome email failed (user=%s)", user.id)
+
     return user
 
 

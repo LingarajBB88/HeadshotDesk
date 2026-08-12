@@ -99,18 +99,47 @@ def outbox(monkeypatch) -> dict[str, list[dict]]:
 
 
 class TestPhotographerEmails:
-    def test_signup_sends_welcome(self, client: TestClient, outbox):
-        a = _signup(client, "new@example.com")
-        assert a["user"]["email"] == "new@example.com"
-        assert len(outbox["send_welcome_email"]) == 1
-        assert outbox["send_welcome_email"][0]["to_email"] == "new@example.com"
-        assert outbox["send_welcome_email"][0]["trial_days"] > 0
+    """Order matters here. The welcome used to go out at signup and arrived
+    before the verification email it depends on, so "create your first job"
+    landed before "you can't do anything yet"."""
+
+    @pytest.mark.unverified
+    def test_signup_sends_only_verification(self, client: TestClient, outbox):
+        _signup(client, "new@example.com")
+        assert outbox["send_welcome_email"] == []
+
+    @pytest.mark.unverified
+    def test_welcome_follows_verification(
+        self, client: TestClient, db_session, outbox
+    ):
+        from sqlalchemy import select
+
+        from app.core.security import generate_refresh_token, hash_refresh_token
+        from app.models import User
+
+        a = _signup(client, "later@example.com")
+        assert outbox["send_welcome_email"] == []
+
+        raw = generate_refresh_token()
+        user = db_session.scalar(
+            select(User).where(User.account_id == a["account"]["id"])
+        )
+        user.email_verification_token_hash = hash_refresh_token(raw)
+        db_session.commit()
+        client.post("/api/v1/auth/verify-email", json={"token": raw})
+
+        sent = outbox["send_welcome_email"]
+        assert len(sent) == 1
+        assert sent[0]["to_email"] == "later@example.com"
+        assert sent[0]["trial_days"] > 0
 
     def test_signup_survives_email_failure(self, client: TestClient, monkeypatch):
         def boom(**_kw):
             raise RuntimeError("postmark down")
 
-        monkeypatch.setattr("app.services.email_service.send_welcome_email", boom)
+        monkeypatch.setattr(
+            "app.services.email_service.send_email_verification_email", boom
+        )
         r = client.post(
             "/api/v1/auth/signup",
             json={
@@ -122,6 +151,15 @@ class TestPhotographerEmails:
         )
         assert r.status_code in (200, 201), r.text
         assert r.json()["tokens"]["access_token"]
+
+    def test_the_signature_never_repeats_the_company(self):
+        """EMAIL_SENDER_ROLE set to the company name produced
+        'HeadshotDesk, HeadshotDesk' in every signed email."""
+        from app.services.email_service import _APP_CONTEXT
+
+        line = _APP_CONTEXT["signature_line"]
+        parts = [p.strip().lower() for p in line.split(",")]
+        assert len(parts) == len(set(parts))
 
 
 class TestAdminSignupNotification:
