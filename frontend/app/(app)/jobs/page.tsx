@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { EditJobModal } from "@/components/EditJobModal";
 import { ReferralCard } from "@/components/ReferralCard";
+import { TourOfferCard } from "@/components/TourOfferCard";
 import { SortableHeader, useSort } from "@/components/SortableHeader";
 import { StatusPill } from "@/components/StatusPill";
 import {
@@ -260,6 +261,12 @@ export default function JobsPage() {
         <Link href="/jobs/new" className="btn-primary whitespace-nowrap">
           New job
         </Link>
+      </div>
+
+      {/* Only for accounts with nothing yet. A photographer mid-season
+          doesn't need "here's how it works" above their job list. */}
+      <div className="mt-6">
+        <TourOfferCard show={jobs !== null && jobs.length === 0} />
       </div>
 
       {/* Tabs */}

@@ -180,6 +180,25 @@ export default function HelpPage() {
             from the list, or expand them here as you read.
           </p>
 
+          {/* Permanent way back to the tour. Reference docs answer "how do
+              I do X"; the tour answers "what is this product", and people
+              arrive here wanting both. */}
+          <div className="mt-5 rounded-card border border-muted-200 bg-paper p-4">
+            <p className="text-sm font-medium text-ink">
+              Prefer the guided version?
+            </p>
+            <p className="mt-1 text-sm text-muted-600">
+              A three-minute walk through every screen, from the signup link
+              to what lands in your participants&apos; inboxes.
+            </p>
+            <a
+              href="/tour"
+              className="mt-3 inline-block btn-secondary text-xs"
+            >
+              Take the tour
+            </a>
+          </div>
+
           <div className="mt-8 space-y-10">
             {HELP_CATEGORIES.map((cat) => {
               const articles = HELP_ARTICLES.filter((a) => a.category === cat);

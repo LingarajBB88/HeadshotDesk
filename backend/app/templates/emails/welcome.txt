@@ -6,7 +6,11 @@ The quickest way to see whether this fits how you work: create a job, share the 
 
 {{ app.url }}/jobs
 
-Want the guided version first? The help centre walks through every screen, with the Capture One and Lightroom setup written out step by step:
+Want to see it first? Three minutes, every screen, no setup required:
+
+{{ app.url }}/tour
+
+The help centre has the full detail when you need it, including the Capture One and Lightroom setup written out step by step:
 
 {{ app.url }}/help
 
