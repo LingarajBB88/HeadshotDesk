@@ -11,6 +11,30 @@
 //   • Say what the photographer gets out of it, not what the button does.
 //     "Tap a name and it's on your clipboard" beats "click to select".
 
+// Tour progress lives here rather than in the page component. A Next.js
+// page file may only export the default component and a fixed set of
+// framework fields, so exporting a helper from one fails the production
+// build. `tsc --noEmit` doesn't enforce that rule, which is exactly how it
+// slipped through: the type check passes and only `next build` complains.
+const SEEN_KEY = "hd_tour_seen";
+
+/** Remember that the tour has been finished, so the offer stops appearing. */
+export function markTourSeen(): void {
+  try {
+    window.localStorage.setItem(SEEN_KEY, "1");
+  } catch {
+    // Private browsing. The offer reappearing is a small cost.
+  }
+}
+
+export function hasSeenTour(): boolean {
+  try {
+    return window.localStorage.getItem(SEEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export type TourStop = {
   /** Stable id, used for the URL hash and progress. */
   id: string;

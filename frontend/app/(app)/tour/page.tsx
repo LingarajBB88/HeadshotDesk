@@ -18,26 +18,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { TourMock } from "@/components/TourMocks";
-import { TOUR_STOPS } from "@/lib/tour";
-
-const SEEN_KEY = "hd_tour_seen";
-
-/** Remember that the tour has been finished, so the offer stops appearing. */
-export function markTourSeen() {
-  try {
-    window.localStorage.setItem(SEEN_KEY, "1");
-  } catch {
-    // Private browsing. The offer reappearing is a small cost.
-  }
-}
-
-export function hasSeenTour(): boolean {
-  try {
-    return window.localStorage.getItem(SEEN_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
+// markTourSeen lives in lib/tour, not here: a page file may only export the
+// default component and a fixed set of framework fields, and anything else
+// fails the production build.
+import { markTourSeen, TOUR_STOPS } from "@/lib/tour";
 
 export default function TourPage() {
   const [index, setIndex] = useState(0);
