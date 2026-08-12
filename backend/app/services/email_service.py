@@ -407,6 +407,9 @@ def send_shoot_reminder_email(
     location: str | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    directions: str | None = None,
+    prep_notes: str | None = None,
+    profile_url: str | None = None,
 ) -> None:
     """Remind a participant they're being photographed tomorrow.
 
@@ -419,11 +422,16 @@ def send_shoot_reminder_email(
                 "name": participant_name,
                 "first_name": _first_name(participant_name),
             },
-            "photographer": {"display_name": photographer_name},
+            "photographer": {
+                "display_name": photographer_name,
+                "profile_url": profile_url,
+            },
             "job": {
                 "name": job_name,
                 "location": location,
                 "client_name": client_name,
+                "directions": directions,
+                "prep_notes": prep_notes,
             },
             "reminder": {
                 "time": time_label,
@@ -785,6 +793,9 @@ def send_signup_confirmation_email(
     location: str | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    directions: str | None = None,
+    prep_notes: str | None = None,
+    profile_url: str | None = None,
 ) -> None:
     """Acknowledge a public signup.
 
@@ -802,12 +813,17 @@ def send_signup_confirmation_email(
                 "name": participant_name,
                 "first_name": _first_name(participant_name),
             },
-            "photographer": {"display_name": photographer_name},
+            "photographer": {
+                "display_name": photographer_name,
+                "profile_url": profile_url,
+            },
             "job": {
                 "name": job_name,
                 "client_name": client_name,
                 "shoot_date": shoot_date,
                 "location": location,
+                "directions": directions,
+                "prep_notes": prep_notes,
             },
             "signup": {
                 "url": signup_url,

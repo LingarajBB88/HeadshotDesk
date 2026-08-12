@@ -372,15 +372,13 @@ export default function PublicSignupPage() {
                     <strong className="text-ink">
                       {slotTime(bookedSlot.start)}
                     </strong>
-                    {job.shoot_date ? <> on {job.shoot_date}</> : null}. You&apos;ll
-                    get an email with your photo gallery once the shoot is
-                    delivered.
+                    {job.shoot_date ? <> on {job.shoot_date}</> : null}.
                   </>
                 ) : wasNewSignup ? (
                   <>
                     We&apos;ve added you to{" "}
-                    <strong className="text-ink">{job.name}</strong>. You&apos;ll
-                    get an email with your photo gallery once the shoot is delivered.
+                    <strong className="text-ink">{job.name}</strong>. See you
+                    on the day.
                   </>
                 ) : (
                   <>
@@ -429,7 +427,10 @@ export default function PublicSignupPage() {
                 {job.client_name ? <> with {job.client_name}</> : null}.
               </p>
 
-              {(job.shoot_date || job.location) && (
+              {(job.shoot_date ||
+                job.location ||
+                job.directions ||
+                job.prep_notes) && (
                 <dl className="mt-4 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-muted-50 rounded-md p-3">
                   {job.shoot_date ? (
                     <div>
@@ -445,6 +446,29 @@ export default function PublicSignupPage() {
                         Location
                       </dt>
                       <dd className="text-ink">{job.location}</dd>
+                    </div>
+                  ) : null}
+                  {/* Full width: directions are prose, not a label-value
+                      pair, and squeezing them into a column makes them
+                      unreadable on a phone. */}
+                  {job.directions ? (
+                    <div className="sm:col-span-2">
+                      <dt className="font-medium text-muted-600 uppercase tracking-wider">
+                        Finding us
+                      </dt>
+                      <dd className="whitespace-pre-line text-ink">
+                        {job.directions}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {job.prep_notes ? (
+                    <div className="sm:col-span-2">
+                      <dt className="font-medium text-muted-600 uppercase tracking-wider">
+                        Before the day
+                      </dt>
+                      <dd className="whitespace-pre-line text-ink">
+                        {job.prep_notes}
+                      </dd>
                     </div>
                   ) : null}
                 </dl>
@@ -472,7 +496,10 @@ export default function PublicSignupPage() {
                   type="email"
                   autoComplete="email"
                   required
-                  hint="Where we'll send your photo gallery."
+                  // No hint: it used to say "where we'll send your photo
+                  // gallery", which promises delivery the photographer may
+                  // not be using. Plenty run a shoot through here and hand
+                  // the files over themselves.
                   error={fieldErrors.email}
                 />
                 <FormField

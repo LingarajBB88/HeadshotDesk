@@ -154,6 +154,8 @@ export default function NewJobPage() {
         shoot_date: (String(data.get("shoot_date") ?? "").trim()) || null,
         extra_shoot_dates: extraDays.filter(Boolean),
         location: (String(data.get("location") ?? "").trim()) || null,
+        directions: (String(data.get("directions") ?? "").trim()) || null,
+        prep_notes: (String(data.get("prep_notes") ?? "").trim()) || null,
         download_cap:
           parsedCap !== null && Number.isFinite(parsedCap) && parsedCap >= 0
             ? Math.floor(parsedCap)
@@ -311,6 +313,45 @@ export default function NewJobPage() {
               hint="Where the shoot is happening. Shows on participant emails."
               error={fieldErrors.location}
             />
+
+            {/* Both of these travel into the confirmation and the reminder.
+                They live on the job, not on your studio profile, because
+                the way into one client's building says nothing about the
+                next one. */}
+            <label className="block">
+              <span className="block text-sm font-medium text-ink">
+                How to find it
+              </span>
+              <textarea
+                name="directions"
+                rows={3}
+                maxLength={2000}
+                placeholder="Third floor, ask for reception. Parking is easiest on Keizersgracht."
+                className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <span className="mt-1 block text-xs text-muted-600">
+                Optional. Goes in their confirmation and the reminder the
+                day before, which is when people actually look.
+              </span>
+            </label>
+
+            <label className="block">
+              <span className="block text-sm font-medium text-ink">
+                How to prepare
+              </span>
+              <textarea
+                name="prep_notes"
+                rows={3}
+                maxLength={2000}
+                placeholder="Solid colours work best. Bring a second shirt if you're undecided."
+                className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <span className="mt-1 block text-xs text-muted-600">
+                Optional. Replaces our generic advice, which is worth doing:
+                you know this client and we don&apos;t.
+              </span>
+            </label>
+
             <FormField
               label="Headshots per participant"
               name="download_cap"

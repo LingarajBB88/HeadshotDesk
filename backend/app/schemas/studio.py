@@ -41,12 +41,31 @@ class StudioLink(BaseModel):
         return v.strip()
 
 
+# An "about" long enough to say who you are and short enough that someone
+# waiting for their turn actually reads it.
+MAX_ABOUT = 1200
+
+
+class PortfolioImage(BaseModel):
+    id: str
+    url: str
+    caption: str | None = None
+
+
 class StudioProfileIn(BaseModel):
     """Sparse update. Only the keys sent are changed; null clears a field."""
     website_url: str | None = Field(default=None, max_length=500)
     contact_email: StrictEmail | None = None
     contact_phone: str | None = Field(default=None, max_length=40)
     links: list[StudioLink] | None = Field(default=None, max_length=MAX_LINKS)
+
+    # Public profile.
+    handle: str | None = Field(default=None, max_length=40)
+    tagline: str | None = Field(default=None, max_length=120)
+    about: str | None = Field(default=None, max_length=MAX_ABOUT)
+    city: str | None = Field(default=None, max_length=80)
+    country: str | None = Field(default=None, max_length=80)
+    profile_published: bool | None = None
 
     @field_validator("website_url")
     @classmethod
@@ -66,17 +85,54 @@ class StudioProfileOut(BaseModel):
     contact_phone: str | None = None
     links: list[StudioLink] = []
 
+    # Public profile. `profile_url` is null until it would actually resolve,
+    # so the UI never offers a link that 404s.
+    handle: str | None = None
+    tagline: str | None = None
+    about: str | None = None
+    city: str | None = None
+    country: str | None = None
+    profile_published: bool = False
+    portrait_url: str | None = None
+    portfolio: list[PortfolioImage] = []
+    profile_url: str | None = None
+
     model_config = {"from_attributes": True}
 
 
 class PublicStudioOut(BaseModel):
-    """What a participant sees. Same shape minus anything internal.
+    """What a participant sees on a signup page or gallery.
 
     Kept as its own model rather than reusing StudioProfileOut so that
     adding a private field to the photographer's view can't accidentally
     publish it to every participant.
+
+    Deliberately narrower than the profile page: this is a sidebar on a page
+    about something else. The bio and portfolio live behind `profile_url`
+    for anyone curious enough to click.
     """
     name: str
+    tagline: str | None = None
+    city: str | None = None
+    portrait_url: str | None = None
+    profile_url: str | None = None
+    website_url: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    links: list[StudioLink] = []
+
+
+class PublicProfileOut(BaseModel):
+    """The full profile page. Only ever built from `public_profile()`, which
+    enforces published + verified."""
+    handle: str
+    name: str
+    tagline: str | None = None
+    about: str | None = None
+    city: str | None = None
+    country: str | None = None
+    portrait_url: str | None = None
+    portfolio: list[PortfolioImage] = []
     website_url: str | None = None
     contact_email: str | None = None
     contact_phone: str | None = None

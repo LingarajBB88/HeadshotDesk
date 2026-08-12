@@ -20,14 +20,53 @@ export function StudioContact({
   const links = studio.links ?? [];
   const hasContact =
     studio.website_url || studio.contact_email || studio.contact_phone;
-  if (!hasContact && links.length === 0) return null;
+  if (
+    !hasContact &&
+    links.length === 0 &&
+    !studio.portrait_url &&
+    !studio.profile_url &&
+    !studio.tagline
+  ) {
+    return null;
+  }
 
   return (
     <div className={"border-t border-muted-200 pt-4 " + className}>
       <p className="text-xs font-medium uppercase tracking-wider text-muted-600">
         Your photographer
       </p>
-      <p className="mt-1 text-sm font-medium text-ink">{studio.name}</p>
+
+      <div className="mt-2 flex items-center gap-3">
+        {studio.portrait_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={studio.portrait_url}
+            alt={studio.name}
+            className="h-11 w-11 shrink-0 rounded-full object-cover"
+          />
+        ) : null}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink">
+            {/* Linked only when a published page exists, so this never
+                sends someone to a 404. */}
+            {studio.profile_url ? (
+              <a
+                href={studio.profile_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {studio.name}
+              </a>
+            ) : (
+              studio.name
+            )}
+          </p>
+          {studio.tagline ? (
+            <p className="truncate text-xs text-muted-600">{studio.tagline}</p>
+          ) : null}
+        </div>
+      </div>
 
       {/* Links first: a "how to prepare" guide is the thing most worth
           reading before the day, and burying it under a phone number

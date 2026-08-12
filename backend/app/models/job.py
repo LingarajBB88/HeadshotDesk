@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     func,
 )
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
@@ -60,6 +61,12 @@ class Job(Base):
         JSONB, nullable=True
     )
     location: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Practical detail for the participant, carried into their confirmation
+    # and reminder emails. Per job rather than per account: directions to a
+    # client's office change with every booking, and the advice a law firm
+    # needs differs from what a startup needs.
+    directions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prep_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
     settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

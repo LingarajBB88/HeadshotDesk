@@ -22,6 +22,7 @@ from app.schemas.participant import (
     PublicSignupResult,
 )
 from app.schemas.slots import PublicBookSlotRequest, SlotListOut, SlotOut
+from app.schemas.studio import PublicProfileOut
 from app.schemas.types import StrictEmail
 from app.services import (
     email_service,
@@ -111,6 +112,8 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
         shoot_date=job.shoot_date,
         shoot_dates=job.all_shoot_dates,
         location=job.location,
+        directions=job.directions,
+        prep_notes=job.prep_notes,
         shoot_mode=job.shoot_mode,
         branding=None,  # Account-level branding wired up in v0.2
         client_logo_url=_client_logo_url_for_job(db, job),
@@ -195,21 +198,117 @@ def _studio_block(db: Session, job) -> dict | None:  # type: ignore[no-untyped-d
     """
     from app.models import Account
     from app.schemas.studio import PublicStudioOut
+    from app.services import profile_service
 
     account = db.get(Account, job.account_id)
     if account is None:
         return None
     block = PublicStudioOut(
         name=account.name,
+        tagline=account.tagline,
+        city=account.city,
+        portrait_url=profile_service.portrait_url(account),
+        profile_url=profile_service.profile_url(account),
         website_url=account.website_url,
         contact_email=account.contact_email,
         contact_phone=account.contact_phone,
         links=account.links or [],
     ).model_dump()
+    # A portrait or a published profile is reason enough to show the block
+    # even with no contact details: knowing who is photographing you is the
+    # point, and the profile link carries everything else.
     has_detail = any(
-        [block["website_url"], block["contact_email"], block["contact_phone"], block["links"]]
+        [
+            block["website_url"],
+            block["contact_email"],
+            block["contact_phone"],
+            block["links"],
+            block["portrait_url"],
+            block["profile_url"],
+            block["tagline"],
+        ]
     )
     return block if has_detail else None
+
+
+# --- Public photographer profile: /p/{handle} -------------------------------
+
+@router.get("/profile/{handle}", response_model=PublicProfileOut)
+def public_profile(handle: str, db: Session = Depends(get_db)) -> PublicProfileOut:
+    """The photographer's public page.
+
+    `public_profile()` 404s unless the profile is published AND the owner
+    confirmed their email, so a stranger guessing handles learns nothing
+    about which accounts exist.
+    """
+    from app.services import profile_service
+
+    account = profile_service.public_profile(db, handle=handle)
+    return PublicProfileOut(
+        handle=account.handle or "",
+        name=account.name,
+        tagline=account.tagline,
+        about=account.about,
+        city=account.city,
+        country=account.country,
+        portrait_url=profile_service.portrait_url(account),
+        portfolio=[
+            {
+                "id": image["id"],
+                "url": profile_service.portfolio_image_url(account, image["id"]),
+                "caption": image.get("caption"),
+            }
+            for image in (account.portfolio or [])
+        ],
+        website_url=account.website_url,
+        contact_email=account.contact_email,
+        contact_phone=account.contact_phone,
+        links=account.links or [],
+    )
+
+
+@router.get("/profile-portrait/{account_id}")
+def profile_portrait(account_id: str, db: Session = Depends(get_db)):
+    """Serve a photographer's portrait.
+
+    Unauthenticated because it appears on public signup pages, galleries,
+    and the profile page. Not gated on `profile_published`: the portrait is
+    shown to participants of a job regardless of whether the photographer
+    chose to have a public page, and the account id is an unguessable ULID.
+    """
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import profile_service
+
+    content, mime = profile_service.read_portrait(db, account_id=account_id)
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type=mime,
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@router.get("/profile-image/{account_id}/{image_id}")
+def profile_portfolio_image(
+    account_id: str, image_id: str, db: Session = Depends(get_db)
+):
+    """Serve one portfolio image."""
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import profile_service
+
+    content, mime = profile_service.read_portfolio_image(
+        db, account_id=account_id, image_id=image_id
+    )
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type=mime,
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 # --- Referral links ---------------------------------------------------------

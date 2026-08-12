@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models import Account, Client, Job, Participant, SlotBooking
-from app.services import client_service, email_service
+from app.services import client_service, email_service, profile_service
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,10 @@ def _context(db: Session, job: Job) -> dict:
         "client_logo_url": logo_url,
         "client_name": job.client_name,
         "signup_url": f"{settings.frontend_url}/s/{job.public_slug}",
+        # None unless they've published a profile, so we never link a 404.
+        "profile_url": (
+            profile_service.profile_url(account) if account else None
+        ),
     }
 
 
@@ -178,6 +182,9 @@ def participant_signed_up(
             queue_url=f"{settings.frontend_url}/q/{participant.gallery_token}",
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
+            directions=job.directions,
+            prep_notes=job.prep_notes,
+            profile_url=ctx["profile_url"],
         )
     except Exception:  # noqa: BLE001
         logger.exception("Signup confirmation failed (job=%s)", job.id)

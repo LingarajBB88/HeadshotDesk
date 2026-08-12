@@ -4,8 +4,11 @@ Quick reminder: {{ job.name }} is tomorrow.
 
 {% if reminder.time %}Your time: {{ reminder.time }}
 {% endif %}{% if job.location %}Where: {{ job.location }}
+{% endif %}{% if job.directions %}
+Finding us:
+{{ job.directions }}
 {% endif %}
-Wear what you'd wear to meet a client. Solid colours photograph better than busy patterns, and it's worth bringing a second option if you're undecided.
+{% if job.prep_notes %}{{ job.prep_notes }}{% else %}Wear what you'd wear to meet a client. Solid colours photograph better than busy patterns, and it's worth bringing a second option if you're undecided.{% endif %}
 
 {% if reminder.time %}Can't make that time? Pick another one here:
 
@@ -16,4 +19,5 @@ Wear what you'd wear to meet a client. Solid colours photograph better than busy
 {% endif %}
 See you tomorrow.
 
-{{ photographer.display_name }}
+{{ photographer.display_name }}{% if photographer.profile_url %}
+{{ photographer.profile_url }}{% endif %}

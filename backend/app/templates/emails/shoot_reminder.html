@@ -30,11 +30,20 @@
     {% endif %}
   </table>
 
+  {% if job.directions %}
+  <p style="margin:0 0 6px;font-weight:600;">Finding us</p>
+  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.directions }}</p>
+  {% endif %}
+
+  {% if job.prep_notes %}
+  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.prep_notes }}</p>
+  {% else %}
   <p style="margin:0 0 20px;color:#475569;">
     Wear what you'd wear to meet a client. Solid colours photograph better
     than busy patterns, and it's worth bringing a second option if you're
     undecided.
   </p>
+  {% endif %}
 
   {% if reminder.time %}
   <p style="margin:0 0 24px;color:#475569;">
@@ -51,6 +60,10 @@
   {% endif %}
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {% if photographer.profile_url %}
+    <a href="{{ photographer.profile_url }}" style="color:#5B6CFF;text-decoration:none;font-weight:600;">{{ photographer.display_name }}</a>
+    {% else %}
     {{ photographer.display_name }}
+    {% endif %}
   </p>
 </div>

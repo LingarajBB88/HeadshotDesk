@@ -39,6 +39,11 @@ class PublicJobOut(BaseModel):
     # HSD-71: every day the shoot runs on, so the picker can group slots.
     shoot_dates: list[date] = []
     location: str | None
+    # Practical detail from the photographer: how to find the place, and
+    # what to bring or wear. Shown on the signup page and repeated in the
+    # confirmation, because that's where people look the night before.
+    directions: str | None = None
+    prep_notes: str | None = None
     # HSD-55: lets the signup page know whether to show the slot picker.
     shoot_mode: str = "queue"
     branding: dict | None = None  # account branding overrides

@@ -62,6 +62,11 @@ class JobCreate(BaseModel):
     # ("pick 1", "pick 3"). 0 = unlimited.
     picks_enabled: bool | None = None
     pick_cap: int | None = Field(default=None, ge=0, le=100)
+    # Practical detail that travels into the participant's confirmation and
+    # reminder. Per job because directions change with the location, and the
+    # prep advice a law firm wants differs from a startup's.
+    directions: str | None = Field(default=None, max_length=2000)
+    prep_notes: str | None = Field(default=None, max_length=2000)
 
     _validate_location = field_validator("location")(_validate_location)
     _validate_date = field_validator("shoot_date")(_validate_shoot_date_not_past)
@@ -101,6 +106,8 @@ class JobUpdate(BaseModel):
     # unless this flag is set, in which case existing bookings are
     # cancelled first. The frontend shows an explicit confirmation.
     clear_slot_bookings: bool = False
+    directions: str | None = Field(default=None, max_length=2000)
+    prep_notes: str | None = Field(default=None, max_length=2000)
 
     _validate_location = field_validator("location")(_validate_location)
 
@@ -116,6 +123,8 @@ class JobOut(BaseModel):
     shoot_date: date | None
     extra_shoot_dates: list[date] | None
     location: str | None
+    directions: str | None = None
+    prep_notes: str | None = None
     status: JobStatus
     download_cap: int
     shoot_mode: str

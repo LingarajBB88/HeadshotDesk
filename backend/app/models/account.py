@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, String, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -74,6 +74,33 @@ class Account(Base):
     # differs per photographer: a prep guide, an Instagram, a price list.
     links: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
+    )
+
+    # --- Public profile: /p/{handle}.
+    #
+    # Nullable handle because most accounts never publish, and making
+    # everyone pick a URL slug at signup is a step that serves nobody.
+    # Unique because it addresses a page.
+    handle: Mapped[str | None] = mapped_column(
+        String, unique=True, nullable=True, index=True
+    )
+    tagline: Mapped[str | None] = mapped_column(String, nullable=True)
+    about: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(String, nullable=True)
+    country: Mapped[str | None] = mapped_column(String, nullable=True)
+    portrait_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    portrait_content_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    # [{"id": "...", "key": "...", "content_type": "...", "caption": "..."}]
+    # Ordered, short, owned by exactly one account, never queried across
+    # accounts. A table would buy nothing here.
+    portfolio: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    # Opt-in, and false by default. An indexable public page carrying
+    # uploaded images, handed to anyone who starts a free trial, is a spam
+    # magnet. Publishing has to be a decision.
+    profile_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
     )
 
     created_at: Mapped[datetime] = mapped_column(

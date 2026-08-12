@@ -139,7 +139,7 @@ def send_shoot_reminders(db: Session) -> int:
     Only for jobs whose account has a confirmed email, same rule as the
     signup page: this is mail to third parties.
     """
-    from app.services import email_service, slot_service
+    from app.services import email_service, profile_service, slot_service
 
     now = _utcnow()
     tomorrow = (now + timedelta(days=1)).date()
@@ -198,6 +198,11 @@ def send_shoot_reminders(db: Session) -> int:
                     queue_url=f"{settings.frontend_url}/q/{p.gallery_token}",
                     signup_url=f"{settings.frontend_url}/s/{job.public_slug}",
                     client_name=job.client_name,
+                    directions=job.directions,
+                    prep_notes=job.prep_notes,
+                    profile_url=(
+                        profile_service.profile_url(account) if account else None
+                    ),
                 )
             except Exception:  # noqa: BLE001
                 logger.exception("Shoot reminder failed (participant=%s)", p.id)
