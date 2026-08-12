@@ -40,6 +40,12 @@ services:
         fromDatabase:
           name: headshotdesk-db
           property: connectionString
+      # The cron sends participant-facing mail too, so it needs the same
+      # From address and support contact as the web service.
+      - key: EMAIL_FROM
+        value: "HeadshotDesk <info@headshotdesk.com>"
+      - key: FEEDBACK_TO_EMAIL
+        value: info@headshotdesk.com
       - key: POSTMARK_SERVER_TOKEN
         sync: false
       - key: SENTRY_DSN
@@ -100,8 +106,20 @@ services:
         value: headshotdesk-prod
       - key: R2_JURISDICTION
         value: eu
+      # Product email is signed by a person and invites a reply, so the
+      # From address has to be a mailbox that actually exists. hello@ was
+      # aspirational; info@ is real.
       - key: EMAIL_FROM
-        value: "HeadshotDesk <hello@headshotdesk.com>"
+        value: "HeadshotDesk <info@headshotdesk.com>"
+      # Declared here rather than left to the code defaults, so the values
+      # in production are visible in git instead of only in the dashboard.
+      - key: FEEDBACK_TO_EMAIL
+        value: info@headshotdesk.com
+      # Both during the domain move: the existing owner account still logs
+      # in as info@pantherstudios.nl, and admin access is matched on the
+      # user's own email. Drop the old one once that account is renamed.
+      - key: ADMIN_EMAILS
+        value: info@headshotdesk.com,info@pantherstudios.nl
 
 databases:
   - name: headshotdesk-db

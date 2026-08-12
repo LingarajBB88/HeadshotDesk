@@ -93,10 +93,10 @@ export function VerifyEmailGate({ email }: { email: string }) {
           <p className="mt-6 border-t border-muted-200 pt-4 text-xs text-muted-600">
             Wrong address, or the link isn&apos;t arriving? Email{" "}
             <a
-              href="mailto:info@pantherstudios.nl"
+              href="mailto:info@headshotdesk.com"
               className="text-accent hover:underline"
             >
-              info@pantherstudios.nl
+              info@headshotdesk.com
             </a>{" "}
             and we&apos;ll sort it out.
           </p>

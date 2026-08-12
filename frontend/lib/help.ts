@@ -81,7 +81,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "beta",
         heading: "Beta",
         body: [
-          "HeadshotDesk is in beta and free while we polish. Found something confusing or broken? Email info@pantherstudios.nl. Beta feedback steers the roadmap directly.",
+          "HeadshotDesk is in beta and free while we polish. Found something confusing or broken? Email info@headshotdesk.com. Beta feedback steers the roadmap directly.",
         ],
       },
     ],

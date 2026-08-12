@@ -93,7 +93,13 @@ class Settings(BaseSettings):
     # --- Admin (HSD-66) ---
     # Comma-separated list of user emails allowed into the operator
     # dashboard. Enforced server-side on every /admin endpoint.
-    admin_emails: str = Field(default="info@pantherstudios.nl")
+    # Both addresses during the move to the HeadshotDesk domain. The old one
+    # is the email on the existing owner account, so dropping it here would
+    # lock the operator out of their own dashboard until they've signed in
+    # under the new address. Remove it once that account is renamed.
+    admin_emails: str = Field(
+        default="info@headshotdesk.com,info@pantherstudios.nl"
+    )
 
     @property
     def admin_email_set(self) -> frozenset[str]:
@@ -104,8 +110,10 @@ class Settings(BaseSettings):
     # --- Email (Postmark) ---
     postmark_server_token: str = Field(default="")
     email_from: str = Field(default="HeadshotDesk <noreply@headshotdesk.com>")
-    # Where public feature requests are forwarded.
-    feedback_to_email: str = Field(default="info@pantherstudios.nl")
+    # Where public feature requests and new-signup notifications are sent.
+    # Also the contact address printed in email signatures, via
+    # email_support_address falling back to this.
+    feedback_to_email: str = Field(default="info@headshotdesk.com")
     # Signature on product emails. A real name reads like a person wrote
     # it and makes replying feel natural, which is how we hear about
     # problems early.

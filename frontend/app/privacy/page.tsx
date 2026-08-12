@@ -33,8 +33,8 @@ export default function PrivacyPage() {
             headshot shoots and deliver photos to the people photographed.
             This page explains what personal data we process, why, and what
             your rights are. Questions:{" "}
-            <a href="mailto:info@pantherstudios.nl" className="text-accent hover:underline">
-              info@pantherstudios.nl
+            <a href="mailto:info@headshotdesk.com" className="text-accent hover:underline">
+              info@headshotdesk.com
             </a>
             .
           </p>
@@ -92,8 +92,8 @@ export default function PrivacyPage() {
             Under the GDPR you can request access to, correction of, or
             deletion of your personal data, ask for a copy in a portable
             format, and object to or restrict processing. Email{" "}
-            <a href="mailto:info@pantherstudios.nl" className="text-accent hover:underline">
-              info@pantherstudios.nl
+            <a href="mailto:info@headshotdesk.com" className="text-accent hover:underline">
+              info@headshotdesk.com
             </a>{" "}
             and we&apos;ll respond within 30 days. You can also complain to
             the Dutch data protection authority (Autoriteit Persoonsgegevens).

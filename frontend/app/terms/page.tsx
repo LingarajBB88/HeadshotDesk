@@ -90,8 +90,8 @@ export default function TermsPage() {
 
           <p className="mt-8 text-xs text-muted-600">
             Questions?{" "}
-            <a href="mailto:info@pantherstudios.nl" className="text-accent hover:underline">
-              info@pantherstudios.nl
+            <a href="mailto:info@headshotdesk.com" className="text-accent hover:underline">
+              info@headshotdesk.com
             </a>
           </p>
         </article>

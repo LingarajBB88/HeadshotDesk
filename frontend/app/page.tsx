@@ -814,7 +814,7 @@ export default function HomePage() {
             </Link>
             <a
               className="btn-secondary"
-              href="mailto:info@pantherstudios.nl?subject=HeadshotDesk beta"
+              href="mailto:info@headshotdesk.com?subject=HeadshotDesk beta"
             >
               Questions? Email us
             </a>
@@ -837,7 +837,7 @@ export default function HomePage() {
               Terms
             </Link>
             <a
-              href="mailto:info@pantherstudios.nl"
+              href="mailto:info@headshotdesk.com"
               className="hover:text-ink transition"
             >
               Contact

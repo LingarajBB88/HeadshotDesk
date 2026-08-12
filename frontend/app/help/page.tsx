@@ -161,7 +161,7 @@ export default function HelpPage() {
           <p className="mt-8 text-[11px] text-muted-600">
             Can&apos;t find it?{" "}
             <a
-              href="mailto:info@pantherstudios.nl?subject=HeadshotDesk help"
+              href="mailto:info@headshotdesk.com?subject=HeadshotDesk help"
               className="text-accent hover:underline"
             >
               Email us

@@ -71,7 +71,7 @@ function VerifyEmail() {
         <>
           Need help?{" "}
           <a
-            href="mailto:info@pantherstudios.nl"
+            href="mailto:info@headshotdesk.com"
             className="text-accent hover:underline"
           >
             Email us
