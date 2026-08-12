@@ -419,53 +419,11 @@ class TestPortfolio:
         assert r.json()["portrait_url"] is None
 
 
-class TestJobPrepFields:
-    """Directions and prep notes are per job on purpose: the way into one
-    client's building says nothing about the next one."""
+class TestEmailsLinkThePublishedProfile:
+    """The confirmation signs off with the photographer's name. When they
+    have a live page, that name should go somewhere."""
 
-    def _job(self, client: TestClient, tok: str, **extra) -> dict:
-        return client.post(
-            "/api/v1/jobs",
-            json={
-                "name": "Acme",
-                "shoot_date": (date.today() + timedelta(days=7)).isoformat(),
-                "location": "Acme HQ",
-                **extra,
-            },
-            headers=_auth(tok),
-        ).json()
-
-    def test_they_survive_create_and_reach_the_signup_page(
-        self, client: TestClient
-    ):
-        a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = self._job(
-            client,
-            tok,
-            directions="Third floor, ask for reception.",
-            prep_notes="Solid colours work best.",
-        )
-        assert job["directions"] == "Third floor, ask for reception."
-
-        public = client.get(f"/api/v1/public/jobs/{job['public_slug']}").json()
-        assert public["directions"] == "Third floor, ask for reception."
-        assert public["prep_notes"] == "Solid colours work best."
-
-    def test_they_are_editable(self, client: TestClient):
-        a = _signup(client)
-        tok = a["tokens"]["access_token"]
-        job = self._job(client, tok)
-        assert job["directions"] is None
-
-        r = client.patch(
-            f"/api/v1/jobs/{job['id']}",
-            json={"directions": "Enter via the courtyard."},
-            headers=_auth(tok),
-        )
-        assert r.json()["directions"] == "Enter via the courtyard."
-
-    def test_the_signup_confirmation_carries_them(
+    def test_the_link_is_absent_until_the_profile_is_published(
         self, client: TestClient, monkeypatch
     ):
         sent: list[dict] = []
@@ -475,26 +433,36 @@ class TestJobPrepFields:
         )
         a = _signup(client)
         tok = a["tokens"]["access_token"]
-        job = self._job(
-            client,
-            tok,
-            directions="Third floor.",
-            prep_notes="No white shirts.",
-        )
+        job = client.post(
+            "/api/v1/jobs",
+            json={
+                "name": "Acme",
+                "shoot_date": (date.today() + timedelta(days=7)).isoformat(),
+                "location": "Acme HQ",
+            },
+            headers=_auth(tok),
+        ).json()
         client.patch(
             f"/api/v1/jobs/{job['id']}",
             json={"status": "open_for_signup"},
             headers=_auth(tok),
         )
 
-        client.post(
-            f"/api/v1/public/jobs/{job['public_slug']}/signup",
-            json={
-                "name": "Jane Doe",
-                "email": f"j{uuid.uuid4().hex[:6]}@example.com",
-                "consent": True,
-            },
-        )
+        def sign_up() -> None:
+            client.post(
+                f"/api/v1/public/jobs/{job['public_slug']}/signup",
+                json={
+                    "name": "Jane Doe",
+                    "email": f"j{uuid.uuid4().hex[:6]}@example.com",
+                    "consent": True,
+                },
+            )
+
+        sign_up()
         assert sent, "no confirmation was sent"
-        assert sent[-1]["directions"] == "Third floor."
-        assert sent[-1]["prep_notes"] == "No white shirts."
+        assert sent[-1]["profile_url"] is None
+
+        h = _handle()
+        _publish(client, tok, h)
+        sign_up()
+        assert sent[-1]["profile_url"].endswith(f"/p/{h}")

@@ -182,8 +182,6 @@ def participant_signed_up(
             queue_url=f"{settings.frontend_url}/q/{participant.gallery_token}",
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
-            directions=job.directions,
-            prep_notes=job.prep_notes,
             profile_url=ctx["profile_url"],
         )
     except Exception:  # noqa: BLE001

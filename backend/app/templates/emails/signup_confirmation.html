@@ -52,23 +52,10 @@
   </p>
   {% endif %}
 
-  {% if job.directions %}
-  <p style="margin:0 0 6px;font-weight:600;">Finding us</p>
-  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.directions }}</p>
-  {% endif %}
-
-  {# The photographer's own words beat ours: they know the client, the
-     dress code, and what went wrong last time. Only fall back to the
-     generic line when they haven't written anything. #}
-  {% if job.prep_notes %}
-  <p style="margin:0 0 6px;font-weight:600;">Before the day</p>
-  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.prep_notes }}</p>
-  {% else %}
   <p style="margin:0 0 20px;color:#475569;">
     Come as you'd like to be seen: whatever you'd wear to meet a client
     works well.
   </p>
-  {% endif %}
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
     {% if photographer.profile_url %}

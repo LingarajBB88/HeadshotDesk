@@ -30,20 +30,11 @@
     {% endif %}
   </table>
 
-  {% if job.directions %}
-  <p style="margin:0 0 6px;font-weight:600;">Finding us</p>
-  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.directions }}</p>
-  {% endif %}
-
-  {% if job.prep_notes %}
-  <p style="margin:0 0 20px;color:#475569;white-space:pre-line;">{{ job.prep_notes }}</p>
-  {% else %}
   <p style="margin:0 0 20px;color:#475569;">
     Wear what you'd wear to meet a client. Solid colours photograph better
     than busy patterns, and it's worth bringing a second option if you're
     undecided.
   </p>
-  {% endif %}
 
   {% if reminder.time %}
   <p style="margin:0 0 24px;color:#475569;">

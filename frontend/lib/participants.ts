@@ -49,9 +49,6 @@ export type PublicJob = {
   client_name: string | null;
   shoot_date: string | null;
   location: string | null;
-  /** Per-job practical detail from the photographer. */
-  directions?: string | null;
-  prep_notes?: string | null;
   // HSD-55: signals the signup page to show the slot picker.
   shoot_mode: "queue" | "time_slot";
   branding: Record<string, unknown> | null;

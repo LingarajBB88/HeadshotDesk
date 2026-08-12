@@ -67,8 +67,6 @@ def create_job(
     shoot_mode: str | None = None,
     client_id: str | None = None,
     extra_shoot_dates: list | None = None,
-    directions: str | None = None,
-    prep_notes: str | None = None,
 ) -> Job:
     # HSD-36: linking a Client validates ownership and mirrors the client's
     # name into the legacy display field.
@@ -89,8 +87,6 @@ def create_job(
         client_email=client_email,
         shoot_date=shoot_date,
         location=location,
-        directions=(directions or None),
-        prep_notes=(prep_notes or None),
         status="draft",
         created_by=creator.id,
         client_id=client_id,

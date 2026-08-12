@@ -198,8 +198,6 @@ def send_shoot_reminders(db: Session) -> int:
                     queue_url=f"{settings.frontend_url}/q/{p.gallery_token}",
                     signup_url=f"{settings.frontend_url}/s/{job.public_slug}",
                     client_name=job.client_name,
-                    directions=job.directions,
-                    prep_notes=job.prep_notes,
                     profile_url=(
                         profile_service.profile_url(account) if account else None
                     ),

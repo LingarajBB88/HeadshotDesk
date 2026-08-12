@@ -55,10 +55,6 @@ export type Job = {
   /** HSD-71: additional days when the shoot spans more than one date. */
   extra_shoot_dates: string[] | null;
   location: string | null;
-  /** How to find the place, and what to bring. Carried into participant
-   *  emails. Per job because directions change with the location. */
-  directions: string | null;
-  prep_notes: string | null;
   status: JobStatus;
   // F5b.1: per-job hard cap on unique photos each participant can download
   // from their /g/{token} gallery. 0 disables downloads entirely.
@@ -120,8 +116,6 @@ export async function createJob(input: {
   client_id?: string | null;
   // HSD-71: extra days for a multi-day shoot.
   extra_shoot_dates?: string[];
-  directions?: string | null;
-  prep_notes?: string | null;
 }): Promise<Job> {
   // Strip empty strings → null so backend doesn't try to validate them as emails/dates.
   const body: Record<string, unknown> = { name: input.name };
@@ -137,8 +131,6 @@ export async function createJob(input: {
   if (input.extra_shoot_dates?.length) {
     body.extra_shoot_dates = input.extra_shoot_dates;
   }
-  if (input.directions) body.directions = input.directions;
-  if (input.prep_notes) body.prep_notes = input.prep_notes;
 
   return api<Job>("/api/v1/jobs", {
     method: "POST",
@@ -169,8 +161,6 @@ export async function updateJob(
       | "picks_enabled"
       | "pick_cap"
       | "extra_shoot_dates"
-      | "directions"
-      | "prep_notes"
     >
   >,
 ): Promise<Job> {

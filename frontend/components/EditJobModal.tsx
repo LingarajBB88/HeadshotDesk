@@ -75,8 +75,6 @@ export function EditJobModal({
       shoot_date: firstDay || null,
       extra_shoot_dates: extraDays.filter(Boolean),
       location: (String(data.get("location") ?? "").trim()) || null,
-      directions: (String(data.get("directions") ?? "").trim()) || null,
-      prep_notes: (String(data.get("prep_notes") ?? "").trim()) || null,
       client_name: (String(data.get("client_name") ?? "").trim()) || null,
       client_email: (String(data.get("client_email") ?? "").trim()) || null,
     };
@@ -218,39 +216,6 @@ export function EditJobModal({
                 defaultValue={job.location ?? ""}
                 error={fieldErrors.location}
               />
-
-              {/* Both go into the confirmation and the day-before reminder,
-                  which is where people actually look. */}
-              <label className="block">
-                <span className="block text-sm font-medium text-ink">
-                  How to find it
-                </span>
-                <textarea
-                  name="directions"
-                  rows={3}
-                  maxLength={2000}
-                  defaultValue={job.directions ?? ""}
-                  placeholder="Third floor, ask for reception."
-                  className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </label>
-
-              <label className="mt-3 block">
-                <span className="block text-sm font-medium text-ink">
-                  How to prepare
-                </span>
-                <textarea
-                  name="prep_notes"
-                  rows={3}
-                  maxLength={2000}
-                  defaultValue={job.prep_notes ?? ""}
-                  placeholder="Solid colours work best. Bring a second shirt if you're undecided."
-                  className="mt-1 w-full rounded-md border border-muted-200 bg-paper px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-                <span className="mt-1 block text-xs text-muted-600">
-                  Replaces our generic advice in their emails.
-                </span>
-              </label>
             </div>
             <div>
               <FormField

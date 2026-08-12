@@ -427,10 +427,7 @@ export default function PublicSignupPage() {
                 {job.client_name ? <> with {job.client_name}</> : null}.
               </p>
 
-              {(job.shoot_date ||
-                job.location ||
-                job.directions ||
-                job.prep_notes) && (
+              {(job.shoot_date || job.location) && (
                 <dl className="mt-4 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-muted-50 rounded-md p-3">
                   {job.shoot_date ? (
                     <div>
@@ -446,29 +443,6 @@ export default function PublicSignupPage() {
                         Location
                       </dt>
                       <dd className="text-ink">{job.location}</dd>
-                    </div>
-                  ) : null}
-                  {/* Full width: directions are prose, not a label-value
-                      pair, and squeezing them into a column makes them
-                      unreadable on a phone. */}
-                  {job.directions ? (
-                    <div className="sm:col-span-2">
-                      <dt className="font-medium text-muted-600 uppercase tracking-wider">
-                        Finding us
-                      </dt>
-                      <dd className="whitespace-pre-line text-ink">
-                        {job.directions}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {job.prep_notes ? (
-                    <div className="sm:col-span-2">
-                      <dt className="font-medium text-muted-600 uppercase tracking-wider">
-                        Before the day
-                      </dt>
-                      <dd className="whitespace-pre-line text-ink">
-                        {job.prep_notes}
-                      </dd>
                     </div>
                   ) : null}
                 </dl>

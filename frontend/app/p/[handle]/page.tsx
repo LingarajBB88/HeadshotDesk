@@ -21,6 +21,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { ProfileOwnerBar } from "@/components/ProfileOwnerBar";
 import { getPublicProfile, type PublicProfile } from "@/lib/studio";
 
 export const revalidate = 300;
@@ -124,6 +125,8 @@ export default async function ProfilePage({ params }: Props) {
           __html: JSON.stringify(structuredData(profile)),
         }}
       />
+
+      <ProfileOwnerBar handle={profile.handle} />
 
       <header className="flex flex-col gap-5 sm:flex-row sm:items-center">
         {profile.portrait_url ? (

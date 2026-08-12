@@ -9,8 +9,7 @@
 //
 // It lives on the account rather than per job, since a website doesn't
 // change between shoots and retyping it every time guarantees it goes stale
-// on half of them. The two things that DO change per shoot, directions and
-// prep notes, live on the job instead.
+// on half of them.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -133,9 +132,39 @@ export default function SettingsPage() {
     }
   }
 
+  /** What a visitor would actually find on the page right now. Computed
+   *  from the saved profile, not the form state, because unsaved typing
+   *  isn't published either and claiming otherwise would be a lie. */
+  function missingFromProfile(p: StudioProfile): string[] {
+    const gaps: string[] = [];
+    if (!p.portrait_url) gaps.push("a photo of you");
+    if (!p.tagline) gaps.push("a tagline");
+    if (!p.about) gaps.push("an about paragraph");
+    if (p.portfolio.length === 0) gaps.push("sample work");
+    return gaps;
+  }
+
   async function togglePublished() {
     if (!profile) return;
     const next = !profile.profile_published;
+
+    // None of it is required. But publishing a page that shows nothing but
+    // a studio name is almost certainly not what someone meant to do, and
+    // finding out by visiting your own empty page is a bad way to learn it.
+    if (next) {
+      const bare =
+        !profile.portrait_url &&
+        !profile.tagline &&
+        !profile.about &&
+        profile.portfolio.length === 0;
+      if (bare) {
+        const ok = window.confirm(
+          "Your page will show your studio name, your links, and your " +
+            "contact details, and nothing else. Publish it anyway?",
+        );
+        if (!ok) return;
+      }
+    }
     // Publishing needs an address, and saving the form is what assigns one.
     // Doing it in this order means the toggle works on first use rather
     // than erroring on a handle the photographer has clearly already typed.
@@ -199,12 +228,16 @@ export default function SettingsPage() {
       {/* --- Public profile ------------------------------------------- */}
 
       <div className="mt-6 rounded-card border border-muted-200 bg-paper p-5">
-        <h2 className="text-sm font-semibold text-ink">Your profile page</h2>
+        <h2 className="text-sm font-semibold text-ink">
+          Your profile page{" "}
+          <span className="font-normal text-muted-600">(optional)</span>
+        </h2>
         <p className="mt-0.5 mb-4 text-xs text-muted-600">
           A page of your own that participants can open from their
-          confirmation email. Search engines can find it too, though be
-          realistic: it will rank for your name, not for
-          &ldquo;headshot photographer&rdquo;.
+          confirmation email. Every field here is optional, and nothing
+          appears anywhere until you publish. Search engines can find it
+          once you do, though be realistic: it will rank for your name, not
+          for &ldquo;headshot photographer&rdquo;.
         </p>
 
         <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -429,6 +462,10 @@ export default function SettingsPage() {
           <button
             onClick={togglePublished}
             disabled={busy !== null || (!published && !handle.trim())}
+            /* Deliberately not disabled on an empty profile. Everything
+               above is optional, and blocking someone from publishing a
+               sparse page would be us overruling their judgement. The
+               confirm is enough. */
             className={
               published
                 ? "rounded-md border border-muted-200 px-3 py-1.5 text-sm transition hover:border-red-300 hover:text-red-600 disabled:opacity-60"
@@ -442,6 +479,25 @@ export default function SettingsPage() {
                 : "Publish"}
           </button>
         </div>
+
+        {/* The honest answer to "why does my page look empty". Reads off
+            the saved profile, so it stops nagging the moment something is
+            actually there. */}
+        {missingFromProfile(profile).length > 0 ? (
+          <p className="mt-3 border-t border-muted-200 pt-3 text-xs text-muted-600">
+            Your page currently shows your studio name
+            {profile.links.length > 0 ? ", your links" : ""}
+            {profile.website_url || profile.contact_email || profile.contact_phone
+              ? ", and your contact details"
+              : ""}
+            . Still missing:{" "}
+            <span className="text-ink">
+              {missingFromProfile(profile).join(", ")}
+            </span>
+            . All optional, but they&apos;re the part that makes someone
+            comfortable before they sit in front of your camera.
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-6 rounded-card border border-muted-200 bg-paper p-5">
