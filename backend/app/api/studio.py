@@ -21,27 +21,45 @@ from app.services import profile_service
 router = APIRouter()
 
 
-def _serialise(db: Session, account: Account) -> StudioProfileOut:
-    out = StudioProfileOut.model_validate(account)
-    out.portrait_url = profile_service.portrait_url(account)
-    out.profile_url = profile_service.profile_url(account)
-    out.portfolio = [
-        PortfolioImage(
-            id=image["id"],
-            url=profile_service.portfolio_image_url(account, image["id"]),
-            caption=image.get("caption"),
-        )
-        for image in (account.portfolio or [])
-    ]
-    return out
+def _serialise(account: Account) -> StudioProfileOut:
+    """Build the response field by field.
+
+    Not `model_validate(account)`: the stored portfolio rows carry storage
+    keys and content types, not the public URL the schema wants, so
+    validating the ORM object straight through fails the moment an account
+    actually has an image. Listing the fields also means a private column
+    added to Account later can't quietly appear in this payload.
+    """
+    return StudioProfileOut(
+        name=account.name,
+        website_url=account.website_url,
+        contact_email=account.contact_email,
+        contact_phone=account.contact_phone,
+        links=account.links or [],
+        handle=account.handle,
+        tagline=account.tagline,
+        about=account.about,
+        city=account.city,
+        country=account.country,
+        profile_published=account.profile_published,
+        portrait_url=profile_service.portrait_url(account),
+        portfolio=[
+            PortfolioImage(
+                id=image["id"],
+                url=profile_service.portfolio_image_url(account, image["id"]),
+                caption=image.get("caption"),
+            )
+            for image in (account.portfolio or [])
+        ],
+        profile_url=profile_service.profile_url(account),
+    )
 
 
 @router.get("/studio", response_model=StudioProfileOut)
 def get_studio(
     account: Account = Depends(get_current_account),
-    db: Session = Depends(get_db),
 ) -> StudioProfileOut:
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 @router.get("/studio/handle-suggestion")
@@ -105,7 +123,7 @@ def update_studio(
 
     db.commit()
     db.refresh(account)
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 # --- images ------------------------------------------------------------
@@ -124,7 +142,7 @@ async def upload_portrait(
         content=content,
         content_type=file.content_type or "",
     )
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 @router.delete("/studio/portrait", response_model=StudioProfileOut)
@@ -133,7 +151,7 @@ def delete_portrait(
     db: Session = Depends(get_db),
 ) -> StudioProfileOut:
     profile_service.remove_portrait(db, account=account)
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 @router.post("/studio/portfolio", response_model=StudioProfileOut)
@@ -151,7 +169,7 @@ async def add_portfolio_image(
         content_type=file.content_type or "",
         caption=caption,
     )
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 @router.delete("/studio/portfolio/{image_id}", response_model=StudioProfileOut)
@@ -161,7 +179,7 @@ def delete_portfolio_image(
     db: Session = Depends(get_db),
 ) -> StudioProfileOut:
     profile_service.remove_portfolio_image(db, account=account, image_id=image_id)
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 class PortfolioOrderIn(BaseModel):
@@ -177,7 +195,7 @@ def reorder_portfolio(
     profile_service.reorder_portfolio(
         db, account=account, image_ids=payload.image_ids
     )
-    return _serialise(db, account)
+    return _serialise(account)
 
 
 class CaptionIn(BaseModel):
@@ -194,4 +212,4 @@ def update_caption(
     profile_service.set_caption(
         db, account=account, image_id=image_id, caption=payload.caption
     )
-    return _serialise(db, account)
+    return _serialise(account)

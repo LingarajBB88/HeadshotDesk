@@ -60,7 +60,12 @@ class StudioProfileIn(BaseModel):
     links: list[StudioLink] | None = Field(default=None, max_length=MAX_LINKS)
 
     # Public profile.
-    handle: str | None = Field(default=None, max_length=40)
+    #
+    # Generous max_length on purpose: asked for the last part of a URL,
+    # people paste the whole URL, and profile_service reduces it. A 40-char
+    # limit here would 422 that input before it ever reached the code that
+    # knows how to fix it.
+    handle: str | None = Field(default=None, max_length=200)
     tagline: str | None = Field(default=None, max_length=120)
     about: str | None = Field(default=None, max_length=MAX_ABOUT)
     city: str | None = Field(default=None, max_length=80)
