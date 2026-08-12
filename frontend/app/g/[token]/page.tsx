@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { Logo } from "@/components/Logo";
+import { StudioContact } from "@/components/StudioContact";
 import { ApiError } from "@/lib/api";
 import {
   downloadFile,
@@ -627,6 +628,10 @@ export default function PublicGalleryPage() {
             })}
           </div>
         )}
+
+        {/* Who took these, and how to ask for a reshoot. For many
+            participants the gallery is the only page they ever see. */}
+        <StudioContact studio={gallery.studio} className="mt-12" />
 
         {/* Round-2 polish: render the wordmark via <Logo> instead of plain
             text so the footer matches the brand treatment used elsewhere. */}

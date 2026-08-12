@@ -180,7 +180,37 @@ def get_gallery(db: Session, *, token: str) -> dict:
         "picks_enabled": job.picks_enabled,
         "pick_cap": job.pick_cap,
         "picks_used": len(picked_ids),
+        # Who took these, and how to ask them for a reshoot. The gallery is
+        # often the only page a participant ever sees.
+        "studio": _studio_block(db, job),
     }
+
+
+def _studio_block(db: Session, job) -> dict | None:  # type: ignore[no-untyped-def]
+    """The photographer's public contact details, or None if unset."""
+    from app.models import Account
+    from app.schemas.studio import PublicStudioOut
+
+    account = db.get(Account, job.account_id)
+    if account is None:
+        return None
+    block = PublicStudioOut(
+        name=account.name,
+        website_url=account.website_url,
+        contact_email=account.contact_email,
+        contact_phone=account.contact_phone,
+        links=account.links or [],
+    ).model_dump()
+    if not any(
+        [
+            block["website_url"],
+            block["contact_email"],
+            block["contact_phone"],
+            block["links"],
+        ]
+    ):
+        return None
+    return block
 
 
 # ============================================================================

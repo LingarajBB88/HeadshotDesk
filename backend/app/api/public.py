@@ -105,6 +105,7 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
     """Slim view for the signup-form header (job name, date, location)."""
     job = participant_service.get_job_by_slug(db, slug=slug)
     return PublicJobOut(
+        studio=_studio_block(db, job),
         name=job.name,
         client_name=job.client_name,
         shoot_date=job.shoot_date,
@@ -184,6 +185,31 @@ def book_slot_public(
     # committed and losing it over a Postmark blip would be far worse.
     notify_service.slot_confirmed(db, job=job, booking=booking)
     return SlotOut(start=booking.slot_start, end=booking.slot_end, available=False)
+
+
+def _studio_block(db: Session, job) -> dict | None:  # type: ignore[no-untyped-def]
+    """The photographer's public contact details for this job's account.
+
+    Returns None when nothing has been filled in, so the frontend can skip
+    the whole section rather than render an empty card.
+    """
+    from app.models import Account
+    from app.schemas.studio import PublicStudioOut
+
+    account = db.get(Account, job.account_id)
+    if account is None:
+        return None
+    block = PublicStudioOut(
+        name=account.name,
+        website_url=account.website_url,
+        contact_email=account.contact_email,
+        contact_phone=account.contact_phone,
+        links=account.links or [],
+    ).model_dump()
+    has_detail = any(
+        [block["website_url"], block["contact_email"], block["contact_phone"], block["links"]]
+    )
+    return block if has_detail else None
 
 
 # --- Referral links ---------------------------------------------------------

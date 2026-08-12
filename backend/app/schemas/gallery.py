@@ -44,6 +44,8 @@ class GalleryOut(BaseModel):
     # pick_cap 0 means unlimited.
     picks_enabled: bool = False
     pick_cap: int = 1
+    # Photographer contact block, or null when nothing is filled in.
+    studio: dict | None = None
     picks_used: int = 0
 
 

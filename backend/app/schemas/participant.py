@@ -45,6 +45,9 @@ class PublicJobOut(BaseModel):
     # HSD-36: the client's logo, shown above the signup form so people see
     # their employer's branding at the very first touchpoint.
     client_logo_url: str | None = None
+    # Who is photographing them, and how to reach that person. A signup
+    # page without this is a form from nobody.
+    studio: dict | None = None
 
     model_config = {"from_attributes": True}
 

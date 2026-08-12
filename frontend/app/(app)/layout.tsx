@@ -83,6 +83,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/clients" className="hover:text-ink">
               Clients
             </Link>
+            {/* Studio details: everything here is participant-facing. */}
+            <Link href="/settings" className="hover:text-ink">
+              Settings
+            </Link>
             {/* Help opens in a new tab so mid-shoot work isn't lost. */}
             <a
               href="/help"

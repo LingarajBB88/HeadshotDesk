@@ -19,6 +19,7 @@ from app.api import (
     participants,
     public,
     referrals,
+    studio,
 )
 from app.api.deps import require_verified_email
 from app.config import settings
@@ -196,6 +197,10 @@ app.include_router(
     prefix="/api/v1/clients",
     tags=["clients"],
     dependencies=verified,
+)
+# Studio profile: the photographer's own contact details and links.
+app.include_router(
+    studio.router, prefix="/api/v1", tags=["studio"], dependencies=verified
 )
 
 # Wired up as features ship:

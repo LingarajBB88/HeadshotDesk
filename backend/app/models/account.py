@@ -57,6 +57,25 @@ class Account(Base):
 
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # --- Studio profile: what participants see on signup pages and galleries.
+    #
+    # On the account, not the job: a photographer's website doesn't change
+    # per shoot, and making them retype it every time guarantees it goes
+    # stale on half of them.
+    #
+    # `contact_email` is separate from the login email on purpose. The
+    # address you sign in with is often not the one you want a hundred
+    # strangers replying to.
+    website_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Free-form links: [{"label": "How to prepare", "url": "https://..."}].
+    # A list rather than a fixed "blog_url" field because the useful link
+    # differs per photographer: a prep guide, an Instagram, a price list.
+    links: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

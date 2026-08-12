@@ -2,6 +2,7 @@
 // Mirrors backend at /api/v1/public/gallery/{token}/...
 
 import { api, ApiError } from "./api";
+import type { PublicStudio } from "./studio";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -31,6 +32,8 @@ export type Gallery = {
   /** F5b.2: favorites. Cap 0 = unlimited; disabled hides the UI. */
   picks_enabled: boolean;
   pick_cap: number;
+  /** Photographer contact details. Null when none are set. */
+  studio?: PublicStudio | null;
   picks_used: number;
 };
 

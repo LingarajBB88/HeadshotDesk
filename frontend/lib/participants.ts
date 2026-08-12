@@ -1,6 +1,7 @@
 // Participants API client — both authed (photographer) and public (signup form) calls.
 
 import { api } from "./api";
+import type { PublicStudio } from "./studio";
 import { getAccessToken } from "./auth";
 
 export type Participant = {
@@ -53,6 +54,8 @@ export type PublicJob = {
   branding: Record<string, unknown> | null;
   /** HSD-36: the client's logo, shown above the signup form. */
   client_logo_url?: string | null;
+  /** Photographer contact details and links. Null when none are set. */
+  studio?: PublicStudio | null;
 };
 
 export type PublicSlot = {

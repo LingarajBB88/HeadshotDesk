@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 
 import { FormField } from "@/components/FormField";
 import { Logo } from "@/components/Logo";
+import { StudioContact } from "@/components/StudioContact";
 import { ApiError } from "@/lib/api";
 import { classifyFormError } from "@/lib/form-errors";
 import {
@@ -622,6 +623,9 @@ export default function PublicSignupPage() {
               </form>
             </>
           )}
+          {/* Who's photographing them, and anything worth reading first.
+              Inside the card so it belongs to the job, not the footer. */}
+          {job ? <StudioContact studio={job.studio} className="mt-8" /> : null}
         </div>
 
         {/* Round-2 polish: render the wordmark via <Logo> instead of plain
