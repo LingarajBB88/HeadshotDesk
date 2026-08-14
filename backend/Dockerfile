@@ -16,6 +16,10 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 COPY tests ./tests
+# The daily-email cron runs out of here. Leaving it out of the image meant
+# the cron failed with "no such file" every morning since it was created,
+# and no participant ever received a shoot reminder.
+COPY scripts ./scripts
 COPY start.sh ./
 RUN chmod +x start.sh
 
