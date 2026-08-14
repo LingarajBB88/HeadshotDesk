@@ -213,11 +213,24 @@ export async function bookPublicSlot(
 export type PublicSignupResult = {
   participant: Participant;
   created: boolean;
+  /** Set when `slot_start` was sent and the booking succeeded. */
+  booked_slot: { start: string; end: string } | null;
+  /** The chosen time went in the seconds before submitting. The signup
+   *  stands; show the picker with fresh availability. */
+  slot_taken: boolean;
 };
 
 export async function publicSignup(
   slug: string,
-  input: { name: string; email: string; title?: string | null; consent: boolean },
+  input: {
+    name: string;
+    email: string;
+    title?: string | null;
+    consent: boolean;
+    /** Booked in the same request, so there's one email instead of two and
+     *  no window where the signup lands but the booking doesn't. */
+    slotStart?: string | null;
+  },
 ): Promise<PublicSignupResult> {
   const body: Record<string, unknown> = {
     name: input.name,
@@ -225,6 +238,7 @@ export async function publicSignup(
     consent: input.consent,
   };
   if (input.title) body.title = input.title;
+  if (input.slotStart) body.slot_start = input.slotStart;
   return api<PublicSignupResult>(`/api/v1/public/jobs/${slug}/signup`, {
     method: "POST",
     body: JSON.stringify(body),

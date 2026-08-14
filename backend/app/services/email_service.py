@@ -171,17 +171,24 @@ def send_slot_confirmation_email(
     day_label: str,
     time_label: str,
     minutes: int,
-    signup_url: str,
     location: str | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
     moved: bool = False,
+    reschedule_url: str | None = None,
+    links: list[dict] | None = None,
+    profile_url: str | None = None,
 ) -> None:
     """Confirm a booked time slot to the participant.
 
     Sent when someone books their own slot on the public signup page. It's
-    the only record they have of when to turn up, so it carries the time,
-    the place, and a way back to change it.
+    the only record they have of when to turn up, so it carries the time
+    and the place.
+
+    `reschedule_url` is None unless the photographer allows participants to
+    move their own time. When present it carries the participant's token,
+    so following it moves the booking they already hold rather than
+    creating a second one under a different address.
 
     Copy lives in app/templates/emails/slot_confirmation.{subject.txt, txt,
     html}. Edit those to change the wording, not this function.
@@ -193,7 +200,11 @@ def send_slot_confirmation_email(
                 "name": participant_name,
                 "first_name": _first_name(participant_name),
             },
-            "photographer": {"display_name": photographer_name},
+            "photographer": {
+                "display_name": photographer_name,
+                "profile_url": profile_url,
+                "links": links or [],
+            },
             "job": {
                 "name": job_name,
                 "client_name": client_name,
@@ -203,7 +214,7 @@ def send_slot_confirmation_email(
                 "day_label": day_label,
                 "time": time_label,
                 "minutes": minutes,
-                "signup_url": signup_url,
+                "reschedule_url": reschedule_url,
                 # Someone whose time was moved for them needs to be told
                 # that, not congratulated on a booking they didn't make.
                 "moved": moved,
@@ -220,7 +231,7 @@ def send_slot_confirmation_email(
             recipient_name=participant_name,
             subject=rendered["subject"],
             text_body=rendered["text"],
-            extra_url=signup_url,
+            extra_url=reschedule_url,
         )
         return
 
@@ -408,6 +419,7 @@ def send_shoot_reminder_email(
     client_logo_url: str | None = None,
     client_name: str | None = None,
     profile_url: str | None = None,
+    reschedule_url: str | None = None,
 ) -> None:
     """Remind a participant they're being photographed tomorrow.
 
@@ -433,6 +445,7 @@ def send_shoot_reminder_email(
                 "time": time_label,
                 "queue_url": queue_url,
                 "signup_url": signup_url,
+                "reschedule_url": reschedule_url,
             },
             "client": {"logo_url": client_logo_url},
             "app": _APP_CONTEXT,

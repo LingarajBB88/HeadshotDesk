@@ -62,6 +62,12 @@ class PublicParticipantSignup(BaseModel):
     consent: bool = Field(
         description="Participant accepted the privacy terms."
     )
+    # The time they picked, on a time-slot job. Booked inside this request
+    # rather than a second one, so a participant can't end up signed up
+    # with a booking that silently failed, and so they get one email
+    # instead of "you're on the list" followed immediately by "you're
+    # booked". Null on queue jobs and when nothing was picked.
+    slot_start: datetime | None = None
 
 
 # --- Responses ---
@@ -109,6 +115,12 @@ class ParticipantList(BaseModel):
     total: int
 
 
+class SlotWindow(BaseModel):
+    """A booked time, as the signup response reports it back."""
+    start: datetime
+    end: datetime
+
+
 class PublicSignupResult(BaseModel):
     """Response from POST /api/v1/public/jobs/{slug}/signup.
 
@@ -118,3 +130,9 @@ class PublicSignupResult(BaseModel):
     """
     participant: ParticipantOut
     created: bool
+    # Set when `slot_start` was sent and the booking succeeded.
+    booked_slot: SlotWindow | None = None
+    # True when the requested time was taken between loading the page and
+    # submitting. The signup still stands; the UI drops them on the picker
+    # with fresh availability rather than failing the whole form.
+    slot_taken: bool = False

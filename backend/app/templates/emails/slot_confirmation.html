@@ -43,14 +43,36 @@
     works well.
   </p>
 
+  {# What the photographer wants read before the day: a prep guide,
+     directions, whatever they put in Settings. More use to someone the
+     night before than an invitation to move their appointment. #}
+  {% if photographer.links %}
+  <p style="margin:0 0 8px;font-weight:600;">Worth reading first</p>
+  <ul style="margin:0 0 24px;padding-left:20px;color:#475569;">
+    {% for link in photographer.links %}
+    <li style="margin-bottom:4px;">
+      <a href="{{ link.url }}" style="color:#5B6CFF;">{{ link.label }}</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {# Only when the photographer allows it, and always carrying the
+     participant's token so it moves the booking they already hold. #}
+  {% if booking.reschedule_url %}
   <p style="margin:0 0 24px;color:#475569;">
     Need a different time?
-    <a href="{{ booking.signup_url }}" style="color:#5B6CFF;">
-      Pick another slot
+    <a href="{{ booking.reschedule_url }}" style="color:#5B6CFF;">
+      Change your slot
     </a>.
   </p>
+  {% endif %}
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">
+    {% if photographer.profile_url %}
+    <a href="{{ photographer.profile_url }}" style="color:#5B6CFF;text-decoration:none;font-weight:600;">{{ photographer.display_name }}</a>
+    {% else %}
     {{ photographer.display_name }}
+    {% endif %}
   </p>
 </div>

@@ -167,7 +167,10 @@ class TestBookingConfirmationEmail:
         assert sent[0]["participant_name"] == "Jane Doe"
         assert sent[0]["time_label"] == slots[0]["start"][11:16]
         assert sent[0]["minutes"] > 0
-        assert job["public_slug"] in sent[0]["signup_url"]
+        # No reschedule link unless the photographer opened it on this job.
+        # It used to point at the bare signup page, where a different email
+        # address created a second participant holding a second slot.
+        assert sent[0]["reschedule_url"] is None
 
     def test_email_failure_does_not_lose_the_booking(
         self, client: TestClient, monkeypatch

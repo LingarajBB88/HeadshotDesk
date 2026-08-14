@@ -101,6 +101,8 @@ class JobUpdate(BaseModel):
     # unless this flag is set, in which case existing bookings are
     # cancelled first. The frontend shows an explicit confirmation.
     clear_slot_bookings: bool = False
+    # Whether participants may move their own booked time.
+    allow_reschedule: bool | None = None
 
     _validate_location = field_validator("location")(_validate_location)
 
@@ -127,6 +129,7 @@ class JobOut(BaseModel):
     # F5b.2: participant favorites.
     picks_enabled: bool
     pick_cap: int
+    allow_reschedule: bool = False
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

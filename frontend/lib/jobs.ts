@@ -69,6 +69,9 @@ export type Job = {
   // F5b.2: participant favorites — off by default; cap 0 = unlimited.
   picks_enabled: boolean;
   pick_cap: number;
+  /** Whether participants may move their own booked time. Off unless the
+   *  photographer turns it on. */
+  allow_reschedule: boolean;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -161,6 +164,7 @@ export async function updateJob(
       | "picks_enabled"
       | "pick_cap"
       | "extra_shoot_dates"
+      | "allow_reschedule"
     >
   >,
 ): Promise<Job> {

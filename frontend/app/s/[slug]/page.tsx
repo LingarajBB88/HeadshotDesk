@@ -161,6 +161,20 @@ export default function PublicSignupPage() {
     };
   }, [slug]);
 
+  // Arriving from a "change your slot" link in an email. The token names
+  // the participant, so skip the form entirely and drop them on the
+  // picker as themselves. This is the whole point of the token: without
+  // it, someone re-entering a different email address would become a
+  // second participant and take a second slot while their first stayed
+  // booked.
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get("t");
+    if (!token) return;
+    setGalleryToken(token);
+    setSubmitted(true);
+    setWasNewSignup(false);
+  }, []);
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
@@ -198,33 +212,31 @@ export default function PublicSignupPage() {
       // Keeps UI flexible without forcing a data model change.
       const fullName = lastName ? `${firstName} ${lastName}` : firstName;
 
+      // Signup and booking go in one request. Two meant two emails, and
+      // left a window where the signup landed but the booking silently
+      // didn't.
       const result = await publicSignup(slug, {
         name: fullName,
         email: String(data.get("email") ?? "").trim(),
         title: (String(data.get("title") ?? "").trim()) || null,
         consent: true,
+        slotStart: needsSlot ? selectedSlot : null,
       });
       setWasNewSignup(result.created);
       setGalleryToken(result.participant.gallery_token);
-      // Book the chosen slot right after signup. If it was taken in the
-      // meantime, land on the post-signup picker with fresh availability.
-      if (needsSlot && selectedSlot) {
-        try {
-          const booked = await bookPublicSlot(
-            slug,
-            result.participant.gallery_token,
-            selectedSlot,
-          );
-          setBookedSlot(booked);
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 409) {
-            setSlotError("That time was just taken. Pick another.");
-          } else {
-            setSlotError("Your time couldn't be booked. Pick one below.");
-          }
-          setSelectedSlot(null);
-          await refreshSlots();
-        }
+
+      if (result.booked_slot) {
+        setBookedSlot({
+          start: result.booked_slot.start,
+          end: result.booked_slot.end,
+          available: false,
+        });
+      } else if (result.slot_taken) {
+        // Someone else got there first. They're still signed up, so put
+        // them on the picker rather than failing the whole form.
+        setSlotError("That time was just taken. Pick another.");
+        setSelectedSlot(null);
+        await refreshSlots();
       } else if (needsSlot) {
         await refreshSlots();
       }

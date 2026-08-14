@@ -198,6 +198,14 @@ def send_shoot_reminders(db: Session) -> int:
                     queue_url=f"{settings.frontend_url}/q/{p.gallery_token}",
                     signup_url=f"{settings.frontend_url}/s/{job.public_slug}",
                     client_name=job.client_name,
+                    # Token-carrying, and only when the photographer opened
+                    # rescheduling on this job.
+                    reschedule_url=(
+                        f"{settings.frontend_url}/s/{job.public_slug}"
+                        f"?t={p.gallery_token}"
+                        if job.allow_reschedule
+                        else None
+                    ),
                     profile_url=(
                         profile_service.profile_url(account) if account else None
                     ),

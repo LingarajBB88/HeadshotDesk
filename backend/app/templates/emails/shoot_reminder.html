@@ -37,10 +37,14 @@
   </p>
 
   {% if reminder.time %}
+  {# Only when the photographer allows rescheduling, and carrying the
+     participant's token so it moves the booking they already hold. #}
+  {% if reminder.reschedule_url %}
   <p style="margin:0 0 24px;color:#475569;">
     Can't make that time?
-    <a href="{{ reminder.signup_url }}" style="color:#5B6CFF;">Pick another</a>.
+    <a href="{{ reminder.reschedule_url }}" style="color:#5B6CFF;">Change your slot</a>.
   </p>
+  {% endif %}
   {% else %}
   <p style="margin:0 0 24px;color:#475569;">
     There's no fixed time. Come whenever suits you and we'll photograph you

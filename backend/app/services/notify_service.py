@@ -54,6 +54,7 @@ def _context(db: Session, job: Job) -> dict:
         "profile_url": (
             profile_service.profile_url(account) if account else None
         ),
+        "links": (account.links or []) if account else [],
     }
 
 
@@ -83,10 +84,26 @@ def slot_confirmed(
             day_label=_day_label(booking.slot_start),
             time_label=_time_label(booking.slot_start),
             minutes=minutes,
-            signup_url=ctx["signup_url"],
+            # Carries the participant's token, so following it identifies
+            # them and moves the booking they already hold. The old link
+            # went to the bare signup page, where entering a different
+            # address created a second participant holding a second slot
+            # while the first stayed blocked.
+            #
+            # Null unless the photographer opened rescheduling on this job.
+            reschedule_url=(
+                f"{ctx['signup_url']}?t={participant.gallery_token}"
+                if job.allow_reschedule
+                else None
+            ),
             location=job.location,
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
+            # The photographer's own links: a prep guide, directions,
+            # whatever they put in Settings. More use to someone the night
+            # before than an invitation to move their appointment.
+            links=ctx["links"],
+            profile_url=ctx["profile_url"],
             # Changes the opening line: someone who didn't ask for this
             # needs to know their time moved, not be congratulated on
             # booking it.

@@ -20,6 +20,7 @@ from app.schemas.participant import (
     PublicJobOut,
     PublicParticipantSignup,
     PublicSignupResult,
+    SlotWindow,
 )
 from app.schemas.slots import PublicBookSlotRequest, SlotListOut, SlotOut
 from app.schemas.studio import PublicProfileOut
@@ -143,14 +144,46 @@ def signup(
         email=payload.email,
         title=payload.title,
     )
-    # Only on a genuinely new signup. Re-submitting the form (same email)
-    # is idempotent, and mailing again would look like a duplicate booking.
-    if created:
-        job = participant_service.get_job_by_slug(db, slug=slug)
+    job = participant_service.get_job_by_slug(db, slug=slug)
+
+    # Book the time they picked here rather than in a second request. Two
+    # requests meant two emails ("you're on the list", then immediately
+    # "you're booked"), and left a window where the signup landed but the
+    # booking didn't and nobody was told.
+    booking = None
+    slot_taken = False
+    if payload.slot_start is not None and job.shoot_mode == "time_slot":
+        try:
+            booking = slot_service.book_slot_for_participant(
+                db, job=job, participant=p, slot_start=payload.slot_start
+            )
+        except HTTPException as exc:
+            # A slot going in the seconds between loading the page and
+            # submitting is ordinary, not an error. Keep the signup and let
+            # them pick again; anything else is a real failure.
+            if exc.status_code != status.HTTP_409_CONFLICT:
+                raise
+            slot_taken = True
+
+    if booking is not None:
+        # The booking confirmation already carries the date, place, and
+        # duration, so it supersedes the signup acknowledgement entirely.
+        notify_service.slot_confirmed(db, job=job, booking=booking)
+    elif created:
+        # Only on a genuinely new signup. Re-submitting the form (same
+        # email) is idempotent, and mailing again would look like a
+        # duplicate booking.
         notify_service.participant_signed_up(db, job=job, participant=p)
+
     return PublicSignupResult(
         participant=ParticipantOut.model_validate(p),
         created=created,
+        booked_slot=(
+            SlotWindow(start=booking.slot_start, end=booking.slot_end)
+            if booking is not None
+            else None
+        ),
+        slot_taken=slot_taken,
     )
 
 

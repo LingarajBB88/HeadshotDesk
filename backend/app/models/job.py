@@ -61,6 +61,13 @@ class Job(Base):
     )
     location: Mapped[str | None] = mapped_column(String, nullable=True)
 
+    # Whether a participant may move their own booked time. Off unless the
+    # photographer says otherwise: on a corporate shoot the client owns the
+    # schedule, not the individual sitting in the chair.
+    allow_reschedule: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
     settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 

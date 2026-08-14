@@ -393,6 +393,14 @@ export default function JobDetailPage() {
                   onChanged={(updated) => setJob(updated)}
                   editable={job.status !== "archived"}
                 />
+                {/* Only meaningful when there are times to move between. */}
+                {job.shoot_mode === "time_slot" ? (
+                  <RescheduleDetail
+                    job={job}
+                    onChanged={(updated) => setJob(updated)}
+                    editable={job.status !== "archived"}
+                  />
+                ) : null}
               </dl>
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
@@ -671,6 +679,59 @@ function PicksDetail({
             <span className="text-xs text-muted-600">Saving…</span>
           ) : null}
         </label>
+        {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      </dd>
+    </div>
+  );
+}
+
+function RescheduleDetail({
+  job,
+  onChanged,
+  editable,
+}: {
+  job: Job;
+  onChanged: (updated: Job) => void;
+  editable: boolean;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function toggle(next: boolean) {
+    setSaving(true);
+    setError(null);
+    try {
+      onChanged(await updateJob(job.id, { allow_reschedule: next }));
+    } catch {
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <dd className="text-sm text-ink">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={job.allow_reschedule}
+            onChange={(e) => toggle(e.target.checked)}
+            disabled={saving || !editable}
+            className="accent-accent"
+          />
+          <span>Participants can change their own time</span>
+          {saving ? (
+            <span className="text-xs text-muted-600">Saving…</span>
+          ) : null}
+        </label>
+        {/* Off by default because on a corporate shoot the client owns the
+            schedule. Worth saying what turning it on actually does. */}
+        <p className="mt-1 text-xs text-muted-600">
+          {job.allow_reschedule
+            ? "Their confirmation and reminder carry a link that moves their existing booking."
+            : "Their emails carry no reschedule link. Move people yourself from the schedule."}
+        </p>
         {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
       </dd>
     </div>

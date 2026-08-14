@@ -7,10 +7,10 @@ Quick reminder: {{ job.name }} is tomorrow.
 {% endif %}
 Wear what you'd wear to meet a client. Solid colours photograph better than busy patterns, and it's worth bringing a second option if you're undecided.
 
-{% if reminder.time %}Can't make that time? Pick another one here:
+{% if reminder.time %}{% if reminder.reschedule_url %}Can't make that time? Change your slot here:
 
-{{ reminder.signup_url }}
-{% else %}There's no fixed time. Come whenever suits you and we'll photograph you in order. You can check how busy it is here:
+{{ reminder.reschedule_url }}
+{% endif %}{% else %}There's no fixed time. Come whenever suits you and we'll photograph you in order. You can check how busy it is here:
 
 {{ reminder.queue_url }}
 {% endif %}
