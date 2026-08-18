@@ -38,16 +38,12 @@
     </tr>
   </table>
 
-  <p style="margin:0 0 20px;color:#475569;">
-    Come as you'd like to be seen: whatever you'd wear to meet a client
-    works well.
-  </p>
 
   {# What the photographer wants read before the day: a prep guide,
      directions, whatever they put in Settings. More use to someone the
      night before than an invitation to move their appointment. #}
   {% if photographer.links %}
-  <p style="margin:0 0 8px;font-weight:600;">Worth reading first</p>
+  <p style="margin:0 0 8px;font-weight:600;">Please read these first</p>
   <ul style="margin:0 0 24px;padding-left:20px;color:#475569;">
     {% for link in photographer.links %}
     <li style="margin-bottom:4px;">

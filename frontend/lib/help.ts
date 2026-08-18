@@ -42,6 +42,7 @@ export const HELP_CATEGORIES = [
   "Shoot day",
   "Photos",
   "Galleries & delivery",
+  "Emails",
 ] as const;
 
 export const HELP_ARTICLES: HelpArticle[] = [
@@ -832,6 +833,163 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     related: ["create-a-job", "galleries", "deliver-emails"],
+  },
+
+  // ------------------------------------------------------------------
+  // Emails
+  // ------------------------------------------------------------------
+  {
+    slug: "emails-we-send",
+    title: "Every email we send",
+    category: "Emails",
+    summary:
+      "What goes out to participants, to your client, and to you. When each one fires, and what you control.",
+    intro: [
+      "Most of what HeadshotDesk does for you happens by email, and most of it happens without you pressing anything. This page lists every message the product sends, what triggers it, and which parts you decide.",
+      "Read it once before your first real shoot. Knowing what your client's people will receive is the difference between confidence on the day and finding out from them.",
+    ],
+    keywords: [
+      "email", "emails", "notification", "notifications", "reminder",
+      "reminders", "confirmation", "message", "messages", "sent",
+      "communication", "automatic", "when",
+    ],
+    sections: [
+      {
+        id: "participants",
+        heading: "What participants receive",
+        body: [
+          "Nobody gets all of these. Which ones arrive depends on how the job runs and what happens on the day.",
+        ],
+        items: [
+          {
+            term: "Booking confirmation",
+            def: "Immediately when they book a time. Carries the day, the time, the place, and how long it takes. On a time slot job this is the only message between signing up and their gallery.",
+          },
+          {
+            term: "Signup confirmation",
+            def: "Immediately when they sign up without a time. That means a walk up queue job, or a time slot job where they did not pick a slot. It pushes them to choose one.",
+          },
+          {
+            term: "Booking cancelled",
+            def: "Immediately when you cancel their slot. Tells them their time is gone and how to pick another.",
+          },
+          {
+            term: "Shoot reminder",
+            def: "The morning before the shoot. Repeats the time and place. The cheapest thing in the product for reducing no shows.",
+          },
+          {
+            term: "Gallery ready",
+            def: "When you press Deliver. Contains the private link to their own photos and how many they may download.",
+          },
+          {
+            term: "Gallery reminder",
+            def: "Four days after delivery, only to people who never opened their gallery. Sends once.",
+          },
+          {
+            term: "Missed your slot",
+            def: "When you mark someone as not attended. Written to be easy to reply to rather than accusing.",
+          },
+        ],
+      },
+      {
+        id: "why-two-confirmations",
+        heading: "Signup confirmation or booking confirmation?",
+        body: [
+          "They answer different questions, and on a time slot job a participant should only ever see one of them.",
+          "The booking confirmation means you are on at 09:00. The signup confirmation means you are on the list, but we do not know when yet.",
+          "Booking now happens inside the signup request, so someone who signs up and picks a time in one go gets the booking confirmation only. The signup confirmation is reserved for people who genuinely have no time yet.",
+          "That can still happen on a time slot job. The most common reason is that the time they picked was taken in the seconds before they submitted. The signup stands, the booking does not, and the email asks them to pick again. It also happens when the schedule is not set up yet, when every slot has passed, and when everything is booked.",
+        ],
+      },
+      {
+        id: "reminder-timing",
+        heading: "When the reminder goes out",
+        body: [
+          "Once a day at 06:00 UTC, to everyone whose shoot is the following day. On a shoot running several days, each day's people are reminded on their own eve.",
+          "Two limits worth knowing before a real shoot.",
+        ],
+        items: [
+          {
+            term: "Signing up late",
+            def: "Anyone who signs up after the reminder has gone out that morning will not receive one. On a shoot where people register the night before, that can be most of them.",
+          },
+          {
+            term: "No time booked",
+            def: "On a time slot job, only people with a booking are reminded. Someone signed up without a time is not expected on any particular day, so they are skipped.",
+          },
+          {
+            term: "Already handled",
+            def: "Nobody is reminded twice, and anyone already photographed or marked as not attended is skipped.",
+          },
+        ],
+      },
+      {
+        id: "your-client",
+        heading: "What your client receives",
+        body: [
+          "One email, when you deliver the job. It tells them how many people were photographed, how many galleries went out, and who was never photographed. It links to their live dashboard.",
+          "Your client never receives participant emails, and never sees anyone's photos or email address.",
+        ],
+      },
+      {
+        id: "you",
+        heading: "What you receive",
+        items: [
+          { term: "Confirm your email", def: "At signup. Nothing in the product works until you click it." },
+          { term: "Welcome", def: "After you confirm. Points at the first thing worth doing." },
+          { term: "Password reset and password changed", def: "When you ask for a reset, and again once it succeeds." },
+          { term: "Trial ending", def: "Seven days before your trial ends." },
+          { term: "Trial ended", def: "On the day it ends." },
+          { term: "Referral reward", def: "When someone you referred becomes a paying customer." },
+          { term: "Undelivered job", def: "Three days after a job was shot but never delivered. The one that catches a job you forgot." },
+        ],
+      },
+      {
+        id: "what-you-control",
+        heading: "What you control",
+        items: [
+          {
+            term: "Your links",
+            def: "Anything in Settings under Links rides in the booking confirmation. A how to prepare post earns its place here. This is where you say what to wear, because you know the client and we do not.",
+          },
+          {
+            term: "Your name and profile",
+            def: "Every participant email is signed with your studio name. Publish a profile page and that name becomes a link to it.",
+          },
+          {
+            term: "Can participants change their own time",
+            def: "Off by default, per job, on the job page. Off means their emails carry no reschedule link and you move people yourself. On means the link moves the booking they already hold.",
+          },
+          {
+            term: "Your client's logo",
+            def: "Upload it once on the Clients page and it appears at the top of participant emails, the signup page, and their galleries.",
+          },
+          {
+            term: "Download and favourite limits",
+            def: "Set per job. The gallery email states the number, so it always matches what the gallery actually allows.",
+          },
+        ],
+      },
+      {
+        id: "what-we-do-not-say",
+        heading: "What we deliberately do not say",
+        body: [
+          "Participant emails carry no advice about what to wear, how to sit, or how to prepare. We used to include a line about dressing as you would to meet a client, and removed it.",
+          "The reason is simple: you know the client and we do not. A law firm and a startup need different advice, and a generic line in your name reads as though you wrote it. Use your links instead.",
+        ],
+      },
+      {
+        id: "sender",
+        heading: "Who they come from, and where replies go",
+        body: [
+          "Everything sends from HeadshotDesk, and participant emails are signed with your studio name so people know who is photographing them.",
+          "Replies come to you, not to us. Anything sent to a participant or to your client carries your address, so someone answering their booking confirmation to ask for a different time reaches you directly.",
+          "Which address depends on Settings. Fill in a contact email and replies go there, which is the point of that field: your login address stays private. Leave it blank and replies go to the address you sign in with.",
+          "Your own emails from us, like a trial warning, still come back to us.",
+        ],
+      },
+    ],
+    related: ["deliver-emails", "time-slot-booking", "signup-link", "clients-and-branding"],
   },
 ];
 

@@ -9,6 +9,6 @@ You can see the full picture here, no login needed:
 
 {{ dashboard.url }}
 {% endif %}
-If anyone says they haven't received theirs, let me know and I'll resend it.
+If anyone says they haven't received theirs, please let me know and I'll resend it.
 
 {{ photographer.display_name }}

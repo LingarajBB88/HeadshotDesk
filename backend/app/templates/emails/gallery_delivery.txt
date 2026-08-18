@@ -6,7 +6,7 @@ Your headshots from {{ job.name }} are ready. Here's your private link:
 
 {% if gallery.photo_count %}There {% if gallery.photo_count == 1 %}is 1 photo{% else %}are {{ gallery.photo_count }} photos{% endif %} waiting for you. {% endif %}{% if gallery.download_cap is none %}Download as many as you like.{% elif gallery.download_cap == 1 %}Pick the one you want and download it.{% else %}You can download {{ gallery.download_cap }} of them.{% endif %}
 {% if gallery.picks_enabled %}
-Star your favourites while you're there. That tells your photographer which ones to retouch{% if gallery.download_cap and gallery.download_cap > 1 %}, so choose the {{ gallery.download_cap }} you'd actually use{% endif %}.
+Please star your favourites while you're there. That tells your photographer which ones to retouch{% if gallery.download_cap and gallery.download_cap > 1 %}, so choose the {{ gallery.download_cap }} you'd actually use{% endif %}.
 {% endif %}
 The link keeps working, so you can come back for it later.
 

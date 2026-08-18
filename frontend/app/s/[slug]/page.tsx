@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { StudioContact } from "@/components/StudioContact";
 import { ApiError } from "@/lib/api";
 import { classifyFormError } from "@/lib/form-errors";
+import { mentionsClient } from "@/lib/naming";
 import {
   bookPublicSlot,
   getPublicJob,
@@ -436,7 +437,10 @@ export default function PublicSignupPage() {
               <p className="mt-1 text-sm text-muted-600">
                 You&apos;re registering for{" "}
                 <strong className="text-ink">{job.name}</strong>
-                {job.client_name ? <> with {job.client_name}</> : null}.
+                {job.client_name && !mentionsClient(job.name, job.client_name) ? (
+                  <> with {job.client_name}</>
+                ) : null}
+                .
               </p>
 
               {(job.shoot_date || job.location) && (

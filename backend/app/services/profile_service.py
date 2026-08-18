@@ -345,6 +345,31 @@ def read_portfolio_image(
 # --- the public read path ----------------------------------------------
 
 
+def reply_to_for(db: Session, account: Account | None) -> str | None:
+    """Where a participant's reply should land.
+
+    Everything sends from HeadshotDesk, so without this a participant
+    replying to their booking confirmation to ask for a different time
+    reaches our support inbox instead of the photographer, who never learns
+    the request was made.
+
+    Prefers the contact address from Settings, which exists precisely so the
+    login address stays private. Falls back to the account owner's login
+    address, because reaching the photographer at a slightly wrong address
+    beats reaching a stranger at the right one.
+    """
+    if account is None:
+        return None
+    if account.contact_email:
+        return account.contact_email
+    owner = db.scalar(
+        select(User)
+        .where(User.account_id == account.id)
+        .order_by(User.created_at.asc())
+    )
+    return owner.email if owner else None
+
+
 def owner_is_verified(db: Session, *, account_id: str) -> bool:
     return (
         db.scalar(

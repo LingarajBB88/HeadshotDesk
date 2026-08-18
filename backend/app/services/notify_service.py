@@ -55,6 +55,8 @@ def _context(db: Session, job: Job) -> dict:
             profile_service.profile_url(account) if account else None
         ),
         "links": (account.links or []) if account else [],
+        # So a reply reaches the photographer rather than our support inbox.
+        "reply_to": profile_service.reply_to_for(db, account),
     }
 
 
@@ -108,6 +110,7 @@ def slot_confirmed(
             # needs to know their time moved, not be congratulated on
             # booking it.
             moved=moved_by_photographer,
+            reply_to=ctx["reply_to"],
         )
     except Exception:  # noqa: BLE001 — the booking is what matters
         logger.exception("Slot confirmation failed (job=%s)", job.id)
@@ -137,6 +140,7 @@ def slot_cancelled(
             signup_url=ctx["signup_url"],
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
+            reply_to=ctx["reply_to"],
         )
     except Exception:  # noqa: BLE001
         logger.exception("Slot cancellation email failed (job=%s)", job.id)
@@ -166,6 +170,7 @@ def marked_no_show(db: Session, *, job: Job, participant: Participant) -> None:
             and job.archived_at is None,
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
+            reply_to=ctx["reply_to"],
         )
     except Exception:  # noqa: BLE001
         logger.exception("No-show follow-up failed (job=%s)", job.id)
@@ -200,6 +205,7 @@ def participant_signed_up(
             client_logo_url=ctx["client_logo_url"],
             client_name=ctx["client_name"],
             profile_url=ctx["profile_url"],
+            reply_to=ctx["reply_to"],
         )
     except Exception:  # noqa: BLE001
         logger.exception("Signup confirmation failed (job=%s)", job.id)

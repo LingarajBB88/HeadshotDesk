@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { StudioContact } from "@/components/StudioContact";
 import { ApiError } from "@/lib/api";
+import { mentionsClient } from "@/lib/naming";
 import {
   downloadFile,
   downloadZip,
@@ -387,7 +388,10 @@ export default function PublicGalleryPage() {
         </h1>
         <p className="mt-1 text-sm text-muted-600">
           From <strong className="text-ink">{gallery.job.name}</strong>
-          {gallery.job.client_name ? <> with {gallery.job.client_name}</> : null}
+          {gallery.job.client_name &&
+          !mentionsClient(gallery.job.name, gallery.job.client_name) ? (
+            <> with {gallery.job.client_name}</>
+          ) : null}
           {gallery.job.shoot_date ? <> · {gallery.job.shoot_date}</> : null}.
         </p>
 

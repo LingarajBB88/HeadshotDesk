@@ -209,6 +209,9 @@ def send_shoot_reminders(db: Session) -> int:
                     profile_url=(
                         profile_service.profile_url(account) if account else None
                     ),
+                    # A reply to a reminder is almost always "I can't make
+                    # it", which is useless in our inbox.
+                    reply_to=profile_service.reply_to_for(db, account),
                 )
             except Exception:  # noqa: BLE001
                 logger.exception("Shoot reminder failed (participant=%s)", p.id)
@@ -236,7 +239,7 @@ def send_gallery_nudges(db: Session) -> int:
     from sqlalchemy import func
 
     from app.models import ParticipantDownload
-    from app.services import email_service
+    from app.services import email_service, profile_service
 
     now = _utcnow()
     cutoff = now - timedelta(days=GALLERY_NUDGE_DAYS)
@@ -282,6 +285,7 @@ def send_gallery_nudges(db: Session) -> int:
                 gallery_url=f"{settings.frontend_url}/g/{p.gallery_token}",
                 download_cap=job.download_cap,
                 client_name=job.client_name,
+                reply_to=profile_service.reply_to_for(db, account),
             )
         except Exception:  # noqa: BLE001
             logger.exception("Gallery nudge failed (participant=%s)", p.id)

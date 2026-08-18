@@ -55,9 +55,18 @@ def _send_via_postmark(
     subject: str,
     text_body: str,
     html_body: str,
+    reply_to: str | None = None,
 ) -> None:
     """Shared Postmark send path. Lazily imports postmarker so dev environments
-    without the package installed still boot."""
+    without the package installed still boot.
+
+    `reply_to` is the photographer's address on anything sent to a
+    participant or a client. Without it, someone replying to their booking
+    confirmation to ask for a different time reaches HeadshotDesk support
+    instead of the person who can actually move them, and the photographer
+    never learns the request was made. Left unset on photographer-facing
+    mail, where we are the right recipient.
+    """
     try:
         from postmarker.core import PostmarkClient
     except ImportError:
@@ -65,14 +74,17 @@ def _send_via_postmark(
         return
 
     client = PostmarkClient(server_token=settings.postmark_server_token)
-    client.emails.send(
-        From=settings.email_from,
-        To=to_email,
-        Subject=subject,
-        TextBody=text_body,
-        HtmlBody=html_body,
-        MessageStream="outbound",
-    )
+    kwargs = {
+        "From": settings.email_from,
+        "To": to_email,
+        "Subject": subject,
+        "TextBody": text_body,
+        "HtmlBody": html_body,
+        "MessageStream": "outbound",
+    }
+    if reply_to:
+        kwargs["ReplyTo"] = reply_to
+    client.emails.send(**kwargs)
 
 
 def _log_dev_email(
@@ -178,6 +190,7 @@ def send_slot_confirmation_email(
     reschedule_url: str | None = None,
     links: list[dict] | None = None,
     profile_url: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Confirm a booked time slot to the participant.
 
@@ -240,6 +253,7 @@ def send_slot_confirmation_email(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )
 
 
@@ -420,6 +434,7 @@ def send_shoot_reminder_email(
     client_name: str | None = None,
     profile_url: str | None = None,
     reschedule_url: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Remind a participant they're being photographed tomorrow.
 
@@ -457,6 +472,7 @@ def send_shoot_reminder_email(
         recipient_name=participant_name,
         rendered=rendered,
         extra_url=signup_url,
+        reply_to=reply_to,
     )
 
 
@@ -498,6 +514,7 @@ def send_no_show_followup_email(
     can_rebook: bool,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Follow up with someone who didn't turn up.
 
@@ -524,6 +541,7 @@ def send_no_show_followup_email(
         recipient_name=participant_name,
         rendered=rendered,
         extra_url=signup_url,
+        reply_to=reply_to,
     )
 
 
@@ -537,6 +555,7 @@ def send_gallery_nudge_email(
     download_cap: int | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Remind someone their gallery is sitting unopened.
 
@@ -563,6 +582,7 @@ def send_gallery_nudge_email(
         recipient_name=participant_name,
         rendered=rendered,
         extra_url=gallery_url,
+        reply_to=reply_to,
     )
 
 
@@ -659,6 +679,7 @@ def _deliver(
     recipient_name: str,
     rendered: dict,
     extra_url: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Log in development, send in production.
 
@@ -680,6 +701,7 @@ def _deliver(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )
 
 
@@ -694,6 +716,7 @@ def send_client_delivery_email(
     dashboard_url: str | None = None,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Tell the photographer's client that galleries have gone out.
 
@@ -732,6 +755,7 @@ def send_client_delivery_email(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )
 
 
@@ -746,6 +770,7 @@ def send_slot_cancelled_email(
     signup_url: str,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Tell a participant their booked time is gone.
 
@@ -786,6 +811,7 @@ def send_slot_cancelled_email(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )
 
 
@@ -803,6 +829,7 @@ def send_signup_confirmation_email(
     client_logo_url: str | None = None,
     client_name: str | None = None,
     profile_url: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Acknowledge a public signup.
 
@@ -856,6 +883,7 @@ def send_signup_confirmation_email(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )
 
 
@@ -871,6 +899,7 @@ def send_gallery_delivery_email(
     picks_enabled: bool = False,
     client_logo_url: str | None = None,
     client_name: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     """Send (or log) the F5c gallery delivery email — the one-way notification
     that tells a participant their headshots are ready, with a CTA back into
@@ -925,4 +954,5 @@ def send_gallery_delivery_email(
         subject=rendered["subject"],
         text_body=rendered["text"],
         html_body=rendered["html"],
+        reply_to=reply_to,
     )

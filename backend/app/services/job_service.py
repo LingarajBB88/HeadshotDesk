@@ -395,6 +395,11 @@ def deliver_galleries(
     photographer_name = (
         creator.name if creator and creator.name else account.name or "HeadshotDesk"
     )
+    # Replies to a gallery email are for the photographer, not our support
+    # inbox. Resolved once per batch rather than per participant.
+    from app.services import profile_service
+
+    reply_to = profile_service.reply_to_for(db, account)
 
     # HSD-36: client branding for the email header, resolved once per batch.
     client_logo_url = None
@@ -461,6 +466,7 @@ def deliver_galleries(
                 picks_enabled=bool(job.picks_enabled),
                 client_logo_url=client_logo_url,
                 client_name=job.client_name,
+                reply_to=reply_to,
             )
         except Exception as exc:  # noqa: BLE001 — log + report, don't abort batch
             errors.append(f"{p.name}: {exc}")
@@ -503,6 +509,7 @@ def deliver_galleries(
                 ),
                 client_logo_url=client_logo_url,
                 client_name=job.client_name,
+                reply_to=reply_to,
             )
         except Exception:  # noqa: BLE001 — the galleries are what matter
             logger.exception("Client delivery notice failed (job=%s)", job.id)

@@ -19,7 +19,7 @@ from app.core.ids import new_id
 from app.core.security import generate_refresh_token  # reused for opaque tokens
 from app.models import Account, Job, Participant, User
 from app.schemas.participant import ParticipantCreate
-from app.services import email_service, job_service, slot_service
+from app.services import email_service, job_service, profile_service, slot_service
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +242,10 @@ def resend_gallery_email(
             picks_enabled=bool(job.picks_enabled),
             client_logo_url=client_logo_url,
             client_name=job.client_name,
+            # Replies belong with the photographer, not our support inbox.
+            reply_to=profile_service.reply_to_for(
+                db, db.get(Account, job.account_id)
+            ),
         )
     except Exception as exc:  # noqa: BLE001
         # Provider rejection (e.g. Postmark refusing the recipient) should
