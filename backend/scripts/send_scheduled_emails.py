@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, "/app")
 
+from app.config import settings  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 from app.services import scheduled_email_service  # noqa: E402
 
@@ -27,6 +28,24 @@ logger = logging.getLogger("scheduled-email")
 
 def main() -> int:
     dry = "--dry" in sys.argv
+
+    # Preflight, before touching the database. POSTMARK_SERVER_TOKEN is
+    # sync:false in render.yaml, so it has to be set per service and this
+    # one was missed. The run then printed the emails to the log, returned
+    # normally, and the caller marked them sent: two trial warnings that can
+    # now never go out, on a job Render reported as successful.
+    #
+    # Failing here means one clear line instead of a stack trace per
+    # recipient, and a red job in the dashboard.
+    if not dry and settings.env == "production" and not settings.postmark_server_token:
+        logger.error(
+            "POSTMARK_SERVER_TOKEN is not set on this service. Refusing to "
+            "run: sending would be skipped silently and the sent-markers "
+            "would be burned. Set it in the Render dashboard for "
+            "headshotdesk-daily-email, it is not inherited from the API."
+        )
+        return 1
+
     db = SessionLocal()
     try:
         if dry:

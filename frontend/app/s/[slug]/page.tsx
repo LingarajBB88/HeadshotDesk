@@ -7,6 +7,7 @@ import { FormField } from "@/components/FormField";
 import { Logo } from "@/components/Logo";
 import { StudioContact } from "@/components/StudioContact";
 import { ApiError } from "@/lib/api";
+import { suggestEmail } from "@/lib/emailSuggest";
 import { classifyFormError } from "@/lib/form-errors";
 import { mentionsClient } from "@/lib/naming";
 import {
@@ -53,6 +54,10 @@ export default function PublicSignupPage() {
   // rejects signups without it, this is just the friendly layer.
   const [consent, setConsent] = useState(false);
   const [consentError, setConsentError] = useState<string | null>(null);
+  // Controlled so the "did you mean" correction can be applied with one
+  // click rather than making someone retype the whole address.
+  const [email, setEmail] = useState("");
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   // HSD-55: slot picking on time-slot jobs. The participant selects a time
   // inside the form; the booking itself happens right after signup (the
   // gallery token from the signup response authenticates it). If the chosen
@@ -218,7 +223,7 @@ export default function PublicSignupPage() {
       // didn't.
       const result = await publicSignup(slug, {
         name: fullName,
-        email: String(data.get("email") ?? "").trim(),
+        email: email.trim(),
         title: (String(data.get("title") ?? "").trim()) || null,
         consent: true,
         slotStart: needsSlot ? selectedSlot : null,
@@ -486,12 +491,40 @@ export default function PublicSignupPage() {
                   type="email"
                   autoComplete="email"
                   required
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (emailSuggestion) setEmailSuggestion(null);
+                  }}
+                  // Checked when they leave the field, not on every
+                  // keystroke: "l@gmai" is not a typo, it is someone who
+                  // has not finished typing.
+                  onBlur={(e) => setEmailSuggestion(suggestEmail(e.target.value))}
                   // No hint: it used to say "where we'll send your photo
                   // gallery", which promises delivery the photographer may
                   // not be using. Plenty run a shoot through here and hand
                   // the files over themselves.
                   error={fieldErrors.email}
                 />
+                {/* Offered, never enforced. A wrong domain passes every
+                    format check, so the first anyone hears of it is the
+                    gallery never arriving, days after the shoot. */}
+                {emailSuggestion ? (
+                  <p className="-mt-2 mb-3 text-sm text-muted-600">
+                    Did you mean{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail(emailSuggestion);
+                        setEmailSuggestion(null);
+                      }}
+                      className="font-medium text-accent underline"
+                    >
+                      {emailSuggestion}
+                    </button>
+                    ?
+                  </p>
+                ) : null}
                 <FormField
                   label="Title or role"
                   name="title"

@@ -20,7 +20,12 @@ engine = create_engine(
     pool_pre_ping=True,
     pool_size=10,
     max_overflow=20,
-    echo=settings.debug,
+    # Never in production, whatever DEBUG says. Echoed SQL puts participant
+    # email addresses and gallery tokens into the log in plain text, and a
+    # gallery token is the only thing standing between a stranger and
+    # someone's photos. It also drowns the one line per run that anyone
+    # actually reads.
+    echo=settings.debug and settings.env != "production",
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=Session)

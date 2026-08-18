@@ -299,8 +299,16 @@ class TestGalleryEmailCopy:
         assert "is 1 photo" in body
 
     def test_favourites_only_mentioned_when_enabled(self):
-        assert "Star your favourites" not in self._render(picks_enabled=False)
-        assert "Star your favourites" in self._render(picks_enabled=True)
+        # Lowercased: what matters is whether the sentence is there, not
+        # whether it happens to start the line. Matching the capital broke
+        # the moment "Star your favourites" became "Please star your
+        # favourites", which was a copy edit, not a behaviour change.
+        assert "star your favourites" not in self._render(
+            picks_enabled=False
+        ).lower()
+        assert "star your favourites" in self._render(
+            picks_enabled=True
+        ).lower()
 
     def test_delivery_passes_the_job_rules(self, client: TestClient, outbox):
         """Not just the template: the delivery path must actually send them."""

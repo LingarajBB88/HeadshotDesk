@@ -87,6 +87,21 @@ def _send_via_postmark(
     client.emails.send(**kwargs)
 
 
+class EmailNotConfigured(RuntimeError):
+    """Raised when production tries to send with no Postmark token.
+
+    Logging the body instead is right in development and catastrophic in
+    production. It happened: the daily cron ran without the token, printed
+    two trial warnings to the log, returned normally, and the caller marked
+    them as sent. The marker exists to stop double-sends, so those two
+    emails can now never go out. Nothing errored and the job went green.
+
+    Raising means the caller's "mark it sent" line is never reached and the
+    run is retried tomorrow, which is what the sent-markers were designed
+    for in the first place.
+    """
+
+
 def _log_dev_email(
     *,
     label: str,
@@ -97,7 +112,17 @@ def _log_dev_email(
     extra_url: str | None = None,
 ) -> None:
     """Pretty-print the rendered email to stdout/logs in dev mode so the
-    developer can preview copy without touching real Postmark."""
+    developer can preview copy without touching real Postmark.
+
+    Refuses outright in production. A missing token there is a
+    misconfiguration, not a preview.
+    """
+    if settings.env == "production":
+        raise EmailNotConfigured(
+            f"POSTMARK_SERVER_TOKEN is not set on this service, so {label!r} "
+            f"for {to_email} was not sent. Set it in the Render dashboard: "
+            "it is marked sync:false, so each service needs it separately."
+        )
     logger.warning("[DEV EMAIL] %s for %s (%s)", label, recipient_name, to_email)
     body_indented = "\n".join(
         "            " + line for line in text_body.splitlines()
