@@ -1,49 +1,51 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Script from "next/script";
 
 /**
- * Plausible, loaded site-wide but blind to anything sensitive.
+ * Plausible, kept away from anything that carries a token.
  *
- * Four of our public routes carry an access token in the path:
+ * Four public routes have an access token in the path:
  *
  *   /g/{token}   a participant's private gallery
  *   /q/{token}   their live queue position
  *   /c/{token}   the photographer's client dashboard
  *   /r/{code}    a referral link
  *
- * Those tokens are the authentication. Anyone holding the URL can open a
- * stranger's photos, so the URL must never reach a third party. Analytics
- * scripts send the full path by default, which would put every gallery
- * token into an external dashboard.
+ * The token IS the authentication: anyone holding the URL can open a
+ * stranger's photos. Plausible records the full path, so a naive install
+ * would put every gallery token into an external dashboard.
  *
- * Two defences, because one is not enough:
+ * We do not load the script at all on those routes. The obvious
+ * alternative, Plausible's Shields blocklist, is not equivalent: it
+ * discards the pageview after receiving it, so the token still leaves the
+ * browser and still lands in someone else's logs. Shields is worth setting
+ * up as a second line, but it cannot be the first.
  *
- * 1. The `exclusions` build of the script, which drops the event entirely
- *    for the paths below. This covers client-side navigation too, which a
- *    "don't render the component" approach would miss once the script is
- *    already on the page.
+ * Not loading is airtight here because there is no link anywhere in the app
+ * to a token route. You reach one by opening a link from an email or
+ * pasting a URL, both of which are full page loads where this component
+ * decides before the script exists. If a <Link> to a gallery is ever added,
+ * this reasoning breaks and the script would need manual pageview control
+ * instead.
  *
- * 2. `referrer: "origin"` in the metadata of those routes (see their
- *    layouts), so a participant clicking from their gallery to any other
- *    page sends only the origin. Without it the token would travel in the
- *    Referer header of the very next request, and exclusions do nothing
- *    about that.
+ * `referrer: "origin"` in those routes' layouts covers the other half: the
+ * token travelling onward in a Referer header when someone clicks a link
+ * from their gallery.
  *
- * Set NEXT_PUBLIC_PLAUSIBLE_DOMAIN to enable. Unset in development, so
- * local page views never pollute the numbers.
+ * Enabled by NEXT_PUBLIC_PLAUSIBLE_SRC, the site-specific script URL from
+ * the Plausible dashboard. Unset in development so local browsing stays out
+ * of the numbers.
  */
-const EXCLUDED = ["/g/*", "/q/*", "/c/*", "/r/*"].join(", ");
+const TOKEN_ROUTES = ["/g/", "/q/", "/c/", "/r/"];
 
 export function Analytics() {
-  const domain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-  if (!domain) return null;
+  const pathname = usePathname();
+  const src = process.env.NEXT_PUBLIC_PLAUSIBLE_SRC;
 
-  return (
-    <Script
-      defer
-      data-domain={domain}
-      data-exclude={EXCLUDED}
-      src="https://plausible.io/js/script.exclusions.js"
-      strategy="afterInteractive"
-    />
-  );
+  if (!src) return null;
+  if (TOKEN_ROUTES.some((prefix) => pathname?.startsWith(prefix))) return null;
+
+  return <Script defer src={src} strategy="afterInteractive" />;
 }
