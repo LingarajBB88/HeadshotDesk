@@ -57,6 +57,18 @@ class Account(Base):
 
     branding: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # Where this account came from, captured on their first visit and
+    # carried through signup: {"source", "medium", "campaign", "referrer",
+    # "landing_path"}. Null for accounts created before this existed, and
+    # for anyone who arrived with no signal at all.
+    #
+    # This is the only way to connect a marketing channel to a paying
+    # customer. A pageview tool knows a Facebook group sent visitors; only
+    # this knows which of them stayed.
+    attribution: Mapped[dict[str, Any] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+
     # --- Studio profile: what participants see on signup pages and galleries.
     #
     # On the account, not the job: a photographer's website doesn't change

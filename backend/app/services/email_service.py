@@ -648,6 +648,7 @@ def send_admin_new_signup_email(
     referrer_name: str | None = None,
     invite_code: str | None = None,
     seats_left: int | None = None,
+    attribution: dict | None = None,
 ) -> None:
     """Tell the team someone signed up.
 
@@ -674,6 +675,7 @@ def send_admin_new_signup_email(
                 "seats_left": seats_left,
                 "via": via,
                 "admin_url": f"{_APP_CONTEXT['url']}/admin",
+                "attribution": attribution or {},
             },
             "app": _APP_CONTEXT,
         },

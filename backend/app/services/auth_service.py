@@ -87,6 +87,7 @@ def signup(
     ip: str | None,
     referral_code: str | None = None,
     invite_code: str | None = None,
+    attribution: dict | None = None,
 ) -> tuple[User, Account, dict]:
     """Create a new account + first user (owner). Returns (user, account, tokens).
 
@@ -106,6 +107,13 @@ def signup(
         type=account_type,
         name=account_name,
         plan="trial",
+        # Dropped when every field is empty, so a direct visit stores null
+        # rather than a row of nulls that looks like a recorded source.
+        attribution=(
+            attribution
+            if attribution and any(attribution.values())
+            else None
+        ),
     )
     db.add(account)
     db.flush()  # account.id available
@@ -203,6 +211,10 @@ def signup(
                 if account.plan == "beta"
                 else None
             ),
+            # The whole point of capturing it: knowing which channel this
+            # one came from at the moment you hear about them, rather than
+            # going to look it up later, which nobody does.
+            attribution=account.attribution,
         )
     except Exception:  # noqa: BLE001
         logger.exception("Admin signup notification failed (account=%s)", account.id)

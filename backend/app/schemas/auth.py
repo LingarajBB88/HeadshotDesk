@@ -9,6 +9,15 @@ from app.schemas.types import StrictEmail
 
 # --- Requests ---
 
+class AttributionIn(BaseModel):
+    """First-touch marketing attribution, sent by the signup form."""
+    source: str | None = Field(default=None, max_length=120)
+    medium: str | None = Field(default=None, max_length=120)
+    campaign: str | None = Field(default=None, max_length=120)
+    referrer: str | None = Field(default=None, max_length=200)
+    landing_path: str | None = Field(default=None, max_length=200)
+
+
 class SignupRequest(BaseModel):
     email: StrictEmail
     password: str = Field(min_length=8, max_length=128)
@@ -21,6 +30,11 @@ class SignupRequest(BaseModel):
     # Claims a free beta seat, if the pool still has one. An exhausted pool
     # is silent: the person gets a normal trial rather than an error.
     invite_code: str | None = Field(default=None, max_length=32)
+    # Where they came from, captured on their first visit. Every field is
+    # attacker-controlled free text from a URL, so lengths are capped and
+    # the whole object is stored as-is without being interpolated anywhere
+    # that would execute it.
+    attribution: AttributionIn | None = None
 
 
 class LoginRequest(BaseModel):

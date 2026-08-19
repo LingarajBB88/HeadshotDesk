@@ -6,5 +6,12 @@ Plan:    {{ signup.plan }}
 {% if signup.referrer_name %}Referred by: {{ signup.referrer_name }}
 {% endif %}{% if signup.invite_code %}Invite code: {{ signup.invite_code }}
 {% endif %}{% if signup.seats_left is not none %}Free seats left: {{ signup.seats_left }}
-{% endif %}
+{% endif %}{% if signup.attribution %}
+Came from:
+{% if signup.attribution.source %}  Source:   {{ signup.attribution.source }}
+{% endif %}{% if signup.attribution.medium %}  Medium:   {{ signup.attribution.medium }}
+{% endif %}{% if signup.attribution.campaign %}  Campaign: {{ signup.attribution.campaign }}
+{% endif %}{% if signup.attribution.referrer %}  Referrer: {{ signup.attribution.referrer }}
+{% endif %}{% if signup.attribution.landing_path %}  Landed on: {{ signup.attribution.landing_path }}
+{% endif %}{% endif %}
 {{ signup.admin_url }}

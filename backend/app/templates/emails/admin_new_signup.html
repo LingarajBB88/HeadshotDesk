@@ -40,6 +40,33 @@
       <td style="padding:0;">{{ signup.seats_left }}</td>
     </tr>
     {% endif %}
+    {# Where they came from, at the moment you hear about them. Looking it
+       up later is a thing nobody does.
+
+       The outer guard matters: attribution is an empty dict for a direct
+       visit, and under StrictUndefined reaching into it would raise and
+       lose the whole notification. #}
+    {% if signup.attribution %}
+    {% if signup.attribution.source %}
+    <tr>
+      <td style="padding:0 16px 4px 0;color:#475569;">Source</td>
+      <td style="padding:0 0 4px;">
+        {{ signup.attribution.source }}{% if signup.attribution.medium %} / {{ signup.attribution.medium }}{% endif %}{% if signup.attribution.campaign %} / {{ signup.attribution.campaign }}{% endif %}
+      </td>
+    </tr>
+    {% elif signup.attribution.referrer %}
+    <tr>
+      <td style="padding:0 16px 4px 0;color:#475569;">Referrer</td>
+      <td style="padding:0 0 4px;">{{ signup.attribution.referrer }}</td>
+    </tr>
+    {% endif %}
+    {% if signup.attribution.landing_path %}
+    <tr>
+      <td style="padding:0 16px 0 0;color:#475569;">Landed on</td>
+      <td style="padding:0;">{{ signup.attribution.landing_path }}</td>
+    </tr>
+    {% endif %}
+    {% endif %}
   </table>
 
   <p style="margin:0;">

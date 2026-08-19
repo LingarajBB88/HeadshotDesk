@@ -2,6 +2,7 @@
 // Tokens live in localStorage for v0.1. We can migrate to httpOnly cookies later.
 
 import { api, ApiError } from "./api";
+import { readAttribution } from "./attribution";
 
 const ACCESS_KEY = "hsd_access";
 const REFRESH_KEY = "hsd_refresh";
@@ -81,7 +82,15 @@ export async function signup(input: {
 }): Promise<AuthResponse> {
   const res = await api<AuthResponse>("/api/v1/auth/signup", {
     method: "POST",
-    body: JSON.stringify({ account_type: "photographer", ...input }),
+    body: JSON.stringify({
+      account_type: "photographer",
+      ...input,
+      // Read here rather than at the call site so every signup form gets
+      // it, including any added later. Null when they arrived with no
+      // signal, which the server stores as nothing rather than a row of
+      // empty fields.
+      attribution: readAttribution(),
+    }),
   });
   setTokens(res.tokens);
   return res;

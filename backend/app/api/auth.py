@@ -66,6 +66,9 @@ def signup(
         ip=ip,
         referral_code=referral_code,
         invite_code=payload.invite_code,
+        attribution=(
+            payload.attribution.model_dump() if payload.attribution else None
+        ),
     )
     return AuthResponse(
         user=UserOut.model_validate(user),
