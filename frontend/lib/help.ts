@@ -971,14 +971,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
         ],
       },
       {
-        id: "what-we-do-not-say",
-        heading: "What we deliberately do not say",
-        body: [
-          "Participant emails carry no advice about what to wear, how to sit, or how to prepare. We used to include a line about dressing as you would to meet a client, and removed it.",
-          "The reason is simple: you know the client and we do not. A law firm and a startup need different advice, and a generic line in your name reads as though you wrote it. Use your links instead.",
-        ],
-      },
-      {
         id: "sender",
         heading: "Who they come from, and where replies go",
         body: [
