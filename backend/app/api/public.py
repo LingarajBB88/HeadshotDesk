@@ -16,8 +16,8 @@ from app.core.ids import new_id
 from app.db import get_db
 from app.models import FeatureRequest
 from app.schemas.participant import (
-    ParticipantOut,
     PublicJobOut,
+    PublicParticipantOut,
     PublicParticipantSignup,
     PublicSignupResult,
     SlotWindow,
@@ -176,7 +176,9 @@ def signup(
         notify_service.participant_signed_up(db, job=job, participant=p)
 
     return PublicSignupResult(
-        participant=ParticipantOut.model_validate(p),
+        # Narrow on purpose: this response goes to the participant, so it
+        # must not carry photographer-only fields such as `notes`.
+        participant=PublicParticipantOut.model_validate(p),
         created=created,
         booked_slot=(
             SlotWindow(start=booking.slot_start, end=booking.slot_end)

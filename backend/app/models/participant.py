@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, func, text
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -23,6 +23,15 @@ class Participant(Base):
     custom_fields: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict
     )
+
+    # The photographer's own note: "glasses off", "reshoot, blinked every
+    # frame", "soften the scar, she asked". Written in a hurry between
+    # frames and read days later in front of an editor.
+    #
+    # Private. Never returned to the participant or to the client, because
+    # this is the field most likely to say something blunt about how
+    # somebody looks. See ParticipantOut vs PublicParticipantOut.
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Token used for unauthed gallery access (Feature v0.2). Generated at create
     # time so it's ready when the gallery feature ships.

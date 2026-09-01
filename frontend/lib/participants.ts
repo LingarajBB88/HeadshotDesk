@@ -21,6 +21,9 @@ export type Participant = {
   downloads_used: number;
   /** F5b.2: how many photos this participant starred as favorites. */
   picks_used?: number;
+  /** The photographer's private note: "glasses off", "reshoot, blinked".
+   *  Never sent to the participant or the client. */
+  notes?: string | null;
   // F5b.1: token for the participant's public /g/{token} gallery URL.
   // The photographer uses this to build the link to share.
   gallery_token: string;
@@ -96,6 +99,23 @@ export async function deleteParticipant(participantId: string): Promise<void> {
   await api(`/api/v1/participants/${participantId}`, {
     method: "DELETE",
     token: authToken(),
+  });
+}
+
+/**
+ * Save the photographer's private note for one participant.
+ *
+ * Sends only `notes`, so a stale copy of the row in the UI can never
+ * overwrite a name or email that was edited elsewhere.
+ */
+export async function setParticipantNotes(
+  participantId: string,
+  notes: string | null,
+): Promise<Participant> {
+  return api<Participant>(`/api/v1/participants/${participantId}`, {
+    method: "PATCH",
+    token: authToken(),
+    body: JSON.stringify({ notes }),
   });
 }
 

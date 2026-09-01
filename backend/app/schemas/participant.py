@@ -18,6 +18,9 @@ class ParticipantUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     email: StrictEmail | None = None
     title: str | None = Field(default=None, max_length=200)
+    # Long enough for a real retouch brief, short enough that nobody pastes
+    # a novel into a field that renders in a queue row.
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class CsvImportResult(BaseModel):
@@ -105,7 +108,31 @@ class ParticipantOut(BaseModel):
     # participant gets their own token) — that's an intentional, minor early
     # leak: the participant already has implicit access to their own gallery.
     gallery_token: str
+    # The photographer's private note. Photographer-facing responses only:
+    # this schema is never returned to a participant or a client. The public
+    # signup uses PublicParticipantOut below for exactly that reason.
+    notes: str | None = None
     created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class PublicParticipantOut(BaseModel):
+    """What a participant gets back about themselves, on signup.
+
+    Deliberately its own model rather than a slice of ParticipantOut. The
+    signup response used to return the whole thing, which meant any field
+    added for the photographer's benefit would be handed to the person it
+    described. `notes` is the field that made that unacceptable: it is
+    where "reshoot, blinked in every frame" gets written.
+
+    Only what the signup page actually needs.
+    """
+    id: str
+    name: str
+    email: EmailStr | None = None
+    title: str | None = None
+    gallery_token: str
 
     model_config = {"from_attributes": True}
 
@@ -128,7 +155,7 @@ class PublicSignupResult(BaseModel):
     re-submission (same email already on the list). Both return 201/200 so the
     user always sees a success state.
     """
-    participant: ParticipantOut
+    participant: PublicParticipantOut
     created: bool
     # Set when `slot_start` was sent and the booking succeeded.
     booked_slot: SlotWindow | None = None

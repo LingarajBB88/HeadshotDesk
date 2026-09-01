@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ParticipantNote } from "@/components/ParticipantNote";
 import { getJob, getSchedule, type Job, type ScheduleEntry } from "@/lib/jobs";
 import { type Participant } from "@/lib/participants";
 import {
@@ -400,6 +401,13 @@ export default function ShootQueuePage() {
                     onSelect={() => handleSelect(p)}
                     onMarkShot={() => handleMarkShot(p)}
                     onNoShow={() => handleNoShow(p, true)}
+                    onNoteSaved={(updated) =>
+                      setParticipants((cur) =>
+                        (cur ?? []).map((x) =>
+                          x.id === updated.id ? { ...x, notes: updated.notes } : x,
+                        ),
+                      )
+                    }
                   />
                 </li>
               ))}
@@ -451,6 +459,24 @@ export default function ShootQueuePage() {
                         </>
                       ) : null}
                     </p>
+                    {/* Editable here too: most retouch notes get written
+                        just after the person stands up, not while they are
+                        still in front of the camera. */}
+                    <div className="mt-1">
+                      <ParticipantNote
+                        participant={p}
+                        compact
+                        onSaved={(updated) =>
+                          setParticipants((cur) =>
+                            (cur ?? []).map((x) =>
+                              x.id === updated.id
+                                ? { ...x, notes: updated.notes }
+                                : x,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
                   </div>
                   <button
                     onClick={() => handleReset(p)}
@@ -528,6 +554,7 @@ function ShootCard({
   onSelect: () => void;
   onMarkShot: () => void;
   onNoShow: () => void;
+  onNoteSaved: (updated: Participant) => void;
 }) {
   return (
     <div
@@ -565,6 +592,14 @@ function ShootCard({
           </p>
         ) : null}
       </button>
+      {/* Outside the select button: a note field inside it would swallow
+          every click meant for the text area. Only on the active card, so
+          the queue stays a list of names and nothing else. */}
+      {active ? (
+        <div className="order-last w-full border-t border-muted-200 pt-3">
+          <ParticipantNote participant={p} onSaved={onNoteSaved} />
+        </div>
+      ) : null}
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onNoShow}
