@@ -382,7 +382,7 @@ export default function JobDetailPage() {
               <h3 className="text-xs font-medium uppercase tracking-wider text-muted-600">
                 What participants get
               </h3>
-              <dl className="mt-4 space-y-4">
+              <dl className="mt-4 divide-y divide-muted-200 [&>div]:py-4 [&>div:first-child]:pt-0 [&>div:last-child]:pb-0">
                 <DeliveryModeDetail
                   job={job}
                   onChanged={(updated) => setJob(updated)}
@@ -670,7 +670,10 @@ function PicksDetail({
   // is the setting.
   return (
     <div>
-      <dd className="text-sm text-ink">
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
+        Favourites
+      </dt>
+      <dd className="mt-1 text-sm text-ink">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -679,11 +682,16 @@ function PicksDetail({
             disabled={saving || !editable}
             className="accent-accent"
           />
-          <span>Participants choose their favourite photos</span>
+          <span>Participants star the photos they want</span>
           {saving ? (
             <span className="text-xs text-muted-600">Saving…</span>
           ) : null}
         </label>
+        <p className="mt-1 text-xs text-muted-600">
+          {job.picks_enabled
+            ? "Their stars build your retouch list. The limit matches the download cap above."
+            : "Off. You decide what to retouch without their input."}
+        </p>
         {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
       </dd>
     </div>
@@ -790,7 +798,10 @@ function RescheduleDetail({
 
   return (
     <div>
-      <dd className="text-sm text-ink">
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
+        Rescheduling
+      </dt>
+      <dd className="mt-1 text-sm text-ink">
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -832,7 +843,7 @@ function DownloadCapDetail({
   const [error, setError] = useState<string | null>(null);
 
   const formattedHelper = (() => {
-    if (job.download_cap === 0) return "None — downloads are off for now.";
+    if (job.download_cap === 0) return "None. Downloads are off for now.";
     if (job.download_cap === 1) return "1 photo.";
     return `Up to ${job.download_cap} photos.`;
   })();

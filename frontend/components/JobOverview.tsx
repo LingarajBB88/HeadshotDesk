@@ -274,16 +274,26 @@ function Tile({
 // ---------------------------------------------------------------------------
 
 export function ShootDayHero({ job }: { job: Job }) {
-  const dayLabel = relativeDayLabel(job.shoot_date);
-  const dateLabel = job.shoot_date
-    ? formatShootDate(job.shoot_date)
-    : "Shoot day not set";
+  // Every day the job runs on. shoot_date alone is only the first, which
+  // on a two-day job whose first day has passed produced "24 days ago" in
+  // the corner while the second day was still two weeks out.
+  const days = [job.shoot_date, ...(job.extra_shoot_dates ?? [])]
+    .filter((d): d is string => !!d)
+    .sort();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  // Lead with the next day still to come. Only once every day is behind
+  // us does the last one become the headline, so a finished job still
+  // reads as "24 days ago" rather than as if it never happened.
+  const headline = days.find((d) => d >= todayIso) ?? days[days.length - 1] ?? null;
+  const dayLabel = relativeDayLabel(headline);
+  const dateLabel = headline ? formatShootDate(headline) : "Shoot day not set";
+  const otherDays = days.filter((d) => d !== headline);
 
   return (
     <div className="rounded-card bg-accent-muted p-5">
       <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-accent">
         <CalendarIcon />
-        Shoot day
+        {days.length > 1 ? `Shoot days (${days.length})` : "Shoot day"}
         {dayLabel ? (
           <span className="rounded-md bg-paper px-1.5 py-0.5 text-[11px] font-medium text-accent">
             {dayLabel}
@@ -293,6 +303,16 @@ export function ShootDayHero({ job }: { job: Job }) {
       <div className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">
         {dateLabel}
       </div>
+      {otherDays.length > 0 ? (
+        <p className="mt-1 text-sm text-muted-600">
+          {otherDays.map((d) => (
+            <span key={d} className="mr-3">
+              {formatShootDate(d)}
+              {d < todayIso ? <span className="text-muted-400"> · done</span> : null}
+            </span>
+          ))}
+        </p>
+      ) : null}
       <dl className="mt-3 space-y-1.5 text-sm text-ink">
         {job.location ? (
           <div className="flex items-start gap-2">
