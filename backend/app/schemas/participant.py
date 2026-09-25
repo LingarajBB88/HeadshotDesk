@@ -42,6 +42,11 @@ class PublicJobOut(BaseModel):
     # HSD-71: every day the shoot runs on, so the picker can group slots.
     shoot_dates: list[date] = []
     location: str | None
+    # True when the photos go to the organisation that booked the shoot
+    # rather than to each person. The signup page says so in the consent
+    # line, because agreeing to "deliver my headshots" is not the same as
+    # agreeing to hand every frame to your employer.
+    photos_go_to_client: bool = False
     # HSD-55: lets the signup page know whether to show the slot picker.
     shoot_mode: str = "queue"
     branding: dict | None = None  # account branding overrides

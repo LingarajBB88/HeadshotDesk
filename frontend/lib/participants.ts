@@ -51,7 +51,12 @@ export type PublicJob = {
   name: string;
   client_name: string | null;
   shoot_date: string | null;
+  /** Every day the shoot runs on, ISO dates. shoot_date is only the first. */
+  shoot_dates?: string[];
   location: string | null;
+  /** Photos go to the organisation that booked the shoot, not to each
+   *  person. Changes the consent wording. */
+  photos_go_to_client?: boolean;
   // HSD-55: signals the signup page to show the slot picker.
   shoot_mode: "queue" | "time_slot";
   branding: Record<string, unknown> | null;

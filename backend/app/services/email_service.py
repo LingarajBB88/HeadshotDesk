@@ -744,10 +744,20 @@ def send_client_delivery_email(
     client_logo_url: str | None = None,
     client_name: str | None = None,
     reply_to: str | None = None,
+    photos_url: str | None = None,
+    participants_emailed: bool = True,
 ) -> None:
-    """Tell the photographer's client that galleries have gone out.
+    """Tell the photographer's client the shoot has been delivered.
 
-    Counts only: the client sees how many people got their photos, never who.
+    Two shapes, depending on the job's delivery mode. When participants were
+    emailed their own galleries, this is a progress report and carries no
+    photos. When the client is receiving the photos, `photos_url` is the
+    delivery itself and the email has to say so plainly, because the client
+    may be expecting their staff to have been emailed directly.
+
+    Counts only either way: the client never sees who did or did not
+    download.
+
     Copy lives in app/templates/emails/client_delivery.{subject.txt, txt, html}.
     """
     rendered = render_email(
@@ -759,6 +769,8 @@ def send_client_delivery_email(
                 "sent": sent,
                 "total": total,
                 "not_photographed": not_photographed,
+                "photos_url": photos_url,
+                "participants_emailed": participants_emailed,
             },
             "dashboard": {"url": dashboard_url},
             "client": {"logo_url": client_logo_url},

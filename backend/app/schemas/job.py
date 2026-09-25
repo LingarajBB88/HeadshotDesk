@@ -12,6 +12,9 @@ JobStatus = Literal[
 ]
 
 ShootMode = Literal["queue", "time_slot"]
+# Who receives the photos on Deliver. "participants" is the original and
+# default behaviour.
+DeliveryMode = Literal["participants", "client", "both"]
 
 
 def _validate_location(v: str | None) -> str | None:
@@ -103,6 +106,8 @@ class JobUpdate(BaseModel):
     clear_slot_bookings: bool = False
     # Whether participants may move their own booked time.
     allow_reschedule: bool | None = None
+    # Who gets the photos on Deliver.
+    delivery_mode: DeliveryMode | None = None
 
     _validate_location = field_validator("location")(_validate_location)
 
@@ -130,6 +135,7 @@ class JobOut(BaseModel):
     picks_enabled: bool
     pick_cap: int
     allow_reschedule: bool = False
+    delivery_mode: DeliveryMode = "participants"
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None

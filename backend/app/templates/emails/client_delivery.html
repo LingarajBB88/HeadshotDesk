@@ -10,11 +10,38 @@
 
   <p style="margin:0 0 16px;">Hi,</p>
 
+  {# Two shapes. When the client is receiving the photos, the link is the
+     delivery and has to lead. When staff were emailed directly, this is a
+     progress report and carries no photos at all. #}
+  {% if delivery.photos_url %}
+  <p style="margin:0 0 16px;">
+    The headshots from <strong>{{ job.name }}</strong> are ready, and
+    they're all on one link for you.
+  </p>
+  <p style="margin:0 0 20px;">
+    <a href="{{ delivery.photos_url }}"
+       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+      Open the photos
+    </a>
+  </p>
+  <p style="margin:0 0 16px;color:#475569;">
+    They're grouped by person, and there's a button to download everything
+    in one go.
+    {% if delivery.participants_emailed %}
+    Everyone photographed has also received their own private gallery by
+    email.
+    {% else %}
+    Nobody has been emailed their photos directly, so passing them on is
+    over to you.
+    {% endif %}
+  </p>
+  {% else %}
   <p style="margin:0 0 16px;">
     The headshots from <strong>{{ job.name }}</strong> have gone out.
     Everyone photographed has received their own private gallery by email,
     so there's nothing you need to forward.
   </p>
+  {% endif %}
 
   <table style="margin:0 0 20px;border-collapse:collapse;">
     <tr>
@@ -35,16 +62,19 @@
 
   {% if dashboard.url %}
   <p style="margin:0 0 24px;">
-    <a href="{{ dashboard.url }}"
-       style="display:inline-block;background:#5B6CFF;color:#FFFFFF;padding:11px 20px;border-radius:8px;text-decoration:none;font-weight:600;">
+    <a href="{{ dashboard.url }}" style="color:#5B6CFF;">
       See the full picture
     </a>
   </p>
   {% endif %}
 
   <p style="margin:0 0 24px;color:#475569;">
-    If anyone says they haven't received theirs, please let me know and I'll resend
-    it.
+    {% if delivery.participants_emailed %}
+    If anyone says they haven't received theirs, please let me know and I'll
+    resend it.
+    {% else %}
+    If you need anything re-exported or a different crop, please just ask.
+    {% endif %}
   </p>
 
   <p style="margin:0;padding-top:16px;border-top:1px solid #E5E7EB;">

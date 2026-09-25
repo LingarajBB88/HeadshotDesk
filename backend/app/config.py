@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     base_url: str = Field(default="http://localhost:8000")
     frontend_url: str = Field(default="http://localhost:3000")
 
+    # Whether to send trial-ending and trial-ended emails.
+    #
+    # Off while the product is free in beta. Those emails tell a
+    # photographer their trial has ended and link to /pricing, which does
+    # not exist and would 404 even if it did have something to sell. The
+    # landing page meanwhile says free during beta, so the two contradict
+    # each other.
+    #
+    # A flag rather than deleted code: the emails are written, tested, and
+    # correct. The only thing missing is something to buy. Turn this on the
+    # day checkout ships.
+    trial_emails_enabled: bool = Field(default=False)
+
     # --- Database ---
     database_url: str = Field(
         default="postgresql+psycopg://headshotdesk:headshotdesk@localhost:5432/headshotdesk"

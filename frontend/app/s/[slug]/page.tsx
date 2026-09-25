@@ -74,6 +74,17 @@ export default function PublicSignupPage() {
 
   const needsSlot = job?.shoot_mode === "time_slot";
 
+  // The date people should see. `shoot_date` is always the FIRST day of a
+  // job, and on a multi-day shoot where day one has already happened that
+  // is exactly the wrong thing to show next to a slot picker full of
+  // day-two times. Show the days still to come; fall back to the first day
+  // only when nothing is left, so a finished job still reads sensibly.
+  const today = new Date().toISOString().slice(0, 10);
+  const allDays = job?.shoot_dates?.length ? job.shoot_dates : job?.shoot_date ? [job.shoot_date] : [];
+  const upcomingDays = allDays.filter((d) => d >= today);
+  const displayDate =
+    (upcomingDays.length ? upcomingDays : allDays.slice(-1)).join(", ") || null;
+
   // Walk-ins scanning the QR mid-shoot shouldn't be offered times that have
   // already gone. Past slots are hidden rather than struck through: on a
   // phone at 14:10, a morning's worth of dead buttons is just scrolling.
@@ -297,7 +308,7 @@ export default function PublicSignupPage() {
                 You&apos;re on the list for{" "}
                 <strong className="text-ink">{job.name}</strong>. Choose the
                 slot that suits you
-                {job.shoot_date ? <> on {job.shoot_date}</> : null}.
+                {displayDate ? <> on {displayDate}</> : null}.
               </p>
               {slotError ? (
                 <p className="mt-3 text-sm text-red-600" role="alert">
@@ -390,7 +401,7 @@ export default function PublicSignupPage() {
                     <strong className="text-ink">
                       {slotTime(bookedSlot.start)}
                     </strong>
-                    {job.shoot_date ? <> on {job.shoot_date}</> : null}.
+                    {displayDate ? <> on {displayDate}</> : null}.
                   </>
                 ) : wasNewSignup ? (
                   <>
@@ -406,9 +417,9 @@ export default function PublicSignupPage() {
                   </>
                 )}
               </p>
-              {job.shoot_date ? (
+              {displayDate ? (
                 <p className="mt-4 text-sm text-muted-600">
-                  <span className="font-medium text-ink">Shoot date:</span> {job.shoot_date}
+                  <span className="font-medium text-ink">Shoot date:</span> {displayDate}
                 </p>
               ) : null}
               {job.location ? (
@@ -448,14 +459,14 @@ export default function PublicSignupPage() {
                 .
               </p>
 
-              {(job.shoot_date || job.location) && (
+              {(displayDate || job.location) && (
                 <dl className="mt-4 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-muted-50 rounded-md p-3">
-                  {job.shoot_date ? (
+                  {displayDate ? (
                     <div>
                       <dt className="font-medium text-muted-600 uppercase tracking-wider">
                         Date
                       </dt>
-                      <dd className="text-ink">{job.shoot_date}</dd>
+                      <dd className="text-ink">{displayDate}</dd>
                     </div>
                   ) : null}
                   {job.location ? (
@@ -638,8 +649,15 @@ export default function PublicSignupPage() {
                     className="mt-0.5 h-4 w-4 accent-accent cursor-pointer"
                   />
                   <span className="text-xs text-muted-600">
-                    I agree that my name, email, and photos are processed to
-                    deliver my headshots, as described in the{" "}
+                    {/* On jobs where the photos go to the employer rather
+                        than to the person, saying so here is the whole
+                        point: consenting to "deliver my headshots" is not
+                        consenting to hand every frame to your workplace,
+                        and finding out afterwards is not a fixable
+                        mistake. */}
+                    {job.photos_go_to_client
+                      ? "I agree that my name, email, and photos are processed for this shoot, and that my photos are shared with the organisation that booked it, as described in the "
+                      : "I agree that my name, email, and photos are processed to deliver my headshots, as described in the "}
                     <a
                       href="/privacy"
                       target="_blank"

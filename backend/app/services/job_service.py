@@ -439,6 +439,12 @@ def deliver_galleries(
     skipped_no_email = 0
     errors: list[str] = []
 
+    # On a client-only job nobody is emailed individually. Marking them as
+    # delivered anyway is deliberate: it is what drives the job to
+    # "delivered" and stops the undelivered nudge, and from the
+    # photographer's side the work genuinely is handed over.
+    email_participants = job.delivery_mode in ("participants", "both")
+
     for p in participants:
         if p.gallery_sent_at is not None and not include_already_delivered:
             skipped_already_delivered += 1
@@ -446,6 +452,12 @@ def deliver_galleries(
         if photo_counts.get(p.id, 0) == 0:
             skipped_no_photos += 1
             continue
+
+        if not email_participants:
+            p.gallery_sent_at = _utcnow()
+            sent += 1
+            continue
+
         if not p.email:
             skipped_no_email += 1
             continue
@@ -492,6 +504,17 @@ def deliver_galleries(
     # Firing on every partial batch would mean three "delivered!" emails for
     # one shoot. Only when there's a client email on file.
     if sent > 0 and not eligible_unsent_remaining and job.client_email:
+        photos_url = None
+        if job.delivery_mode in ("client", "both"):
+            # On these jobs the link IS the delivery, so it cannot wait for
+            # the photographer to remember to press Share. Mint the token
+            # here if it does not exist yet.
+            if not job.client_token:
+                from app.core.security import generate_refresh_token
+
+                job.client_token = generate_refresh_token()
+                db.commit()
+            photos_url = f"{settings.frontend_url}/c/{job.client_token}/photos"
         try:
             email_service.send_client_delivery_email(
                 to_email=job.client_email,
@@ -510,6 +533,10 @@ def deliver_galleries(
                 client_logo_url=client_logo_url,
                 client_name=job.client_name,
                 reply_to=reply_to,
+                # Null on participant-only jobs, where the client gets a
+                # progress report and the staff get the photos.
+                photos_url=photos_url,
+                participants_emailed=email_participants,
             )
         except Exception:  # noqa: BLE001 — the galleries are what matter
             logger.exception("Client delivery notice failed (job=%s)", job.id)

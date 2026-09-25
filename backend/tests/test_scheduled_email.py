@@ -53,6 +53,30 @@ def _set_trial_end(db_session, account_id: str, days_from_now: int) -> None:
 
 
 class TestTrialEmails:
+    """These run with the flag ON. In production it is off until billing
+    exists, because the emails link to a pricing page that does not."""
+
+    @pytest.fixture(autouse=True)
+    def _billing_exists(self, monkeypatch):
+        monkeypatch.setattr("app.config.settings.trial_emails_enabled", True)
+
+    def test_off_by_default_sends_nothing(
+        self, client: TestClient, db_session, outbox, monkeypatch
+    ):
+        """And crucially, marks nothing: the first run after the flag flips
+        must still reach everyone who was due."""
+        from app.models import Account
+        from app.services import scheduled_email_service
+
+        monkeypatch.setattr("app.config.settings.trial_emails_enabled", False)
+        a = _signup(client)
+        _set_trial_end(db_session, a["account"]["id"], 3)
+
+        assert scheduled_email_service.send_trial_ending(db_session) == 0
+        assert outbox["send_trial_ending_email"] == []
+        db_session.expire_all()
+        assert db_session.get(Account, a["account"]["id"]).trial_ending_email_at is None
+
     def test_warns_inside_the_window(self, client: TestClient, db_session, outbox):
         from app.services import scheduled_email_service
 

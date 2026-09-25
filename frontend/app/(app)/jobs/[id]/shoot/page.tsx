@@ -545,6 +545,7 @@ function ShootCard({
   onSelect,
   onMarkShot,
   onNoShow,
+  onNoteSaved,
 }: {
   participant: Participant;
   /** HSD-55: booked appointment (HH:MM) on time-slot jobs, null otherwise. */

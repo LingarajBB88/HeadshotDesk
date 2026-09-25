@@ -114,6 +114,7 @@ def get_job_for_signup(slug: str, db: Session = Depends(get_db)) -> PublicJobOut
         shoot_dates=job.all_shoot_dates,
         location=job.location,
         shoot_mode=job.shoot_mode,
+        photos_go_to_client=job.delivery_mode == "client",
         branding=None,  # Account-level branding wired up in v0.2
         client_logo_url=_client_logo_url_for_job(db, job),
     )
@@ -506,6 +507,81 @@ class ClientDashboardOut(BaseModel):
     slots_total: int | None
     slots_booked: int | None
     participants: list[ClientParticipantOut]
+
+
+# --- Client photo handover ---------------------------------------------
+#
+# Only reachable when the job's delivery_mode includes the client AND the
+# job has been delivered. Both checks live in client_delivery_service, and
+# both 404 rather than 403 so a stale token learns nothing.
+
+
+@router.get("/client/{token}/photos")
+def client_photos(token: str, db: Session = Depends(get_db)) -> dict:
+    """Every delivered photo on the job, grouped by person."""
+    from app.services import client_delivery_service
+
+    return client_delivery_service.list_photos(db, token=token)
+
+
+@router.get("/client/{token}/photos/{file_id}/thumbnail")
+def client_photo_thumbnail(
+    token: str, file_id: str, db: Session = Depends(get_db)
+):
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import client_delivery_service
+
+    content, mime = client_delivery_service.read_photo(
+        db, token=token, file_id=file_id, thumbnail=True
+    )
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type=mime,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
+@router.get("/client/{token}/photos/{file_id}/download")
+def client_photo_download(
+    token: str, file_id: str, db: Session = Depends(get_db)
+):
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import client_delivery_service
+
+    f = client_delivery_service.get_file(db, token=token, file_id=file_id)
+    content, mime = client_delivery_service.read_photo(
+        db, token=token, file_id=file_id, thumbnail=False
+    )
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type=mime,
+        headers={
+            "Content-Disposition": f'attachment; filename="{f.original_filename}"'
+        },
+    )
+
+
+@router.post("/client/{token}/photos/zip")
+def client_photos_zip(token: str, db: Session = Depends(get_db)):
+    """The whole job as one archive, foldered by person."""
+    import io as _io
+
+    from fastapi.responses import StreamingResponse
+
+    from app.services import client_delivery_service
+
+    content, filename = client_delivery_service.build_zip(db, token=token)
+    return StreamingResponse(
+        _io.BytesIO(content),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/client/{token}", response_model=ClientDashboardOut)

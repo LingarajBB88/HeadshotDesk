@@ -50,8 +50,15 @@ def send_trial_ending(db: Session) -> int:
     Only unverified-of-nothing here: a trial ending is worth telling people
     about whether or not they've confirmed their address, because it's about
     their own account rather than mail to third parties.
+
+    Silent while TRIAL_EMAILS_ENABLED is off, which is the case until
+    billing exists. Returning 0 without marking anything means the first run
+    after checkout ships still reaches everyone due a warning.
     """
     from app.services import email_service
+
+    if not settings.trial_emails_enabled:
+        return 0
 
     now = _utcnow()
     cutoff = now + timedelta(days=TRIAL_WARNING_DAYS)
@@ -94,8 +101,14 @@ def send_trial_ending(db: Session) -> int:
 
 
 def send_trial_ended(db: Session) -> int:
-    """Tell accounts whose trial has now run out."""
+    """Tell accounts whose trial has now run out.
+
+    Also gated on TRIAL_EMAILS_ENABLED. See send_trial_ending.
+    """
     from app.services import email_service
+
+    if not settings.trial_emails_enabled:
+        return 0
 
     now = _utcnow()
     accounts = list(

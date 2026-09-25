@@ -72,6 +72,8 @@ export type Job = {
   /** Whether participants may move their own booked time. Off unless the
    *  photographer turns it on. */
   allow_reschedule: boolean;
+  /** Who receives the photos on Deliver. */
+  delivery_mode: "participants" | "client" | "both";
   created_at: string;
   updated_at: string;
   archived_at: string | null;
@@ -165,6 +167,7 @@ export async function updateJob(
       | "pick_cap"
       | "extra_shoot_dates"
       | "allow_reschedule"
+      | "delivery_mode"
     >
   >,
 ): Promise<Job> {

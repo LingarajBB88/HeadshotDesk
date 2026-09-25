@@ -383,6 +383,11 @@ export default function JobDetailPage() {
                 What participants get
               </h3>
               <dl className="mt-4 space-y-4">
+                <DeliveryModeDetail
+                  job={job}
+                  onChanged={(updated) => setJob(updated)}
+                  editable={job.status !== "archived"}
+                />
                 <DownloadCapDetail
                   job={job}
                   onChanged={(updated) => setJob(updated)}
@@ -679,6 +684,76 @@ function PicksDetail({
             <span className="text-xs text-muted-600">Saving…</span>
           ) : null}
         </label>
+        {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      </dd>
+    </div>
+  );
+}
+
+function DeliveryModeDetail({
+  job,
+  onChanged,
+  editable,
+}: {
+  job: Job;
+  onChanged: (updated: Job) => void;
+  editable: boolean;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(next: Job["delivery_mode"]) {
+    if (next === job.delivery_mode) return;
+    setSaving(true);
+    setError(null);
+    try {
+      onChanged(await updateJob(job.id, { delivery_mode: next }));
+    } catch {
+      setError("Couldn't save. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const options: Array<{ value: Job["delivery_mode"]; label: string }> = [
+    { value: "participants", label: "Each person, by email" },
+    { value: "client", label: "Your client contact only" },
+    { value: "both", label: "Both" },
+  ];
+
+  return (
+    <div>
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-600">
+        Who gets the photos
+      </dt>
+      <dd className="mt-1 text-sm text-ink">
+        <select
+          value={job.delivery_mode}
+          onChange={(e) => choose(e.target.value as Job["delivery_mode"])}
+          disabled={saving || !editable}
+          className="w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-60"
+        >
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-muted-600">
+          {job.delivery_mode === "participants"
+            ? "Everyone photographed gets their own private gallery."
+            : job.delivery_mode === "client"
+              ? "Nobody is emailed their photos. Your client contact gets one link to everything, and passes them on."
+              : "Everyone gets their own gallery, and your client contact also gets a link to the full set."}
+        </p>
+        {job.delivery_mode !== "participants" && !job.client_email ? (
+          // The link has nowhere to go without this, and finding out at
+          // Deliver time is too late.
+          <p className="mt-1 text-xs text-red-600">
+            Add a client email on this job, or there is nobody to send the
+            photos to.
+          </p>
+        ) : null}
         {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
       </dd>
     </div>

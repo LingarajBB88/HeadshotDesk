@@ -31,6 +31,11 @@ JOB_STATUSES = (
 # signup; shoot day is a schedule.
 SHOOT_MODES = ("queue", "time_slot")
 
+# Who receives the photos when the job is delivered. Some corporate clients
+# do not want their staff emailed directly: HR takes the full set and
+# distributes it. Others want both.
+DELIVERY_MODES = ("participants", "client", "both")
+
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -66,6 +71,13 @@ class Job(Base):
     # schedule, not the individual sitting in the chair.
     allow_reschedule: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
+    )
+
+    # Who gets the photos on Deliver. Defaults to the original behaviour, so
+    # every job that existed before this column keeps working unchanged.
+    delivery_mode: Mapped[str] = mapped_column(
+        String, nullable=False, default="participants",
+        server_default="participants",
     )
 
     status: Mapped[str] = mapped_column(String, nullable=False, default="draft")
@@ -150,6 +162,13 @@ class Job(Base):
             name="ck_jobs_status",
         ),
         CheckConstraint("download_cap >= 0", name="ck_jobs_download_cap_nonneg"),
+        # Name matches migration 0025 exactly. Six other constraints in this
+        # schema are named differently in the model than in the SQL that
+        # created them, which broke migration 0014 in production.
+        CheckConstraint(
+            "delivery_mode IN ('participants', 'client', 'both')",
+            name="ck_jobs_delivery_mode",
+        ),
         Index("idx_jobs_account_id", "account_id"),
         Index("idx_jobs_status", "status"),
     )

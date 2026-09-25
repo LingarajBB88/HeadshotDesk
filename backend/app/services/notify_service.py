@@ -13,7 +13,7 @@ place, reachable from both the public API and the photographer's own actions.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -33,6 +33,22 @@ def _day_label(dt: datetime) -> str:
 
 def _time_label(dt: datetime) -> str:
     return dt.strftime("%H:%M")
+
+
+def _next_shoot_day_label(job: Job) -> str | None:
+    """The first shoot day that has not passed yet, formatted for an email.
+
+    `job.shoot_date` is only the first day. Falls back to the last day when
+    every day is behind us, so a late signup on a finished job still reads
+    as a date rather than nothing.
+    """
+    days = job.all_shoot_dates
+    if not days:
+        return None
+    today = date.today()
+    upcoming = [d for d in days if d >= today]
+    chosen = upcoming[0] if upcoming else days[-1]
+    return chosen.strftime("%A %-d %B")
 
 
 def _context(db: Session, job: Job) -> dict:
@@ -195,9 +211,10 @@ def participant_signed_up(
             participant_name=participant.name,
             photographer_name=ctx["photographer_name"],
             job_name=ctx["job_name"],
-            shoot_date=job.shoot_date.strftime("%A %-d %B")
-            if job.shoot_date
-            else None,
+            # The next day still to come, not the first day. On a multi-day
+            # job where day one is over, "When: 1 September" in a signup
+            # confirmation sent on 25 September is simply wrong.
+            shoot_date=_next_shoot_day_label(job),
             location=job.location,
             time_slots=job.shoot_mode == "time_slot",
             signup_url=ctx["signup_url"],
