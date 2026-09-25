@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { EditJobModal } from "@/components/EditJobModal";
+import { allShootDays } from "@/components/JobOverview";
 import { ReferralCard } from "@/components/ReferralCard";
 import { TourOfferCard } from "@/components/TourOfferCard";
 import { SortableHeader, useSort } from "@/components/SortableHeader";
@@ -322,8 +323,10 @@ export default function JobsPage() {
                     ) : null}
                     {job.shoot_date ? (
                       <div className="flex gap-1">
-                        <dt className="font-medium">Shoot date:</dt>
-                        <dd>{job.shoot_date}</dd>
+                        <dt className="font-medium">
+                          {allShootDays(job).length > 1 ? "Shoot days:" : "Shoot date:"}
+                        </dt>
+                        <dd>{allShootDays(job).join(", ")}</dd>
                       </div>
                     ) : null}
                   </dl>
@@ -367,7 +370,7 @@ export default function JobsPage() {
                       {job.client_name ?? "—"}
                     </RowCell>
                     <RowCell href={`/jobs/${job.id}`} className="text-muted-600">
-                      {job.shoot_date ?? "—"}
+                      {allShootDays(job).join(", ") || "—"}
                     </RowCell>
                     <RowCell href={`/jobs/${job.id}`}>
                       <StatusPill status={job.status} />

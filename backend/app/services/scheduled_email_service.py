@@ -334,6 +334,12 @@ def send_undelivered_nudges(db: Session) -> int:
 
     sent = 0
     for job in jobs:
+        # The query filters on the first day; a multi-day job counts from
+        # its last one, or day one of a two-day shoot would trigger a
+        # nudge while day two hasn't happened.
+        last_day = job.all_shoot_dates[-1]
+        if last_day > cutoff_date:
+            continue
         participants = list(
             db.scalars(
                 select(Participant).where(Participant.job_id == job.id)
@@ -352,7 +358,7 @@ def send_undelivered_nudges(db: Session) -> int:
         if owner is None or not owner.email:
             continue
 
-        days_ago = (now.date() - job.shoot_date).days
+        days_ago = (now.date() - last_day).days
         try:
             email_service.send_undelivered_nudge_email(
                 to_email=owner.email,

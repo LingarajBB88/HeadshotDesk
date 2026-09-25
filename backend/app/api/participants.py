@@ -146,10 +146,9 @@ def reset_shot(
 
 class NoShowRequest(BaseModel):
     no_show: bool = True
-    # Send the "we missed you" follow-up. Default on, because the whole
-    # point of flagging someone is that they still want a headshot. The
-    # shoot screen turns it off when correcting a mis-tap.
-    notify: bool = True
+    # Send the "we missed you" follow-up. Off by default: flagging a
+    # no-show is for the attendance report, not for chasing the person.
+    notify: bool | None = None
 
 
 @router.post(
@@ -163,17 +162,20 @@ def set_no_show(
 ) -> ParticipantOut:
     """Flag someone who didn't turn up (or clear the flag)."""
     no_show = payload.no_show if payload else True
-    notify = payload.notify if payload else True
+    # Off unless explicitly asked for. On a corporate shoot the person's
+    # manager chases them, not the photographer, and an email from us
+    # saying "we didn't manage to photograph you" lands oddly when they
+    # simply skipped it. The flag still feeds the attendance report, which
+    # is what the client wants from a no-show. Kept as an opt-in because the
+    # template is written and a photographer may one day want it.
+    notify = bool(payload.notify) if payload and payload.notify is not None else False
     p = participant_service.set_no_show(
         db,
         account=account,
         participant_id=participant_id,
         no_show=no_show,
     )
-    # Only on flagging, never on clearing: "we missed you" followed by
-    # nothing when the photographer fixes a mis-tap would be worse than
-    # silence. Off by default is wrong here, but the flag exists for the
-    # photographer who's correcting a mistake mid-shoot.
+    # Only ever on flagging, never on clearing a mis-tap.
     if no_show and notify:
         from app.models import Job
         from app.services import notify_service

@@ -379,7 +379,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         heading: "No shows and the attendance report",
         body: [
           "Someone booked but never turned up? Hit No show on their card. They leave the pending list and collect in a No shows section at the bottom, so your queue stays honest about who is actually still coming.",
-          "It is not a deletion. If a straggler appears later, Back to queue puts them straight back in line, and marking them shot clears the flag on its own.",
+          "It is not a deletion, and it sends nothing to the person. If a straggler appears later, Back to queue puts them straight back in line, and marking them shot clears the flag on its own.",
           "The Attendance report button in the Participants section downloads a CSV listing everyone as Photographed, No show, or Not photographed. This is usually the first thing a client asks for after the shoot, so it is one click from the list it describes. Your client also sees a Didn't attend count on their live dashboard.",
         ],
       },
@@ -884,10 +884,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
           {
             term: "Gallery reminder",
             def: "Four days after delivery, only to people who never opened their gallery. Sends once.",
-          },
-          {
-            term: "Missed your slot",
-            def: "When you mark someone as not attended. Written to be easy to reply to rather than accusing.",
           },
         ],
       },

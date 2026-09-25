@@ -150,6 +150,9 @@ class JobListItem(BaseModel):
     name: str
     client_name: str | None
     shoot_date: date | None
+    # The list shows every day, or a two-day job looks like a one-day job
+    # that happened weeks ago.
+    extra_shoot_dates: list[date] | None = None
     status: JobStatus
     created_at: datetime
 

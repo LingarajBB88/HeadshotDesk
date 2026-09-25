@@ -152,3 +152,102 @@ class TestClientDashboardData:
         jane = next(p for p in data["participants"] if p["name"] == "Jane")
         assert jane["slot_time"] == "09:00"
         assert jane["status"] == "signed_up"
+
+
+class TestMultiDay:
+    def test_per_day_breakdown_on_a_two_day_job(self, client: TestClient, db_session):
+        from datetime import datetime, timezone
+
+        from app.models import Participant
+
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        day1 = date.today() - timedelta(days=1)
+        day2 = date.today() + timedelta(days=6)
+        job = _create_job(
+            client,
+            token,
+            shoot_date=day1.isoformat(),
+            extra_shoot_dates=[day2.isoformat()],
+            shoot_mode="time_slot",
+        )
+        r = client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"time_slot_config": {"start": "09:00", "end": "10:00", "slot_minutes": 30}},
+            headers=_auth(token),
+        )
+        assert r.status_code == 200, r.text
+
+        slots = client.get(
+            f"/api/v1/public/jobs/{job['public_slug']}/slots"
+        ).json()["slots"]
+        by_day = {}
+        for s in slots:
+            by_day.setdefault(s["start"][:10], []).append(s)
+        assert set(by_day) == {day1.isoformat(), day2.isoformat()}
+
+        # Jane on day one (already shot), Bob on day one (no-show),
+        # Carol booked for day two, Dave signed up with no time.
+        people = {}
+        for name, day in [("Jane", day1), ("Bob", day1), ("Carol", day2)]:
+            # Past slots are not bookable publicly, so book via the
+            # photographer's endpoint for day one.
+            p = client.post(
+                f"/api/v1/jobs/{job['id']}/participants",
+                json={"name": name, "email": f"{name.lower()}@example.com"},
+                headers=_auth(token),
+            ).json()
+            slot = next(
+                s for s in by_day[day.isoformat()]
+                if s["available"]
+            )
+            r = client.post(
+                f"/api/v1/jobs/{job['id']}/participants/{p['id']}/book-slot",
+                json={"slot_start": slot["start"]},
+                headers=_auth(token),
+            )
+            assert r.status_code == 200, r.text
+            slot["available"] = False
+            people[name] = p
+        people["Dave"] = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Dave", "email": "dave@example.com"},
+            headers=_auth(token),
+        ).json()
+
+        db_session.get(Participant, people["Jane"]["id"]).shot_at = datetime.now(timezone.utc)
+        db_session.get(Participant, people["Bob"]["id"]).no_show_at = datetime.now(timezone.utc)
+        db_session.commit()
+
+        ct = client.post(
+            f"/api/v1/jobs/{job['id']}/client-link", headers=_auth(token)
+        ).json()["client_token"]
+        data = client.get(f"/api/v1/public/client/{ct}").json()
+
+        assert data["shoot_dates"] == [day1.isoformat(), day2.isoformat()]
+        d1, d2 = data["days"]
+        assert d1["date"] == day1.isoformat() and d1["is_past"] is True
+        assert (d1["signed_up"], d1["photographed"], d1["no_shows"]) == (2, 1, 1)
+        assert d1["slots_booked"] == 2
+        assert d2["date"] == day2.isoformat() and d2["is_past"] is False
+        assert (d2["signed_up"], d2["photographed"], d2["no_shows"]) == (1, 0, 0)
+        assert d2["slots_booked"] == 1
+        # Job-wide totals still count everyone, including Dave.
+        assert data["participants_total"] == 4
+
+        rows = {p["name"]: p for p in data["participants"]}
+        assert rows["Carol"]["day"] == day2.isoformat()
+        assert rows["Dave"]["day"] is None
+        # Booked people come first in date order, then the unplaced.
+        assert [p["name"] for p in data["participants"]][-1] == "Dave"
+
+    def test_single_day_job_has_no_day_blocks(self, client: TestClient):
+        a = _signup(client)
+        token = a["tokens"]["access_token"]
+        job = _create_job(client, token)
+        ct = client.post(
+            f"/api/v1/jobs/{job['id']}/client-link", headers=_auth(token)
+        ).json()["client_token"]
+        data = client.get(f"/api/v1/public/client/{ct}").json()
+        assert len(data["shoot_dates"]) == 1
+        assert data["days"] == []

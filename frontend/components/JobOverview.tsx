@@ -42,12 +42,36 @@ const STAGE_LABELS: Record<JobStage, string> = {
 export function deriveStage(job: Job, todayIso?: string): JobStage {
   if (job.status === "archived" || job.status === "delivered") return "done";
   if (job.status === "in_progress") {
-    if (!job.shoot_date) return "shoot_day";
-    if (isPast(job.shoot_date, todayIso)) return "delivery";
+    const last = lastShootDay(job);
+    if (!last) return "shoot_day";
+    // Only once every day is behind us. Between day one and day two of a
+    // two-day shoot the job is still on the shoot-day step.
+    if (isPast(last, todayIso)) return "delivery";
     return "shoot_day";
   }
   // draft or open_for_signup
   return "setup";
+}
+
+type HasShootDays = Pick<Job, "shoot_date" | "extra_shoot_dates">;
+
+/** Every shoot day, sorted. `shoot_date` alone is only the first. */
+export function allShootDays(job: HasShootDays): string[] {
+  return [job.shoot_date, ...(job.extra_shoot_dates ?? [])]
+    .filter((d): d is string => !!d)
+    .sort();
+}
+
+/** The next shoot day still to come, or the last one once all have passed. */
+export function nextShootDay(job: HasShootDays, todayIso?: string): string | null {
+  const days = allShootDays(job);
+  const today = todayIso ?? new Date().toISOString().slice(0, 10);
+  return days.find((d) => d >= today) ?? days[days.length - 1] ?? null;
+}
+
+function lastShootDay(job: HasShootDays): string | null {
+  const days = allShootDays(job);
+  return days[days.length - 1] ?? null;
 }
 
 /**
@@ -94,7 +118,9 @@ function startOfDay(d: Date): Date {
 export function JobProgressStepper({ job }: { job: Job }) {
   const current = deriveStage(job);
   const currentIdx = STAGE_ORDER.indexOf(current);
-  const dayLabel = relativeDayLabel(job.shoot_date);
+  // The day the stepper is talking about: the next one to come, so on a
+  // two-day job the badge reads "in 6 days" rather than "yesterday".
+  const dayLabel = relativeDayLabel(nextShootDay(job));
   // Past states (delivered, archived) flip every step green — the job is
   // wrapped up, there's no "current" step to highlight.
   const allComplete = job.status === "archived" || job.status === "delivered";
@@ -277,14 +303,12 @@ export function ShootDayHero({ job }: { job: Job }) {
   // Every day the job runs on. shoot_date alone is only the first, which
   // on a two-day job whose first day has passed produced "24 days ago" in
   // the corner while the second day was still two weeks out.
-  const days = [job.shoot_date, ...(job.extra_shoot_dates ?? [])]
-    .filter((d): d is string => !!d)
-    .sort();
+  const days = allShootDays(job);
   const todayIso = new Date().toISOString().slice(0, 10);
   // Lead with the next day still to come. Only once every day is behind
   // us does the last one become the headline, so a finished job still
   // reads as "24 days ago" rather than as if it never happened.
-  const headline = days.find((d) => d >= todayIso) ?? days[days.length - 1] ?? null;
+  const headline = nextShootDay(job);
   const dayLabel = relativeDayLabel(headline);
   const dateLabel = headline ? formatShootDate(headline) : "Shoot day not set";
   const otherDays = days.filter((d) => d !== headline);

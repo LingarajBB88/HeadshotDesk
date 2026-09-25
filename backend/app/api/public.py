@@ -6,6 +6,7 @@ request form.
 import io
 import logging
 import time
+from datetime import date, datetime
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -488,14 +489,35 @@ class ClientParticipantOut(BaseModel):
     """One row for the client. Deliberately minimal: names only, no emails
     or gallery links — the client sees progress, not personal data."""
     name: str
-    status: str  # signed_up | photographed | delivered
+    status: str  # signed_up | photographed | delivered | no_show
     slot_time: str | None  # "13:00" when a slot is booked
+    # ISO date of the day this person belongs to: their booked slot, or the
+    # day they were shot or flagged. Null until one of those happens. On a
+    # one-day job it's always that day and the client page ignores it.
+    day: str | None = None
+
+
+class ClientDayOut(BaseModel):
+    """One shoot day as the client sees it. On a multi-day job the question
+    HR actually has is "how did Tuesday go, and who is left for the 8th",
+    which job-wide totals cannot answer."""
+    date: str
+    is_past: bool
+    signed_up: int
+    photographed: int
+    no_shows: int
+    slots_total: int | None = None
+    slots_booked: int | None = None
 
 
 class ClientDashboardOut(BaseModel):
     job_name: str
     studio_name: str
     shoot_date: str | None
+    # Every day, in order. shoot_date above is only the first and is kept
+    # for older clients of this endpoint.
+    shoot_dates: list[str] = []
+    days: list[ClientDayOut] = []
     location: str | None
     job_status: str
     participants_total: int
@@ -623,20 +645,25 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
     slots_total: int | None = None
     slots_booked: int | None = None
     slot_by_participant: dict[str, str] = {}
+    slot_day_by_participant: dict[str, date] = {}
+    slot_start_by_participant: dict[str, datetime] = {}
     if job.shoot_mode == "time_slot":
         slots = slot_service.list_slots(db, job=job)
         slots_total = len(slots)
         slots_booked = sum(1 for s in slots if not s["available"])
         for e in slot_service.job_schedule(db, job=job):
-            slot_by_participant[e["participant_id"]] = e[
-                "slot_start"
-            ].strftime("%H:%M")
+            start = e["slot_start"]
+            slot_by_participant[e["participant_id"]] = start.strftime("%H:%M")
+            slot_day_by_participant[e["participant_id"]] = start.date()
+            slot_start_by_participant[e["participant_id"]] = start
 
     if job.shoot_mode == "time_slot":
+        # Sort on the full datetime, not the clock time: on a two-day job
+        # Tuesday 14:00 comes before Wednesday 09:00.
         participants.sort(
             key=lambda p: (
-                slot_by_participant.get(p.id) is None,  # unbooked last
-                slot_by_participant.get(p.id) or "",
+                p.id not in slot_start_by_participant,  # unbooked last
+                slot_start_by_participant.get(p.id) or datetime.max,
                 p.name.lower(),
             )
         )
@@ -652,10 +679,57 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
             return "no_show"
         return "signed_up"
 
+    # Per-day breakdown. A participant belongs to the day of their booked
+    # slot, or, when they were photographed without one, the day they were
+    # shot. Someone signed up with neither is not yet attributable to a day
+    # and counts only in the job-wide totals.
+    all_days = job.all_shoot_dates
+    today = date.today()
+
+    def day_of(p: Participant) -> date | None:
+        booked = slot_day_by_participant.get(p.id)
+        if booked is not None:
+            return booked
+        if p.shot_at is not None:
+            return p.shot_at.date()
+        if p.no_show_at is not None:
+            return p.no_show_at.date()
+        return None
+
+    days_out: list[ClientDayOut] = []
+    if len(all_days) > 1:
+        slots_by_day: dict[date, list[dict]] = {}
+        if job.shoot_mode == "time_slot":
+            for sl in slot_service.list_slots(db, job=job):
+                slots_by_day.setdefault(sl["start"].date(), []).append(sl)
+        for d in all_days:
+            mine = [p for p in participants if day_of(p) == d]
+            day_slots = slots_by_day.get(d)
+            days_out.append(
+                ClientDayOut(
+                    date=d.isoformat(),
+                    is_past=d < today,
+                    signed_up=len(mine),
+                    photographed=sum(1 for p in mine if p.shot_at is not None),
+                    no_shows=sum(
+                        1 for p in mine
+                        if p.no_show_at is not None and p.shot_at is None
+                    ),
+                    slots_total=len(day_slots) if day_slots is not None else None,
+                    slots_booked=(
+                        sum(1 for sl in day_slots if not sl["available"])
+                        if day_slots is not None
+                        else None
+                    ),
+                )
+            )
+
     return ClientDashboardOut(
         job_name=job.name,
         studio_name=account.name if account else "HeadshotDesk",
         shoot_date=job.shoot_date.isoformat() if job.shoot_date else None,
+        shoot_dates=[d.isoformat() for d in all_days],
+        days=days_out,
         location=job.location,
         job_status=job.status,
         participants_total=len(participants),
@@ -675,6 +749,7 @@ def client_dashboard(token: str, db: Session = Depends(get_db)) -> ClientDashboa
                 name=p.name,
                 status=p_status(p),
                 slot_time=slot_by_participant.get(p.id),
+                day=(day_of(p).isoformat() if day_of(p) else None),
             )
             for p in participants
         ],

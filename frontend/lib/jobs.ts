@@ -85,6 +85,7 @@ export type JobListItem = {
   name: string;
   client_name: string | null;
   shoot_date: string | null;
+  extra_shoot_dates: string[] | null;
   status: JobStatus;
   created_at: string;
 };

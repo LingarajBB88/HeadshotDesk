@@ -16,12 +16,27 @@ type ClientParticipant = {
   name: string;
   status: "signed_up" | "photographed" | "delivered" | "no_show";
   slot_time: string | null;
+  // ISO date of the day they belong to; null until booked, shot, or flagged.
+  day: string | null;
+};
+
+type ClientDay = {
+  date: string;
+  is_past: boolean;
+  signed_up: number;
+  photographed: number;
+  no_shows: number;
+  slots_total: number | null;
+  slots_booked: number | null;
 };
 
 type ClientDashboard = {
   job_name: string;
   studio_name: string;
   shoot_date: string | null;
+  shoot_dates: string[];
+  // Only filled on a multi-day job; empty when there is one day to report.
+  days: ClientDay[];
   location: string | null;
   job_status: string;
   participants_total: number;
@@ -59,6 +74,55 @@ function Tile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
+// "Tue 7 Oct". Dates arrive as plain ISO days, so parse them as local
+// midnight rather than UTC, or the 7th renders as the 6th west of Greenwich.
+function dayLabel(iso: string, long = false) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: long ? "long" : "short",
+    day: "numeric",
+    month: long ? "long" : "short",
+  });
+}
+
+// Per-day breakdown for a multi-day shoot. Job-wide tiles above still
+// answer "how far along are we"; this answers "how did Tuesday go, and
+// who is left for Wednesday".
+function DayCard({ day, timeSlots }: { day: ClientDay; timeSlots: boolean }) {
+  return (
+    <div className="rounded-card border border-muted-200 bg-paper p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-ink">{dayLabel(day.date, true)}</p>
+        <span
+          className={`text-xs ${day.is_past ? "text-muted-400" : "text-green-700"}`}
+        >
+          {day.is_past ? "Done" : "Upcoming"}
+        </span>
+      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <div>
+          <dt className="text-lg font-semibold text-ink">
+            {timeSlots && day.slots_total !== null
+              ? `${day.slots_booked} / ${day.slots_total}`
+              : day.signed_up}
+          </dt>
+          <dd className="text-xs text-muted-600">
+            {timeSlots && day.slots_total !== null ? "Slots booked" : "Signed up"}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-lg font-semibold text-ink">{day.photographed}</dt>
+          <dd className="text-xs text-muted-600">Photographed</dd>
+        </div>
+        <div>
+          <dt className="text-lg font-semibold text-ink">{day.no_shows}</dt>
+          <dd className="text-xs text-muted-600">Didn&apos;t attend</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 export default function ClientDashboardPage() {
   const params = useParams<{ token: string }>();
   const token = params?.token;
@@ -70,6 +134,8 @@ export default function ClientDashboardPage() {
     key: "time",
     dir: "asc",
   });
+  const multiDay = (data?.shoot_dates?.length ?? 0) > 1;
+  const timeSlots = data?.shoot_mode === "time_slot";
 
   useEffect(() => {
     if (!token) return;
@@ -122,8 +188,8 @@ export default function ClientDashboardPage() {
               </h1>
               <p className="mt-1 text-sm text-muted-600">
                 Live shoot status from {data.studio_name}
-                {data.shoot_date
-                  ? ` · ${new Date(data.shoot_date).toLocaleDateString()}`
+                {(data.shoot_dates ?? []).length
+                  ? ` · ${(data.shoot_dates ?? []).map((d) => dayLabel(d)).join(", ")}`
                   : ""}
                 {data.location ? ` · ${data.location}` : ""}
               </p>
@@ -149,13 +215,24 @@ export default function ClientDashboardPage() {
               ) : null}
             </div>
 
+            {multiDay ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {(data.days ?? []).map((day) => (
+                  <DayCard key={day.date} day={day} timeSlots={timeSlots} />
+                ))}
+              </div>
+            ) : null}
+
             {/* Participant progress — names + status only, no contact data. */}
             <div className="mt-6 rounded-card border border-muted-200 bg-paper overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-muted-50 text-left text-xs font-medium uppercase tracking-wider text-muted-600">
                   <tr>
                     <SortableHeader label="Name" sortKey="name" sort={sort} onSort={toggle} />
-                    {data.shoot_mode === "time_slot" ? (
+                    {multiDay ? (
+                      <SortableHeader label="Day" sortKey="time" sort={sort} onSort={toggle} />
+                    ) : null}
+                    {timeSlots ? (
                       <SortableHeader label="Time" sortKey="time" sort={sort} onSort={toggle} />
                     ) : null}
                     <SortableHeader label="Status" sortKey="status" sort={sort} onSort={toggle} align="right" />
@@ -165,7 +242,7 @@ export default function ClientDashboardPage() {
                   {data.participants.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={3}
+                        colSpan={4}
                         className="px-4 py-6 text-center text-muted-600"
                       >
                         No signups yet. The signup link is with your team.
@@ -174,7 +251,10 @@ export default function ClientDashboardPage() {
                   ) : (
                     sorted(data.participants, (p, key) =>
                       key === "time"
-                        ? (p.slot_time ?? "")
+                        // Day first, then clock time, so Tuesday 14:00
+                        // sorts before Wednesday 09:00. Unplaced people
+                        // sort last.
+                        ? `${p.day ?? "9999"} ${p.slot_time ?? "99:99"}`
                         : key === "status"
                           ? {
                               signed_up: 1,
@@ -186,7 +266,12 @@ export default function ClientDashboardPage() {
                     ).map((p, i) => (
                       <tr key={`${p.name}-${i}`}>
                         <td className="px-4 py-2.5 text-ink">{p.name}</td>
-                        {data.shoot_mode === "time_slot" ? (
+                        {multiDay ? (
+                          <td className="px-4 py-2.5 text-xs text-muted-600">
+                            {p.day ? dayLabel(p.day) : "—"}
+                          </td>
+                        ) : null}
+                        {timeSlots ? (
                           <td className="px-4 py-2.5 font-mono text-xs text-muted-600">
                             {p.slot_time ?? "—"}
                           </td>

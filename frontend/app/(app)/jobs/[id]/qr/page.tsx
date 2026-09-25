@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { allShootDays } from "@/components/JobOverview";
 import { getJob, type Job } from "@/lib/jobs";
 
 export default function SignupQrPage() {
@@ -111,15 +112,17 @@ export default function SignupQrPage() {
           <div className="mt-8 border-t border-muted-200 pt-5 text-sm text-muted-600">
             <p className="font-medium text-ink">{job.name}</p>
             {job.location ? <p className="mt-0.5">{job.location}</p> : null}
-            {job.shoot_date ? (
-              <p className="mt-0.5">
-                {new Date(job.shoot_date).toLocaleDateString(undefined, {
+            {/* The card sits at the booth for the whole shoot, so every day
+                goes on it, not just the first. */}
+            {allShootDays(job).map((d) => (
+              <p key={d} className="mt-0.5">
+                {new Date(d).toLocaleDateString(undefined, {
                   weekday: "long",
                   day: "numeric",
                   month: "long",
                 })}
               </p>
-            ) : null}
+            ))}
           </div>
         </div>
       </div>

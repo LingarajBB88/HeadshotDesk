@@ -170,7 +170,14 @@ def get_gallery(db: Session, *, token: str) -> dict:
         "job": {
             "name": job.name,
             "client_name": job.client_name,
-            "shoot_date": job.shoot_date,
+            # The day this person was photographed, when we know it. On a
+            # two-day job the first day is the wrong date for half the
+            # galleries.
+            "shoot_date": (
+                participant.shot_at.date()
+                if participant.shot_at is not None
+                else job.shoot_date
+            ),
         },
         "files": file_entries,
         "download_cap": job.download_cap,

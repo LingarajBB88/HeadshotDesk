@@ -141,13 +141,13 @@ export async function resetShot(participantId: string): Promise<Participant> {
 /**
  * Flag (or unflag) someone who didn't turn up.
  *
- * Flagging sends them a "we missed you" follow-up with a rebooking link.
- * `notify: false` suppresses it, for correcting a mis-tap.
+ * Flagging is for the attendance report. No email goes to the person
+ * unless `notify` is set, which nothing in the UI does today.
  */
 export async function setNoShow(
   participantId: string,
   noShow = true,
-  notify = true,
+  notify = false,
 ): Promise<Participant> {
   return api<Participant>(`/api/v1/participants/${participantId}/no-show`, {
     method: "POST",

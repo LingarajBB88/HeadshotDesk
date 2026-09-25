@@ -861,3 +861,45 @@ class TestJobStatusAutoAdvance:
             headers=_auth(token),
         )
         assert self._job_status(client, token, job["id"]) == "archived"
+
+
+class TestNoShowDoesNotEmail:
+    def test_flagging_a_no_show_sends_nothing_by_default(
+        self, client: TestClient, monkeypatch
+    ):
+        from app.services import email_service
+
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            email_service,
+            "send_no_show_followup_email",
+            lambda **kw: sent.append(kw),
+        )
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={"name": "Flag", "shoot_date": date.today().isoformat()},
+            headers=_auth(tok),
+        ).json()
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Jane", "email": "jane.flag@example.com"},
+            headers=_auth(tok),
+        ).json()
+        r = client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": True},
+            headers=_auth(tok),
+        )
+        assert r.status_code == 200, r.text
+        assert r.json()["no_show_at"] is not None
+        assert sent == []
+
+        # Still available when asked for explicitly.
+        client.post(
+            f"/api/v1/participants/{p['id']}/no-show",
+            json={"no_show": True, "notify": True},
+            headers=_auth(tok),
+        )
+        assert len(sent) == 1
