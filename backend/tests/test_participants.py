@@ -877,11 +877,7 @@ class TestNoShowDoesNotEmail:
         )
         a = _signup(client)
         tok = a["tokens"]["access_token"]
-        job = client.post(
-            "/api/v1/jobs",
-            json={"name": "Flag", "shoot_date": date.today().isoformat()},
-            headers=_auth(tok),
-        ).json()
+        job = _create_job(client, tok, name="Flag")
         p = client.post(
             f"/api/v1/jobs/{job['id']}/participants",
             json={"name": "Jane", "email": "jane.flag@example.com"},

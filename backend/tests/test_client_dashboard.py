@@ -160,14 +160,19 @@ class TestMultiDay:
 
         from app.models import Participant
 
+        from app.models import Job
+
         a = _signup(client)
         token = a["tokens"]["access_token"]
         day1 = date.today() - timedelta(days=1)
         day2 = date.today() + timedelta(days=6)
+        # The API refuses a past shoot date, so create the job with two
+        # future days and then move day one behind us in the database, the
+        # way it would be the morning after.
         job = _create_job(
             client,
             token,
-            shoot_date=day1.isoformat(),
+            shoot_date=(date.today() + timedelta(days=5)).isoformat(),
             extra_shoot_dates=[day2.isoformat()],
             shoot_mode="time_slot",
         )
@@ -177,6 +182,8 @@ class TestMultiDay:
             headers=_auth(token),
         )
         assert r.status_code == 200, r.text
+        db_session.get(Job, job["id"]).shoot_date = day1
+        db_session.commit()
 
         slots = client.get(
             f"/api/v1/public/jobs/{job['public_slug']}/slots"
