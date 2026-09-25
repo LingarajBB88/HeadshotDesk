@@ -388,16 +388,24 @@ export default function JobDetailPage() {
                   onChanged={(updated) => setJob(updated)}
                   editable={job.status !== "archived"}
                 />
-                <DownloadCapDetail
-                  job={job}
-                  onChanged={(updated) => setJob(updated)}
-                  editable={job.status !== "archived"}
-                />
-                <PicksDetail
-                  job={job}
-                  onChanged={(updated) => setJob(updated)}
-                  editable={job.status !== "archived"}
-                />
+                {/* Both of these describe a per-person gallery. When only
+                    the client receives the photos there is no such gallery,
+                    so a download cap and a favourites switch would be
+                    settings for a thing that does not exist. */}
+                {(job.delivery_mode ?? "participants") !== "client" ? (
+                  <>
+                    <DownloadCapDetail
+                      job={job}
+                      onChanged={(updated) => setJob(updated)}
+                      editable={job.status !== "archived"}
+                    />
+                    <PicksDetail
+                      job={job}
+                      onChanged={(updated) => setJob(updated)}
+                      editable={job.status !== "archived"}
+                    />
+                  </>
+                ) : null}
                 {/* Only meaningful when there are times to move between. */}
                 {job.shoot_mode === "time_slot" ? (
                   <RescheduleDetail
