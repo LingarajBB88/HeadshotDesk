@@ -701,9 +701,13 @@ function DeliveryModeDetail({
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A frontend deployed ahead of the API sees no delivery_mode at all.
+  // Missing means the original behaviour, never a fall-through to the
+  // last branch and a red warning on every job.
+  const mode: Job["delivery_mode"] = job.delivery_mode ?? "participants";
 
   async function choose(next: Job["delivery_mode"]) {
-    if (next === job.delivery_mode) return;
+    if (next === mode) return;
     setSaving(true);
     setError(null);
     try {
@@ -728,7 +732,7 @@ function DeliveryModeDetail({
       </dt>
       <dd className="mt-1 text-sm text-ink">
         <select
-          value={job.delivery_mode}
+          value={mode}
           onChange={(e) => choose(e.target.value as Job["delivery_mode"])}
           disabled={saving || !editable}
           className="w-full rounded-md border border-muted-200 bg-paper px-2 py-1.5 text-sm outline-none focus:border-accent disabled:opacity-60"
@@ -740,13 +744,13 @@ function DeliveryModeDetail({
           ))}
         </select>
         <p className="mt-1 text-xs text-muted-600">
-          {job.delivery_mode === "participants"
+          {mode === "participants"
             ? "Everyone photographed gets their own private gallery."
-            : job.delivery_mode === "client"
+            : mode === "client"
               ? "Nobody is emailed their photos. Your client contact gets one link to everything, and passes them on."
               : "Everyone gets their own gallery, and your client contact also gets a link to the full set."}
         </p>
-        {job.delivery_mode !== "participants" && !job.client_email ? (
+        {mode !== "participants" && !job.client_email ? (
           // The link has nowhere to go without this, and finding out at
           // Deliver time is too late.
           <p className="mt-1 text-xs text-red-600">
