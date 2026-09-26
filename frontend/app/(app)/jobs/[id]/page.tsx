@@ -124,8 +124,13 @@ export default function JobDetailPage() {
       // photo + email + not yet sent (mirrors the backend's default filter).
       // Resendable = photo + email regardless of sent state (the pool the
       // resend-to-all checkbox addresses).
+      // On a client-only job nobody is emailed, so an email is not a
+      // condition for handing their photos over.
+      const needsEmail = (job?.delivery_mode ?? "participants") !== "client";
       const withPhotoAndEmail =
-        participants?.filter((p) => p.photo_count > 0 && !!p.email) ?? null;
+        participants?.filter(
+          (p) => p.photo_count > 0 && (!needsEmail || !!p.email),
+        ) ?? null;
       setDeliverableCount(
         withPhotoAndEmail?.filter((p) => p.gallery_sent_at == null).length ??
           null,
@@ -135,7 +140,7 @@ export default function JobDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, participantsRefreshKey]);
+  }, [id, participantsRefreshKey, job?.delivery_mode]);
 
   // HSD-36: the linked client's logo for the job header. Resolved from the
   // clients list; missing logo (or no client) renders nothing.
@@ -291,7 +296,9 @@ export default function JobDetailPage() {
               disabled={!resendableCount || delivering}
               title={
                 resendableCount === 0
-                  ? "No one to deliver to yet. Participants need a photo and an email."
+                  ? (job.delivery_mode ?? "participants") === "client"
+                    ? "Nothing to deliver yet. Nobody has a photo matched to them."
+                    : "No one to deliver to yet. Participants need a photo and an email."
                   : undefined
               }
               className="btn-secondary disabled:opacity-60 disabled:cursor-not-allowed"

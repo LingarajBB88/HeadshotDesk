@@ -151,6 +151,27 @@ class TestWhoGetsEmailed:
         ).json()
         assert job["status"] == "delivered"
 
+    def test_a_client_job_delivers_people_without_an_email(
+        self, client: TestClient, db_session, outbox
+    ):
+        """Nobody is emailed on a client job, so an email is not a condition
+        for handing someone's photos over."""
+        from app.models import Participant
+
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        db_session.get(Participant, made["participant"]["id"]).email = None
+        db_session.commit()
+
+        result = _deliver(client, tok, made["job"]["id"])
+        assert result["sent"] == 1
+        assert result["skipped_no_email"] == 0
+        job = client.get(
+            f"/api/v1/jobs/{made['job']['id']}", headers=_auth(tok)
+        ).json()
+        assert job["status"] == "delivered"
+
 
 class TestTheClientLink:
     def _token(self, client: TestClient, tok: str, job_id: str) -> str:

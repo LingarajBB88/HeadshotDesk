@@ -488,11 +488,12 @@ def deliver_galleries(
         sent += 1
 
     # Promote the job to `delivered` as soon as anything's been delivered AND
-    # no eligible participant is left unsent. "Eligible" = has-photos + has-email.
+    # no eligible participant is left unsent. "Eligible" = has photos, plus
+    # has an email on jobs where participants are emailed.
     eligible_unsent_remaining = any(
         p.gallery_sent_at is None
         and photo_counts.get(p.id, 0) > 0
-        and p.email
+        and (p.email or not email_participants)
         for p in participants
     )
     if sent > 0 and not eligible_unsent_remaining:
