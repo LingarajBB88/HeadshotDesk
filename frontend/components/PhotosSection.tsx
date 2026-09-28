@@ -284,7 +284,7 @@ export function PhotosSection({
         <input
           ref={inputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.psd,image/vnd.adobe.photoshop"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -309,7 +309,7 @@ export function PhotosSection({
               </button>
             </p>
             <p className="mt-1 text-xs text-muted-600">
-              JPEG, PNG, WebP, or HEIC. Up to 50 MB each.
+              JPEG, PNG, WebP, or HEIC up to 50 MB each. PSD up to 250 MB, for your client only.
             </p>
           </>
         )}
@@ -554,6 +554,14 @@ function ParticipantFileGroup({
                       </span>
                     ) : null}
                     {f.original_filename}
+                    {f.mime_type === "image/vnd.adobe.photoshop" ? (
+                      <span
+                        className="ml-1.5 rounded bg-muted-100 px-1 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wide text-muted-600"
+                        title="Photoshop file. Goes to your client's link only, never to a participant's gallery."
+                      >
+                        PSD
+                      </span>
+                    ) : null}
                   </p>
                   <p className="text-xs text-muted-600">
                     {f.width && f.height ? `${f.width} × ${f.height} · ` : ""}

@@ -111,6 +111,9 @@ def list_photos(db: Session, *, token: str) -> dict:
                     {
                         "id": f.id,
                         "filename": f.original_filename,
+                        # Layered Photoshop file: shown with a label, since
+                        # the thumbnail is a flattened preview of it.
+                        "is_psd": f.is_psd,
                         "thumbnail_url": (
                             f"{settings.base_url}/api/v1/public/client/"
                             f"{token}/photos/{f.id}/thumbnail"

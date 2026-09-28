@@ -31,6 +31,7 @@ from app.models import (
     ParticipantDownload,
     ParticipantPick,
 )
+from app.models.file import PSD_MIME
 from app.services import storage_service
 
 
@@ -66,6 +67,9 @@ def _resolve_file_for_participant(
             File.id == file_id,
             File.participant_id == participant.id,
             File.variant == "original",
+            # PSDs are for the client's link, never the participant's
+            # gallery, so one is a 404 here rather than a download.
+            File.mime_type != PSD_MIME,
             File.deleted_at.is_(None),
         )
     )
@@ -115,6 +119,7 @@ def get_gallery(db: Session, *, token: str) -> dict:
             .where(
                 File.participant_id == participant.id,
                 File.variant == "original",
+                File.mime_type != PSD_MIME,
                 File.deleted_at.is_(None),
             )
             .order_by(File.uploaded_at.asc())
@@ -447,6 +452,7 @@ def download_zip_for_gallery(
                 File.id.in_(ordered_ids),
                 File.participant_id == participant.id,
                 File.variant == "original",
+                File.mime_type != PSD_MIME,
                 File.deleted_at.is_(None),
             )
         ).all()

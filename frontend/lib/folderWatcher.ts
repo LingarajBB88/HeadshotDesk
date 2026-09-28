@@ -19,6 +19,7 @@ const IMAGE_EXTENSIONS = new Set([
   ".webp",
   ".heic",
   ".heif",
+  ".psd",
 ]);
 
 // 3s polling — fast enough that the photographer never waits long after an

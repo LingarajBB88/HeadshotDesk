@@ -17,6 +17,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
 
+# Layered Photoshop files. Stored and matched like any photo, but they only
+# ever reach the client's photo link: a browser cannot show one, and staff
+# do not want one.
+PSD_MIME = "image/vnd.adobe.photoshop"
+
+
 class File(Base):
     __tablename__ = "files"
 
@@ -36,6 +42,10 @@ class File(Base):
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
+
+    @property
+    def is_psd(self) -> bool:
+        return self.mime_type == PSD_MIME
 
     variant: Mapped[str] = mapped_column(String, nullable=False, default="original")
     source_file_id: Mapped[str | None] = mapped_column(

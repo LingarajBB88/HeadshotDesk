@@ -462,13 +462,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
     intro: [
       "The Photos section is where every frame of the job lands, already grouped by person. Whether you drag files in after the shoot or let the watch folder stream them in live, the goal is the same: no sorting session, no renaming evening, no folder-per-person on your desktop.",
     ],
-    keywords: ["upload", "photos", "drag", "drop", "jpeg", "png", "webp", "heic", "duplicates", "delete", "reassign", "search"],
+    keywords: ["upload", "photos", "drag", "drop", "jpeg", "png", "webp", "heic", "psd", "photoshop", "duplicates", "delete", "reassign", "search"],
     sections: [
       {
         id: "upload",
         heading: "Two ways to upload",
         body: [
           "Drag files into the drop zone (or click choose files), or map a watch folder so uploads happen automatically. JPEG, PNG, WebP, and HEIC are accepted, up to 50 MB each.",
+        ],
+      },
+      {
+        id: "psd",
+        heading: "Photoshop files",
+        body: [
+          "PSD files upload too, up to 250 MB each, and match to people by filename like any photo. They carry a PSD label in the list.",
+          "They only ever reach your client contact, through the photo link on jobs set to deliver to the client. A participant's own gallery never shows them, since a browser cannot display a layered file and staff have no use for one. On a job that delivers to participants only, a PSD is stored but goes nowhere.",
         ],
       },
       {

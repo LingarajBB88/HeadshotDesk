@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.ids import new_id
 from app.models import Account, File, Participant
+from app.models.file import PSD_MIME
 from app.services import job_service, storage_service
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,26 @@ logger = logging.getLogger(__name__)
 # Supported upload mime types (gallery-bound JPEG/PNG, plus HEIC for iPhone exports).
 _ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 _MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB ceiling per file for v0.1
+
+# Photoshop files. Browsers label them inconsistently (several mime types,
+# or none at all), so the extension is what we trust. Bigger ceiling: a
+# layered headshot at full resolution is routinely over 50 MB.
+_PSD_MIMES = {
+    PSD_MIME,
+    "application/x-photoshop",
+    "application/photoshop",
+    "application/psd",
+    "image/psd",
+    "image/x-photoshop",
+}
+_MAX_PSD_SIZE = 250 * 1024 * 1024
+
+
+def _is_psd(filename: str, content_type: str | None) -> bool:
+    return (
+        Path(filename).suffix.lower() == ".psd"
+        or (content_type or "") in _PSD_MIMES
+    )
 
 # Thumbnail target — generated synchronously on upload so the UI can render
 # fast (single-digit KB instead of multi-MB originals).
@@ -183,12 +204,16 @@ async def upload_files(
     for uf in upload_files:
         filename = uf.filename or "upload"
 
-        if uf.content_type not in _ALLOWED_MIME:
+        psd = _is_psd(filename, uf.content_type)
+        if not psd and uf.content_type not in _ALLOWED_MIME:
             skipped.append(f"{filename} (unsupported type {uf.content_type})")
             continue
+        # One canonical type, whatever the browser called it, so every
+        # "is this a PSD" check downstream is a single comparison.
+        mime_type = PSD_MIME if psd else (uf.content_type or "")
 
         content = await uf.read()
-        if len(content) > _MAX_FILE_SIZE:
+        if len(content) > (_MAX_PSD_SIZE if psd else _MAX_FILE_SIZE):
             skipped.append(f"{filename} (too large)")
             continue
         if len(content) == 0:
@@ -249,7 +274,7 @@ async def upload_files(
 
         try:
             storage_service.save(
-                key=storage_key, content=content, content_type=uf.content_type
+                key=storage_key, content=content, content_type=mime_type
             )
         except Exception as exc:  # noqa: BLE001
             # Log with traceback: this used to fail silently, so a broken
@@ -277,7 +302,7 @@ async def upload_files(
             width=width,
             height=height,
             size_bytes=len(content),
-            mime_type=uf.content_type,
+            mime_type=mime_type,
             variant="original",
             content_sha256=sha,
         )

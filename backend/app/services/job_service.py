@@ -17,6 +17,7 @@ from app.config import settings
 from app.core.ids import new_id
 from app.core.slugs import generate_named_slug
 from app.models import Account, File, Job, Participant, User
+from app.models.file import PSD_MIME
 from app.services import email_service
 
 logger = logging.getLogger(__name__)
@@ -429,19 +430,28 @@ def deliver_galleries(
             .order_by(Participant.created_at.asc())
         ).all()
     )
+    # Two counts per person: what their own gallery shows (no PSDs, a
+    # browser cannot display one) and everything the client's link carries.
+    # On a participants-only job the PSDs go nowhere, so only the first
+    # count decides who is deliverable.
+    gallery_counts: dict[str, int] = {}
     photo_counts: dict[str, int] = {}
     if participants:
         rows = db.execute(
-            select(File.participant_id, func.count())
+            select(File.participant_id, File.mime_type == PSD_MIME, func.count())
             .where(
                 File.job_id == job_id,
                 File.deleted_at.is_(None),
                 File.variant == "original",
                 File.participant_id.is_not(None),
             )
-            .group_by(File.participant_id)
+            .group_by(File.participant_id, File.mime_type == PSD_MIME)
         ).all()
-        photo_counts = {pid: int(c) for pid, c in rows}
+        for pid, is_psd, c in rows:
+            if not is_psd:
+                gallery_counts[pid] = gallery_counts.get(pid, 0) + int(c)
+            if not is_psd or job.delivery_mode != "participants":
+                photo_counts[pid] = photo_counts.get(pid, 0) + int(c)
 
     sent = 0
     skipped_already_delivered = 0
@@ -468,6 +478,14 @@ def deliver_galleries(
             sent += 1
             continue
 
+        if gallery_counts.get(p.id, 0) == 0:
+            # Only a PSD, on a job where the client also gets the link:
+            # the client's copy is the delivery, there is no gallery to
+            # email about.
+            p.gallery_sent_at = _utcnow()
+            sent += 1
+            continue
+
         if not p.email:
             skipped_no_email += 1
             continue
@@ -483,7 +501,7 @@ def deliver_galleries(
                 # This job's rules, not generic copy: how many photos are
                 # there, how many they may keep, whether they're being asked
                 # to star favourites.
-                photo_count=photo_counts.get(p.id, 0),
+                photo_count=gallery_counts.get(p.id, 0),
                 download_cap=job.download_cap,
                 picks_enabled=bool(job.picks_enabled),
                 client_logo_url=client_logo_url,

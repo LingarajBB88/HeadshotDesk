@@ -23,6 +23,7 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 type Photo = {
   id: string;
   filename: string;
+  is_psd?: boolean;
   thumbnail_url: string;
   download_url: string;
 };
@@ -129,15 +130,20 @@ export default function ClientPhotosPage() {
                   key={photo.id}
                   href={photo.download_url}
                   download={photo.filename}
-                  className="group block"
+                  className="group relative block"
                   title={`Download ${photo.filename}`}
                 >
                   <img
                     src={photo.thumbnail_url}
                     alt={person.name}
                     loading="lazy"
-                    className="aspect-[4/5] w-full rounded-card object-cover transition group-hover:opacity-90"
+                    className="aspect-[4/5] w-full rounded-card bg-muted-100 object-cover transition group-hover:opacity-90"
                   />
+                  {photo.is_psd ? (
+                    <span className="absolute left-2 top-2 rounded bg-ink/80 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-paper">
+                      PSD
+                    </span>
+                  ) : null}
                 </a>
               ))}
             </div>
