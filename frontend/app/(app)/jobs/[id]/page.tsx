@@ -811,7 +811,7 @@ function DeliveryModeDetail({
           {mode === "participants"
             ? "Everyone photographed gets their own private gallery."
             : mode === "client"
-              ? "Nobody is emailed their photos. Your client contact gets one link to everything, and passes them on."
+              ? "Your client contact gets one link to all the photos and hands them out. The people photographed receive no email from us."
               : "Everyone gets their own gallery, and your client contact also gets a link to the full set."}
         </p>
         {mode !== "participants" && !job.client_email ? (
