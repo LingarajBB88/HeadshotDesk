@@ -215,6 +215,41 @@ class TestTheClientLink:
         assert body["photo_count"] == 1
         assert body["people"][0]["name"] == "Jane Doe"
 
+    def test_the_archive_streams_and_is_valid(
+        self, client: TestClient, db_session, outbox, monkeypatch
+    ):
+        import io
+        import zipfile
+
+        from app.services import client_delivery_service, storage_service
+
+        monkeypatch.setattr(
+            storage_service, "read", lambda *, key: b"jpegbytes-" + key.encode()
+        )
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        _deliver(client, tok, made["job"]["id"])
+        ct = self._token(client, tok, made["job"]["id"])
+
+        # The first chunk is out before the archive is finished: that is
+        # what lets the browser start the download on photo one.
+        chunks = list(client_delivery_service.iter_zip(db_session, token=ct))
+        assert len(chunks) >= 2 and len(chunks[0]) > 0
+
+        r = client.get(f"/api/v1/public/client/{ct}/photos/zip")
+        assert r.status_code == 200, r.text
+        assert r.headers["content-type"].startswith("application/zip")
+        assert 'filename="Acme-photos.zip"' in r.headers["content-disposition"]
+        z = zipfile.ZipFile(io.BytesIO(r.content))
+        assert z.testzip() is None
+        assert z.namelist() == ["Jane-Doe/jane_001.jpg"]
+        assert z.read("Jane-Doe/jane_001.jpg").startswith(b"jpegbytes-")
+
+    def test_a_bad_token_is_404_not_a_broken_download(self, client: TestClient, db_session):
+        r = client.get("/api/v1/public/client/nope/photos/zip")
+        assert r.status_code == 404
+
     def test_it_carries_no_email_addresses(self, client: TestClient, db_session, outbox):
         """The client hired the photographer, not the staff list."""
         a = _signup(client)

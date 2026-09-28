@@ -589,18 +589,19 @@ def client_photo_download(
     )
 
 
-@router.post("/client/{token}/photos/zip")
+# GET so the browser handles it as an ordinary download, with its own
+# progress bar; the old frontend posted, so both still work.
+@router.api_route("/client/{token}/photos/zip", methods=["GET", "POST"])
 def client_photos_zip(token: str, db: Session = Depends(get_db)):
-    """The whole job as one archive, foldered by person."""
-    import io as _io
-
+    """The whole job as one archive, foldered by person, streamed as it is
+    built so the download starts on the first photo."""
     from fastapi.responses import StreamingResponse
 
     from app.services import client_delivery_service
 
-    content, filename = client_delivery_service.build_zip(db, token=token)
+    filename = client_delivery_service.zip_filename(db, token=token)
     return StreamingResponse(
-        _io.BytesIO(content),
+        client_delivery_service.iter_zip(db, token=token),
         media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

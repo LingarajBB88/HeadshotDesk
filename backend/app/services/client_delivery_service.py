@@ -22,8 +22,8 @@ The access rules that do apply:
 """
 from __future__ import annotations
 
-import io
 import zipfile
+from collections.abc import Iterator
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -168,8 +168,49 @@ def read_photo(
         ) from None
 
 
-def build_zip(db: Session, *, token: str) -> tuple[bytes, str]:
-    """The whole job as one archive, foldered by person.
+class _StreamSink:
+    """A write-only target for ZipFile that hands back whatever was written
+    since the last drain. Deliberately has no seek(): that is what makes
+    zipfile write data descriptors instead of rewinding to patch headers,
+    so the archive is valid as it streams."""
+
+    def __init__(self) -> None:
+        self._chunks: list[bytes] = []
+        self._pos = 0
+
+    def write(self, data: bytes) -> int:
+        self._chunks.append(bytes(data))
+        self._pos += len(data)
+        return len(data)
+
+    def tell(self) -> int:
+        return self._pos
+
+    def flush(self) -> None:
+        pass
+
+    def drain(self) -> bytes:
+        out = b"".join(self._chunks)
+        self._chunks.clear()
+        return out
+
+
+def zip_filename(db: Session, *, token: str) -> str:
+    """Resolve the token and give the archive its name, before any bytes go
+    out: a bad token must be a 404, not a truncated download."""
+    job = resolve_job(db, token=token)
+    assert_photos_shared(job)
+    return f"{_safe_slug(job.name, fallback='job')}-photos.zip"
+
+
+def iter_zip(db: Session, *, token: str) -> Iterator[bytes]:
+    """The whole job as one archive, foldered by person, streamed.
+
+    Each original is read from storage and written into the archive as it
+    goes, so the browser's download starts on the first photo rather than
+    after the last one, and memory holds one photo at a time instead of the
+    whole job. Stored uncompressed: JPEGs do not shrink, and deflating
+    them only burns CPU between chunks.
 
     No cap accounting, unlike the participant zip: the client paid for the
     shoot. Folders rather than a flat list because a 200-person job is
@@ -193,8 +234,8 @@ def build_zip(db: Session, *, token: str) -> tuple[bytes, str]:
             status_code=status.HTTP_404_NOT_FOUND, detail="No photos yet."
         )
 
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+    sink = _StreamSink()
+    with zipfile.ZipFile(sink, "w", compression=zipfile.ZIP_STORED) as zf:
         used: dict[str, int] = {}
         for f, p in rows:
             folder = _safe_slug(p.name, fallback="participant")
@@ -212,5 +253,13 @@ def build_zip(db: Session, *, token: str) -> tuple[bytes, str]:
             else:
                 used[name] = 1
             zf.writestr(name, storage_service.read(key=f.storage_key))
+            yield sink.drain()
+    # Closing the ZipFile writes the central directory.
+    yield sink.drain()
 
-    return buf.getvalue(), f"{_safe_slug(job.name, fallback='job')}-photos.zip"
+
+def build_zip(db: Session, *, token: str) -> tuple[bytes, str]:
+    """The whole archive in memory. Kept for tests and for anything that
+    needs the bytes rather than a stream."""
+    name = zip_filename(db, token=token)
+    return b"".join(iter_zip(db, token=token)), name

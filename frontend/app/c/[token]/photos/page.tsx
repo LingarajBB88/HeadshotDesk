@@ -42,7 +42,6 @@ export default function ClientPhotosPage() {
 
   const [data, setData] = useState<ClientPhotos | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [zipping, setZipping] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,29 +68,10 @@ export default function ClientPhotosPage() {
     };
   }, [token]);
 
-  async function downloadAll() {
-    setZipping(true);
-    try {
-      const res = await fetch(
-        `${BASE}/api/v1/public/client/${encodeURIComponent(token)}/photos/zip`,
-        { method: "POST" },
-      );
-      if (!res.ok) throw new Error(String(res.status));
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${data?.job_name ?? "photos"}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch {
-      setError("The download didn't start. Try again in a moment.");
-    } finally {
-      setZipping(false);
-    }
-  }
+  // A plain link: the API streams the archive with Content-Disposition
+  // attachment, so the browser shows its own download progress from the
+  // first photo instead of a button saying "Preparing" until the last.
+  const zipUrl = `${BASE}/api/v1/public/client/${encodeURIComponent(token)}/photos/zip`;
 
   if (error && !data) {
     return (
@@ -120,13 +100,9 @@ export default function ClientPhotosPage() {
             {data.people.length} {data.people.length === 1 ? "person" : "people"}
           </p>
         </div>
-        <button
-          onClick={downloadAll}
-          disabled={zipping}
-          className="btn-primary text-sm disabled:opacity-60"
-        >
-          {zipping ? "Preparing…" : "Download everything"}
-        </button>
+        <a href={zipUrl} className="btn-primary text-sm">
+          Download everything
+        </a>
       </header>
 
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}
