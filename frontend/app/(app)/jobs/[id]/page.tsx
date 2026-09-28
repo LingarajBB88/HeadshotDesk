@@ -48,6 +48,9 @@ export default function JobDetailPage() {
   // "resend to all" checkbox in the Deliver modal addresses.
   const [resendableCount, setResendableCount] = useState<number | null>(null);
   const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
+  // "Your client contact only": one link to the client, no participant
+  // emails. Changes every label around the Deliver button.
+  const clientOnly = (job?.delivery_mode ?? "participants") === "client";
   const [delivering, setDelivering] = useState(false);
   const [deliverResult, setDeliverResult] = useState<DeliveryResult | null>(null);
   // Edit-job modal (name, shoot date, location, client details). The cap has
@@ -220,13 +223,18 @@ export default function JobDetailPage() {
       const updated = await getJob(job.id);
       setJob(updated);
       setParticipantsRefreshKey((k) => k + 1);
-    } catch {
+    } catch (err) {
       setDeliverResult({
         sent: 0,
         skipped_already_delivered: 0,
         skipped_no_photos: 0,
         skipped_no_email: 0,
-        errors: ["Couldn't reach the server. Try again?"],
+        // A 400 carries a reason worth reading (no client email, say).
+        errors: [
+          err instanceof ApiError && err.status === 400 && err.message
+            ? err.message
+            : "Couldn't reach the server. Try again?",
+        ],
       });
     } finally {
       setDelivering(false);
@@ -305,9 +313,11 @@ export default function JobDetailPage() {
             >
               {delivering
                 ? "Sending…"
-                : deliverableCount
-                  ? `Deliver to ${deliverableCount}`
-                  : "Deliver"}
+                : clientOnly
+                  ? "Deliver to client"
+                  : deliverableCount
+                    ? `Deliver to ${deliverableCount}`
+                    : "Deliver"}
             </button>
             <button
               type="button"
@@ -346,6 +356,8 @@ export default function JobDetailPage() {
       {deliverConfirmOpen ? (
         <DeliverConfirmModal
           jobName={job.name}
+          clientOnly={clientOnly}
+          clientEmail={job.client_email}
           unsentCount={deliverableCount ?? 0}
           totalCount={resendableCount ?? 0}
           delivering={delivering}
@@ -362,6 +374,7 @@ export default function JobDetailPage() {
       {deliverResult ? (
         <DeliverResultToast
           result={deliverResult}
+          clientOnly={clientOnly}
           onDismiss={() => setDeliverResult(null)}
         />
       ) : null}
@@ -512,6 +525,8 @@ export default function JobDetailPage() {
 
 function DeliverConfirmModal({
   jobName,
+  clientOnly,
+  clientEmail,
   unsentCount,
   totalCount,
   delivering,
@@ -519,6 +534,9 @@ function DeliverConfirmModal({
   onConfirm,
 }: {
   jobName: string;
+  /** Client-only delivery: one link to the client, no participant emails. */
+  clientOnly: boolean;
+  clientEmail: string | null;
   /** Participants with photos + email who haven't been delivered yet. */
   unsentCount: number;
   /** Everyone with photos + email, regardless of delivery state. */
@@ -542,13 +560,22 @@ function DeliverConfirmModal({
     >
       <div className="w-full max-w-md rounded-dialog bg-paper p-6 shadow-xl">
         <h2 className="font-display text-xl font-semibold tracking-tight">
-          Deliver galleries?
+          {clientOnly ? "Deliver to your client?" : "Deliver galleries?"}
         </h2>
         <p className="mt-2 text-sm text-muted-600">
-          {effectiveCount === 1
-            ? `Email 1 participant on ${jobName} with their gallery link.`
-            : `Email ${effectiveCount} participants on ${jobName} with their gallery link.`}
+          {clientOnly
+            ? `Send ${clientEmail ?? "your client contact"} one link to the photos of ${
+                effectiveCount === 1 ? "1 person" : `${effectiveCount} people`
+              } on ${jobName}. Nobody else is emailed.`
+            : effectiveCount === 1
+              ? `Email 1 participant on ${jobName} with their gallery link.`
+              : `Email ${effectiveCount} participants on ${jobName} with their gallery link.`}
         </p>
+        {clientOnly && !clientEmail ? (
+          <p className="mt-2 text-sm text-red-700">
+            There is no client email on this job. Add one under Edit first.
+          </p>
+        ) : null}
 
         {alreadyDelivered > 0 ? (
           <label className="mt-4 flex items-start gap-2 cursor-pointer select-none">
@@ -559,16 +586,22 @@ function DeliverConfirmModal({
               className="mt-0.5 h-4 w-4 accent-accent cursor-pointer"
             />
             <span className="text-sm text-muted-600">
-              Also resend to the{" "}
-              {alreadyDelivered === 1
-                ? "1 participant who already got"
-                : `${alreadyDelivered} participants who already got`}{" "}
-              their gallery email.
+              {clientOnly
+                ? `Also include the ${
+                    alreadyDelivered === 1 ? "1 person" : `${alreadyDelivered} people`
+                  } already handed over.`
+                : `Also resend to the ${
+                    alreadyDelivered === 1
+                      ? "1 participant who already got"
+                      : `${alreadyDelivered} participants who already got`
+                  } their gallery email.`}
             </span>
           </label>
         ) : (
           <p className="mt-2 text-xs text-muted-400">
-            Already-delivered participants are skipped.
+            {clientOnly
+              ? "People already handed over are skipped."
+              : "Already-delivered participants are skipped."}
           </p>
         )}
 
@@ -584,7 +617,7 @@ function DeliverConfirmModal({
           <button
             type="button"
             onClick={() => onConfirm(includeAll)}
-            disabled={delivering || effectiveCount === 0}
+            disabled={delivering || effectiveCount === 0 || (clientOnly && !clientEmail)}
             className="btn-primary text-sm disabled:opacity-60"
           >
             {delivering ? "Sending…" : "Send"}
@@ -597,15 +630,23 @@ function DeliverConfirmModal({
 
 function DeliverResultToast({
   result,
+  clientOnly,
   onDismiss,
 }: {
   result: DeliveryResult;
+  clientOnly: boolean;
   onDismiss: () => void;
 }) {
   const hasErrors = result.errors.length > 0;
   const summary = (() => {
     const parts: string[] = [];
-    if (result.sent === 1) parts.push("Sent 1 email");
+    if (clientOnly && result.sent > 0)
+      parts.push(
+        result.sent === 1
+          ? "Handed 1 person's photos to your client"
+          : `Handed ${result.sent} people's photos to your client`,
+      );
+    else if (result.sent === 1) parts.push("Sent 1 email");
     else if (result.sent > 0) parts.push(`Sent ${result.sent} emails`);
     if (result.skipped_already_delivered > 0)
       parts.push(`${result.skipped_already_delivered} already delivered`);

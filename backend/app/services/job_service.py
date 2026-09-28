@@ -391,6 +391,16 @@ def deliver_galleries(
       }
     """
     job = get_job(db, account=account, job_id=job_id)
+    # On a client-only job the client's email is the whole delivery. Without
+    # one, pressing Deliver would mark everyone delivered and send nothing.
+    if job.delivery_mode == "client" and not job.client_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "This job delivers to your client contact only, but there is "
+                "no client email on the job. Add one under Edit first."
+            ),
+        )
     creator = db.get(User, job.created_by) if job.created_by else None
     photographer_name = (
         creator.name if creator and creator.name else account.name or "HeadshotDesk"

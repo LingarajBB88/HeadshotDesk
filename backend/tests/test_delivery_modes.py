@@ -173,6 +173,29 @@ class TestWhoGetsEmailed:
         assert job["status"] == "delivered"
 
 
+class TestClientJobNeedsAClientEmail:
+    def test_deliver_refuses_without_one(self, client: TestClient, db_session, outbox):
+        """Otherwise everyone is marked delivered and nobody gets a link."""
+        from app.models import Job, Participant
+
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        db_session.get(Job, made["job"]["id"]).client_email = None
+        db_session.commit()
+
+        r = client.post(
+            f"/api/v1/jobs/{made['job']['id']}/deliver", headers=_auth(tok)
+        )
+        assert r.status_code == 400, r.text
+        assert "client email" in r.json()["detail"]
+        db_session.expire_all()
+        assert (
+            db_session.get(Participant, made["participant"]["id"]).gallery_sent_at
+            is None
+        )
+
+
 class TestTheClientLink:
     def _token(self, client: TestClient, tok: str, job_id: str) -> str:
         return client.post(
