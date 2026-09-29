@@ -438,20 +438,19 @@ def deliver_galleries(
     photo_counts: dict[str, int] = {}
     if participants:
         rows = db.execute(
-            select(File.participant_id, File.mime_type == PSD_MIME, func.count())
-            .where(
+            select(File.participant_id, File.mime_type).where(
                 File.job_id == job_id,
                 File.deleted_at.is_(None),
                 File.variant == "original",
                 File.participant_id.is_not(None),
             )
-            .group_by(File.participant_id, File.mime_type == PSD_MIME)
         ).all()
-        for pid, is_psd, c in rows:
+        for pid, mime in rows:
+            is_psd = mime == PSD_MIME
             if not is_psd:
-                gallery_counts[pid] = gallery_counts.get(pid, 0) + int(c)
+                gallery_counts[pid] = gallery_counts.get(pid, 0) + 1
             if not is_psd or job.delivery_mode != "participants":
-                photo_counts[pid] = photo_counts.get(pid, 0) + int(c)
+                photo_counts[pid] = photo_counts.get(pid, 0) + 1
 
     sent = 0
     skipped_already_delivered = 0
