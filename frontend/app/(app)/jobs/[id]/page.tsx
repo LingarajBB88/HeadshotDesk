@@ -504,6 +504,7 @@ export default function JobDetailPage() {
           refreshKey={participantsRefreshKey}
           shootMode={job.shoot_mode}
           publicSlug={job.public_slug}
+          deliveryMode={job.delivery_mode ?? "participants"}
           onScheduleChanged={() => setParticipantsRefreshKey((k) => k + 1)}
         />
       </div>

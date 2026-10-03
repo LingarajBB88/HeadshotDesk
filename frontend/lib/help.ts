@@ -891,7 +891,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           },
           {
             term: "Gallery reminder",
-            def: "Four days after delivery, only to people who never opened their gallery. Sends once.",
+            def: "Four days after delivery, only to people who never opened their gallery. Sends once. Never on a job that delivers to your client contact only, where nobody was sent a gallery in the first place.",
           },
         ],
       },
@@ -931,8 +931,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "your-client",
         heading: "What your client receives",
         body: [
-          "One email, when you deliver the job. It tells them how many people were photographed, how many galleries went out, and who was never photographed. It links to their live dashboard.",
-          "Your client never receives participant emails, and never sees anyone's photos or email address.",
+          "One email, when you deliver the job. It tells them how many people were photographed, how many galleries went out, and who was never photographed. It links to their live dashboard, and on jobs set to deliver to the client it carries the link to the photos.",
+          "Your client never receives participant emails, and never sees anyone's email address.",
+          "On a job set to deliver to your client contact only, participants receive nothing about their photos: no gallery email, no reminder, and their gallery links do not open. The Email and Resend buttons are hidden on that job.",
         ],
       },
       {

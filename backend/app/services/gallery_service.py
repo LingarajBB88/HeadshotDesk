@@ -39,6 +39,13 @@ from app.services import storage_service
 # Helpers
 # ============================================================================
 
+def _gallery_open(job: Job) -> bool:
+    """An archived job has no galleries. Nor does a client-only job: there
+    the photos go to the client's link, and no participant was ever sent a
+    gallery, so a token that reaches here is one that leaked."""
+    return job.archived_at is None and job.delivery_mode != "client"
+
+
 def _resolve_participant(db: Session, token: str) -> Participant:
     """Look up a participant by gallery token. 404 generically on miss so we
     don't leak whether the token is malformed vs. unknown."""
@@ -106,7 +113,7 @@ def get_gallery(db: Session, *, token: str) -> dict:
     """
     participant = _resolve_participant(db, token)
     job = db.get(Job, participant.job_id)
-    if job is None or job.archived_at is not None:
+    if job is None or not _gallery_open(job):
         # If the job is archived, treat the gallery as gone too. Same generic
         # 404 — don't tell the participant their photographer archived the job.
         raise HTTPException(
@@ -240,7 +247,7 @@ def set_pick(
     """
     participant = _resolve_participant(db, token)
     job = db.get(Job, participant.job_id)
-    if job is None or job.archived_at is not None:
+    if job is None or not _gallery_open(job):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Gallery not found."
         )
@@ -428,7 +435,7 @@ def download_zip_for_gallery(
     participant = _resolve_participant(db, token)
 
     job = db.get(Job, participant.job_id)
-    if job is None or job.archived_at is not None:
+    if job is None or not _gallery_open(job):
         # Match get_gallery's behavior — archived job = no gallery.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Gallery not found."

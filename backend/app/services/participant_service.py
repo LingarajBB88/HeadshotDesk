@@ -216,6 +216,16 @@ def resend_gallery_email(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Job not found."
         )
+    if job.delivery_mode == "client":
+        # The one rule that must hold whatever button is pressed: on a
+        # client-only job no participant is ever emailed their photos.
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "This job delivers to your client contact only. "
+                "Participants are not emailed their photos."
+            ),
+        )
     creator = db.get(User, job.created_by) if job.created_by else None
     photographer_name = (
         creator.name if creator and creator.name else account.name or "HeadshotDesk"

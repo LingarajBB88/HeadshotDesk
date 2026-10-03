@@ -79,7 +79,13 @@ function ResendGalleryButton({
 
 // Small "Delivered Xh ago" indicator — keeps the photographer aware of which
 // participants have already been emailed. Pairs with ResendGalleryButton.
-function DeliveredIndicator({ sentAt }: { sentAt: string }) {
+function DeliveredIndicator({
+  sentAt,
+  clientOnly = false,
+}: {
+  sentAt: string;
+  clientOnly?: boolean;
+}) {
   const relative = (() => {
     const ms = Date.now() - new Date(sentAt).getTime();
     const mins = Math.round(ms / 60_000);
@@ -93,12 +99,12 @@ function DeliveredIndicator({ sentAt }: { sentAt: string }) {
   return (
     <span
       className="inline-flex items-center gap-1 text-[11px] text-muted-600"
-      title={`Delivered ${new Date(sentAt).toLocaleString()}`}
+      title={`${clientOnly ? "Handed to client" : "Delivered"} ${new Date(sentAt).toLocaleString()}`}
     >
       <svg viewBox="0 0 16 16" className="h-3 w-3 text-green-600" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <polyline points="3 8 7 12 13 4" />
       </svg>
-      Delivered {relative}
+      {clientOnly ? "Handed to client" : "Delivered"} {relative}
     </span>
   );
 }
@@ -220,6 +226,10 @@ type Props = {
       assign/move/clear picker, and the Add form offers a slot. */
   shootMode?: string;
   publicSlug?: string;
+  /** "client": nobody is emailed a gallery, so the per-row Email/Resend
+      and gallery-link controls are hidden and "Delivered" reads as
+      "handed to client". */
+  deliveryMode?: string;
   /** Called after a booking changes here, so sibling sections (the Schedule
       grid) can refetch immediately instead of waiting for the next poll. */
   onScheduleChanged?: () => void;
@@ -230,8 +240,10 @@ export function ParticipantsSection({
   refreshKey = 0,
   shootMode,
   publicSlug,
+  deliveryMode,
   onScheduleChanged,
 }: Props) {
+  const clientOnly = deliveryMode === "client";
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -443,13 +455,17 @@ export function ParticipantsSection({
                     ) : null}
                     {p.gallery_sent_at ? (
                       <div className="mt-1">
-                        <DeliveredIndicator sentAt={p.gallery_sent_at} />
+                        <DeliveredIndicator sentAt={p.gallery_sent_at} clientOnly={clientOnly} />
                       </div>
                     ) : null}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <CopyGalleryLinkButton token={p.gallery_token} />
-                    <ResendGalleryButton participant={p} onResent={refresh} />
+                    {clientOnly ? null : (
+                      <>
+                        <CopyGalleryLinkButton token={p.gallery_token} />
+                        <ResendGalleryButton participant={p} onResent={refresh} />
+                      </>
+                    )}
                     <button
                       onClick={() => handleDelete(p)}
                       className="text-xs text-muted-600 hover:text-red-600 transition"
@@ -504,7 +520,7 @@ export function ParticipantsSection({
                         <div className="flex flex-col gap-1">
                           <ParticipantStatusPill p={p} />
                           {p.gallery_sent_at ? (
-                            <DeliveredIndicator sentAt={p.gallery_sent_at} />
+                            <DeliveredIndicator sentAt={p.gallery_sent_at} clientOnly={clientOnly} />
                           ) : null}
                           {/* F5b.2: their favourites, so you know whose
                               retouch set is decided. */}
@@ -520,11 +536,15 @@ export function ParticipantsSection({
                       </td>
                       <td className="px-5 py-3 text-right">
                         <div className="inline-flex items-center gap-4">
-                          <CopyGalleryLinkButton token={p.gallery_token} />
-                          <ResendGalleryButton
-                            participant={p}
-                            onResent={refresh}
-                          />
+                          {clientOnly ? null : (
+                            <>
+                              <CopyGalleryLinkButton token={p.gallery_token} />
+                              <ResendGalleryButton
+                                participant={p}
+                                onResent={refresh}
+                              />
+                            </>
+                          )}
                           <button
                             onClick={() => handleDelete(p)}
                             className="text-xs text-muted-600 hover:text-red-600 transition"

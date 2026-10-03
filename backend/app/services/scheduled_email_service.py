@@ -242,6 +242,25 @@ GALLERY_NUDGE_DAYS = 4
 UNDELIVERED_NUDGE_DAYS = 3
 
 
+def _has_gallery_photos(db: Session, p: Participant) -> bool:
+    from sqlalchemy import func
+
+    from app.models import File
+    from app.models.file import PSD_MIME
+
+    n = db.scalar(
+        select(func.count())
+        .select_from(File)
+        .where(
+            File.participant_id == p.id,
+            File.variant == "original",
+            File.mime_type != PSD_MIME,
+            File.deleted_at.is_(None),
+        )
+    ) or 0
+    return n > 0
+
+
 def send_gallery_nudges(db: Session) -> int:
     """Nudge participants whose gallery has sat unopened.
 
@@ -283,6 +302,16 @@ def send_gallery_nudges(db: Session) -> int:
 
         job = db.get(Job, p.job_id)
         if job is None or job.archived_at is not None:
+            continue
+        if job.delivery_mode == "client":
+            # Marked delivered when the client got the link, but never
+            # sent a gallery. Nothing to remind them of, and the first
+            # email they would ever get from us would be a nag.
+            p.gallery_nudge_at = now
+            continue
+        if not _has_gallery_photos(db, p):
+            # Delivered via the client's copy only (a PSD, say): same.
+            p.gallery_nudge_at = now
             continue
         account = db.get(Account, job.account_id)
         owner = _owner_of(db, account) if account else None

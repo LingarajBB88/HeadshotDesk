@@ -12,6 +12,27 @@ import pytest
 from fastapi.testclient import TestClient
 
 
+def _give_photo(db_session, job_id: str, participant_id: str) -> None:
+    import uuid
+
+    from app.core.ids import new_id
+    from app.models import File
+
+    db_session.add(
+        File(
+            id=new_id("file"),
+            job_id=job_id,
+            participant_id=participant_id,
+            original_filename="jane_001.jpg",
+            storage_key=f"test/{uuid.uuid4().hex}.jpg",
+            mime_type="image/jpeg",
+            size_bytes=1024,
+            variant="original",
+        )
+    )
+    db_session.commit()
+
+
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
@@ -332,6 +353,7 @@ class TestNudges:
         ).json()
 
         row = db_session.get(Participant, p["id"])
+        _give_photo(db_session, job["id"], p["id"])
         # Delivered just now: too soon to nag.
         row.gallery_sent_at = datetime.now(timezone.utc)
         db_session.commit()
@@ -348,6 +370,83 @@ class TestNudges:
         before = len(sent)
         scheduled_email_service.send_gallery_nudges(db_session)
         assert len(sent) == before
+
+    def test_gallery_nudge_never_goes_to_a_client_only_job(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        """Delivering a client-only job marks everyone delivered without
+        emailing them. The reminder must not be the first email they get."""
+        from app.models import Participant
+        from app.services import email_service, scheduled_email_service
+
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            email_service, "send_gallery_nudge_email", lambda **kw: sent.append(kw)
+        )
+        a = self._verified(client, db_session)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={
+                "name": "Client only",
+                "shoot_date": date.today().isoformat(),
+                "location": "Acme HQ",
+            },
+            headers=_auth(tok),
+        ).json()
+        client.patch(
+            f"/api/v1/jobs/{job['id']}",
+            json={"delivery_mode": "client", "client_email": "hr@acme.example"},
+            headers=_auth(tok),
+        )
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Jane", "email": "jane.quiet@example.com"},
+            headers=_auth(tok),
+        ).json()
+        row = db_session.get(Participant, p["id"])
+        _give_photo(db_session, job["id"], p["id"])
+        row.gallery_sent_at = datetime.now(timezone.utc) - timedelta(days=7)
+        db_session.commit()
+
+        scheduled_email_service.send_gallery_nudges(db_session)
+        assert sent == []
+        # And it stops looking at her.
+        db_session.expire_all()
+        assert db_session.get(Participant, p["id"]).gallery_nudge_at is not None
+
+    def test_gallery_nudge_skips_someone_with_nothing_in_their_gallery(
+        self, client: TestClient, db_session, monkeypatch
+    ):
+        from app.models import Participant
+        from app.services import email_service, scheduled_email_service
+
+        sent: list[dict] = []
+        monkeypatch.setattr(
+            email_service, "send_gallery_nudge_email", lambda **kw: sent.append(kw)
+        )
+        a = self._verified(client, db_session)
+        tok = a["tokens"]["access_token"]
+        job = client.post(
+            "/api/v1/jobs",
+            json={
+                "name": "Empty",
+                "shoot_date": date.today().isoformat(),
+                "location": "Acme HQ",
+            },
+            headers=_auth(tok),
+        ).json()
+        p = client.post(
+            f"/api/v1/jobs/{job['id']}/participants",
+            json={"name": "Jane", "email": "jane.empty@example.com"},
+            headers=_auth(tok),
+        ).json()
+        row = db_session.get(Participant, p["id"])
+        row.gallery_sent_at = datetime.now(timezone.utc) - timedelta(days=7)
+        db_session.commit()
+
+        scheduled_email_service.send_gallery_nudges(db_session)
+        assert sent == []
 
     def test_undelivered_nudge_needs_someone_actually_shot(
         self, client: TestClient, db_session, monkeypatch

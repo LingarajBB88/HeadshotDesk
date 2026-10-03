@@ -196,6 +196,42 @@ class TestClientJobNeedsAClientEmail:
         )
 
 
+class TestNoParticipantEmailOnAClientJob:
+    """The rule the delivery mode exists for, checked on every path that
+    could email a participant their photos."""
+
+    def test_the_gallery_itself_is_closed(self, client: TestClient, db_session, outbox):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        _deliver(client, tok, made["job"]["id"])
+        r = client.get(f"/api/v1/public/gallery/{made['participant']['gallery_token']}")
+        assert r.status_code == 404
+
+    def test_the_gallery_opens_again_if_the_mode_changes(self, client: TestClient, db_session, outbox):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        client.patch(
+            f"/api/v1/jobs/{made['job']['id']}",
+            json={"delivery_mode": "both"},
+            headers=_auth(tok),
+        )
+        r = client.get(f"/api/v1/public/gallery/{made['participant']['gallery_token']}")
+        assert r.status_code == 200
+
+    def test_the_per_row_resend_refuses(self, client: TestClient, db_session, outbox):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        made = _job_with_photos(client, db_session, tok, "client")
+        r = client.post(
+            f"/api/v1/participants/{made['participant']['id']}/resend-gallery",
+            headers=_auth(tok),
+        )
+        assert r.status_code == 400, r.text
+        assert outbox["send_gallery_delivery_email"] == []
+
+
 class TestTheClientLink:
     def _token(self, client: TestClient, tok: str, job_id: str) -> str:
         return client.post(
