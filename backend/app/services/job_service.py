@@ -523,7 +523,10 @@ def deliver_galleries(
         and (p.email or not email_participants)
         for p in participants
     )
-    if sent > 0 and not eligible_unsent_remaining:
+    # And only once every shoot day is behind us. Delivering day one of a
+    # two-day job is a milestone, not the end: the job stays in progress
+    # until day two's people have been delivered too.
+    if sent > 0 and not eligible_unsent_remaining and not _has_upcoming_day(job):
         maybe_advance_status(job, "delivered")
 
     db.commit()
@@ -576,6 +579,42 @@ def deliver_galleries(
         "skipped_no_email": skipped_no_email,
         "errors": errors,
     }
+
+
+def _has_upcoming_day(job: Job) -> bool:
+    days = job.all_shoot_dates
+    return bool(days) and days[-1] > date.today()
+
+
+def reopen_if_undelivered(db: Session, job: Job) -> bool:
+    """Drop a delivered job back to in progress when someone now has photos
+    but no delivery: more frames uploaded after Deliver, or a day-two
+    person matched on a job that was closed after day one. The status
+    means "everyone with photos has them", and that stopped being true.
+
+    Caller commits. Returns True if the status changed.
+    """
+    if job.status != "delivered":
+        return False
+    from app.models.file import PSD_MIME
+
+    conditions = [
+        File.job_id == job.id,
+        File.deleted_at.is_(None),
+        File.variant == "original",
+        File.participant_id == Participant.id,
+        Participant.gallery_sent_at.is_(None),
+    ]
+    if job.delivery_mode == "participants":
+        conditions.append(File.mime_type != PSD_MIME)
+        conditions.append(Participant.email.is_not(None))
+    undelivered = db.scalar(
+        select(func.count()).select_from(File).join(Participant).where(*conditions)
+    ) or 0
+    if undelivered == 0:
+        return False
+    job.status = "in_progress"
+    return True
 
 
 def maybe_advance_status(job: Job, target: str) -> bool:

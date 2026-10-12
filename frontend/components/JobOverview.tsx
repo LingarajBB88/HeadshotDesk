@@ -299,7 +299,54 @@ function Tile({
 // 3. Shoot-day hero card
 // ---------------------------------------------------------------------------
 
-export function ShootDayHero({ job }: { job: Job }) {
+/** The slice of a participant the per-day breakdown needs. */
+export type DayParticipant = {
+  shot_at: string | null;
+  gallery_sent_at: string | null;
+  photo_count?: number;
+};
+
+/** Local calendar day ("2026-10-08") of an ISO timestamp. */
+export function localDay(iso: string): string {
+  const d = new Date(iso);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/**
+ * Where a multi-day job stands, day by day: how many were photographed on
+ * each day, and how many of those have been delivered. A person belongs to
+ * the day they were shot. Someone shot off-schedule (the day after, say)
+ * counts under the nearest shoot day on or before that date.
+ */
+export function perDayStatus(
+  job: Job,
+  participants: DayParticipant[],
+): { day: string; shot: number; delivered: number; withPhotos: number }[] {
+  const days = allShootDays(job);
+  const rows = days.map((day) => ({ day, shot: 0, delivered: 0, withPhotos: 0 }));
+  for (const p of participants) {
+    if (!p.shot_at) continue;
+    const d = localDay(p.shot_at);
+    let row = rows[0];
+    for (const r of rows) if (r.day <= d) row = r;
+    if (!row) continue;
+    row.shot += 1;
+    if ((p.photo_count ?? 0) > 0) row.withPhotos += 1;
+    if (p.gallery_sent_at) row.delivered += 1;
+  }
+  return rows;
+}
+
+export function ShootDayHero({
+  job,
+  participants,
+}: {
+  job: Job;
+  /** When given on a multi-day job, each day shows shot and delivered counts. */
+  participants?: DayParticipant[] | null;
+}) {
   // Every day the job runs on. shoot_date alone is only the first, which
   // on a two-day job whose first day has passed produced "24 days ago" in
   // the corner while the second day was still two weeks out.
@@ -312,6 +359,7 @@ export function ShootDayHero({ job }: { job: Job }) {
   const dayLabel = relativeDayLabel(headline);
   const dateLabel = headline ? formatShootDate(headline) : "Shoot day not set";
   const otherDays = days.filter((d) => d !== headline);
+  const byDay = days.length > 1 && participants ? perDayStatus(job, participants) : null;
 
   return (
     <div className="rounded-card bg-accent-muted p-5">
@@ -327,7 +375,45 @@ export function ShootDayHero({ job }: { job: Job }) {
       <div className="mt-2 font-display text-2xl font-semibold tracking-tight text-ink">
         {dateLabel}
       </div>
-      {otherDays.length > 0 ? (
+      {byDay ? (
+        // One line per day, in calendar order: the answer to "which day is
+        // still owed" without opening the participant list.
+        <ul className="mt-3 divide-y divide-accent/10 rounded-md bg-paper/70 text-sm">
+          {byDay.map((r) => {
+            const past = r.day < todayIso;
+            const status = !past
+              ? r.day === todayIso
+                ? "today"
+                : "upcoming"
+              : r.shot === 0
+                ? "nobody photographed"
+                : r.withPhotos === 0
+                  ? "photos not uploaded"
+                  : r.delivered >= r.withPhotos
+                    ? "delivered"
+                    : r.delivered > 0
+                      ? `${r.delivered} of ${r.withPhotos} delivered`
+                      : "not delivered";
+            const tone =
+              status === "delivered"
+                ? "text-green-700"
+                : status === "upcoming" || status === "today"
+                  ? "text-accent"
+                  : "text-amber-700";
+            return (
+              <li key={r.day} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                <span className="text-ink">
+                  {formatShootDate(r.day)}
+                  <span className="ml-2 text-muted-600">
+                    {r.shot} shot
+                  </span>
+                </span>
+                <span className={`text-xs font-medium ${tone}`}>{status}</span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : otherDays.length > 0 ? (
         <p className="mt-1 text-sm text-muted-600">
           {otherDays.map((d) => (
             <span key={d} className="mr-3">
@@ -355,7 +441,7 @@ export function ShootDayHero({ job }: { job: Job }) {
   );
 }
 
-function formatShootDate(iso: string): string {
+export function formatShootDate(iso: string): string {
   const d = (function () {
     const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
     if (!m) return null;

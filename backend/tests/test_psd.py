@@ -40,7 +40,7 @@ def _job(client: TestClient, tok: str, mode: str) -> dict:
         "/api/v1/jobs",
         json={
             "name": "Acme",
-            "shoot_date": (date.today() + timedelta(days=1)).isoformat(),
+            "shoot_date": date.today().isoformat(),
             "location": "Acme HQ",
         },
         headers=_auth(tok),

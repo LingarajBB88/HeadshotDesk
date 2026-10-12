@@ -29,7 +29,7 @@ import {
   type DeliveryResult,
   type Job,
 } from "@/lib/jobs";
-import { listParticipants } from "@/lib/participants";
+import { listParticipants, type Participant } from "@/lib/participants";
 
 export default function JobDetailPage() {
   const router = useRouter();
@@ -62,6 +62,8 @@ export default function JobDetailPage() {
   // Counts powering the HSD-34 stat tiles. Fetched alongside the job and
   // re-fetched whenever the photo/participant data is invalidated. Nulls
   // render as "—" so the tiles never look broken during load.
+  // Kept for the per-day breakdown in the shoot-day card on multi-day jobs.
+  const [participantRows, setParticipantRows] = useState<Participant[] | null>(null);
   const [stats, setStats] = useState<JobStats>({
     participantsTotal: null,
     participantsShot: null,
@@ -107,6 +109,7 @@ export default function JobDetailPage() {
       const participants =
         pRes.status === "fulfilled" ? pRes.value.items : null;
       const files = fRes.status === "fulfilled" ? fRes.value : null;
+      setParticipantRows(participants ?? null);
       setStats({
         participantsTotal: participants?.length ?? null,
         participantsShot:
@@ -437,7 +440,7 @@ export default function JobDetailPage() {
               </dl>
             </div>
             <div className="md:col-span-3 flex flex-col gap-4">
-              <ShootDayHero job={job} />
+              <ShootDayHero job={job} participants={participantRows} />
               {/* Signup link tucked under the shoot-day hero so the right
                   column owns both 'where + when' and 'how to share'. Hidden
                   when archived since the public page 404s for archived jobs. */}

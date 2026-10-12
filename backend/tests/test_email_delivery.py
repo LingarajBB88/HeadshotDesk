@@ -43,7 +43,9 @@ def _future_date() -> str:
 def _create_job(client: TestClient, token: str, **overrides) -> dict:
     payload = {
         "name": "Acme team headshots",
-        "shoot_date": _future_date(),
+        # Today: a job delivered on the shoot day itself. A job with a day
+        # still ahead deliberately does not reach "delivered".
+        "shoot_date": date.today().isoformat(),
         "location": "HQ",
         **overrides,
     }
@@ -250,8 +252,9 @@ class TestBulkDeliver:
         r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
         assert r.json()["status"] == "delivered"
 
-        # Bob's photos come in later. A second Deliver picks him up and the
-        # job stays "delivered" (no regression).
+        # Bob's photos come in later. That reopens the job (someone with
+        # photos is undelivered); a second Deliver picks him up and closes
+        # it again.
         _upload_for(client, photographer, job["id"], "Bob_001.jpg")
         with patch(
             "app.services.email_service.send_gallery_delivery_email"
@@ -261,6 +264,51 @@ class TestBulkDeliver:
             )
             assert r2.json()["sent"] == 1
             assert send.call_count == 1
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "delivered"
+
+    def test_a_day_still_ahead_keeps_the_job_in_progress(self, client: TestClient):
+        """Delivering day one of a two-day job is a milestone, not the end."""
+        a = _signup(client)
+        photographer = a["tokens"]["access_token"]
+        job = _create_job(
+            client,
+            photographer,
+            extra_shoot_dates=[(date.today() + timedelta(days=7)).isoformat()],
+        )
+        _add_participant(client, photographer, job["id"], "Alice", "alice@example.com")
+        _upload_for(client, photographer, job["id"], "Alice_001.jpg")
+        with patch("app.services.email_service.send_gallery_delivery_email"):
+            r = client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer))
+        assert r.json()["sent"] == 1
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "in_progress"
+
+    def test_new_photos_for_an_undelivered_person_reopen_a_delivered_job(
+        self, client: TestClient
+    ):
+        a = _signup(client)
+        photographer = a["tokens"]["access_token"]
+        job = _create_job(client, photographer)
+        _add_participant(client, photographer, job["id"], "Alice", "alice@example.com")
+        _add_participant(client, photographer, job["id"], "Bob", "bob@example.com")
+        _upload_for(client, photographer, job["id"], "Alice_001.jpg")
+        with patch("app.services.email_service.send_gallery_delivery_email"):
+            client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer))
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "delivered"
+
+        # Day-two frames arrive for Bob: the job is owed a delivery again.
+        _upload_for(client, photographer, job["id"], "Bob_001.jpg")
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "in_progress"
+
+        # More frames for Alice, already delivered, change nothing.
+        with patch("app.services.email_service.send_gallery_delivery_email"):
+            client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer))
+        _upload_for(client, photographer, job["id"], "Alice_002.jpg")
+        r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
+        assert r.json()["status"] == "delivered"
 
     def test_send_failure_leaves_participant_unsent_and_status_unchanged(
         self, client: TestClient

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { allShootDays, formatShootDate, localDay } from "@/components/JobOverview";
 import { ParticipantNote } from "@/components/ParticipantNote";
 import { getJob, getSchedule, type Job, type ScheduleEntry } from "@/lib/jobs";
 import { type Participant } from "@/lib/participants";
@@ -221,6 +222,20 @@ export default function ShootQueuePage() {
         : 0,
     );
   const shot = participants.filter((p) => p.shot_at).filter(matches);
+  // On a multi-day job, group by the local day they were shot, newest
+  // day first (today's work at the top). One-day jobs keep a single list.
+  const multiDay = job ? allShootDays(job).length > 1 : false;
+  const shotByDay: { day: string | null; people: Participant[] }[] = (() => {
+    if (!multiDay) return [{ day: null, people: shot }];
+    const groups = new Map<string, Participant[]>();
+    for (const p of shot) {
+      const d = localDay(p.shot_at as string);
+      groups.set(d, [...(groups.get(d) ?? []), p]);
+    }
+    return [...groups.entries()]
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([day, people]) => ({ day, people }));
+  })();
   // No-shows are parked in their own list rather than deleted: a straggler
   // who turns up later just gets moved back.
   const noShows = participants
@@ -435,59 +450,73 @@ export default function ShootQueuePage() {
               </p>
             </div>
           ) : (
-            <ul className="mt-4 rounded-card border border-muted-200 bg-paper divide-y divide-muted-200">
-              {shot.map((p) => (
-                <li
-                  key={p.id}
-                  className="px-5 py-3 flex items-center justify-between gap-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-ink truncate">{p.name}</p>
-                    <p className="text-xs text-muted-600 truncate">
-                      {p.email ?? "—"}
-                      {p.title ? ` · ${p.title}` : ""}
-                      {p.shot_at ? (
-                        <>
-                          {" "}
-                          ·{" "}
-                          <span className="text-muted-400">
-                            shot {new Date(p.shot_at).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </>
-                      ) : null}
-                    </p>
-                    {/* Editable here too: most retouch notes get written
-                        just after the person stands up, not while they are
-                        still in front of the camera. */}
-                    <div className="mt-1">
-                      <ParticipantNote
-                        participant={p}
-                        compact
-                        onSaved={(updated) =>
-                          setParticipants((cur) =>
-                            (cur ?? []).map((x) =>
-                              x.id === updated.id
-                                ? { ...x, notes: updated.notes }
-                                : x,
-                            ),
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleReset(p)}
-                    disabled={busy === p.id}
-                    className="text-xs text-muted-600 hover:text-ink transition shrink-0 disabled:opacity-60"
-                  >
-                    Reset
-                  </button>
-                </li>
-              ))}
-            </ul>
+            shotByDay.map((group) => (
+              <div key={group.day ?? "all"}>
+                {group.day ? (
+                  // Multi-day jobs: one list per shoot day, newest first,
+                  // so "who did we do on Tuesday" is a glance, not a search.
+                  <h3 className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-600">
+                    {formatShootDate(group.day)}
+                    <span className="ml-2 font-normal normal-case tracking-normal">
+                      {group.people.length}
+                    </span>
+                  </h3>
+                ) : null}
+                <ul className={`${group.day ? "mt-2" : "mt-4"} rounded-card border border-muted-200 bg-paper divide-y divide-muted-200`}>
+                  {group.people.map((p) => (
+                    <li
+                      key={p.id}
+                      className="px-5 py-3 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-ink truncate">{p.name}</p>
+                        <p className="text-xs text-muted-600 truncate">
+                          {p.email ?? "—"}
+                          {p.title ? ` · ${p.title}` : ""}
+                          {p.shot_at ? (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <span className="text-muted-400">
+                                shot {new Date(p.shot_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </>
+                          ) : null}
+                        </p>
+                        {/* Editable here too: most retouch notes get written
+                            just after the person stands up, not while they are
+                            still in front of the camera. */}
+                        <div className="mt-1">
+                          <ParticipantNote
+                            participant={p}
+                            compact
+                            onSaved={(updated) =>
+                              setParticipants((cur) =>
+                                (cur ?? []).map((x) =>
+                                  x.id === updated.id
+                                    ? { ...x, notes: updated.notes }
+                                    : x,
+                                ),
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleReset(p)}
+                        disabled={busy === p.id}
+                        className="text-xs text-muted-600 hover:text-ink transition shrink-0 disabled:opacity-60"
+                      >
+                        Reset
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
           )}
         </section>
       </div>

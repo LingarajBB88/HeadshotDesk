@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.ids import new_id
-from app.models import Account, File, Participant
+from app.models import Account, File, Job, Participant
 from app.models.file import PSD_MIME
 from app.services import job_service, storage_service
 
@@ -341,6 +341,9 @@ async def upload_files(
                 # just skip the thumbnail.
                 pass
 
+    # A delivered job that just gained photos for someone undelivered is
+    # not delivered any more.
+    job_service.reopen_if_undelivered(db, job)
     db.commit()
     for f in uploaded:
         db.refresh(f)
@@ -517,6 +520,9 @@ def assign_to_participant(
                 detail="Participant is not on this job.",
             )
     f.participant_id = participant_id
+    job = db.get(Job, f.job_id)
+    if job is not None:
+        job_service.reopen_if_undelivered(db, job)
     db.commit()
     db.refresh(f)
     return f
@@ -556,6 +562,9 @@ def rename(
     f.original_filename = new_filename
     f.participant_id = match.id if match else None
 
+    job = db.get(Job, f.job_id)
+    if job is not None:
+        job_service.reopen_if_undelivered(db, job)
     db.commit()
     db.refresh(f)
     return f

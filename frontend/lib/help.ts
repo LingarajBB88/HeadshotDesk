@@ -188,7 +188,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "Draft", def: "Job created, nothing has happened yet." },
           { term: "Open for signup", def: "At least one participant is on the list." },
           { term: "In progress", def: "You marked the first person as shot." },
-          { term: "Delivered", def: "Every deliverable participant has received their gallery email." },
+          { term: "Delivered", def: "Everyone with photos has been delivered, and every shoot day is behind you. On a multi-day job, delivering day one leaves the job In progress until day two is delivered too. If photos later arrive for someone not yet delivered, the job goes back to In progress until you press Deliver again." },
           { term: "Archived", def: "You closed the job. Hidden from the active list; public pages are off." },
         ],
       },
