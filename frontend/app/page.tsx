@@ -62,7 +62,7 @@ const STEPS: Step[] = [
   {
     n: "03",
     title: "Shoot with the queue",
-    body: "Tap the next name and it's on your clipboard for your tethering tool. Files named like “Jane Doe_001.jpg” match themselves to Jane.",
+    body: "Tap the next name and it's on your clipboard for your tethering tool. Files named like “Mara Visser_001.jpg” match themselves to Mara.",
     unique: ["Click-to-copy queue", "Walk-in QR card", "No-show tracking"],
   },
   {
@@ -264,7 +264,7 @@ function QueueMock({ compact = false }: { compact?: boolean }) {
   return (
     <div className="overflow-hidden rounded-lg border border-muted-200 bg-paper">
       <div className="flex items-center justify-between bg-accent-muted px-3 py-2.5">
-        <span className={"font-medium " + (compact ? "text-sm" : "font-display text-lg tracking-tight")}>Jane Doe</span>
+        <span className={"font-medium " + (compact ? "text-sm" : "font-display text-lg tracking-tight")}>Mara Visser</span>
         <span className="flex gap-1.5">
           <span className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-fg">Mark shot</span>
           <span className="rounded-md border border-muted-200 bg-paper px-2 py-1 text-xs font-medium text-ink">No show</span>
@@ -333,8 +333,8 @@ export default function HomePage() {
           {/* The only shadow on the page: an overlay on a photograph. */}
           <div className="absolute -left-2 bottom-6 w-60 rounded-card border border-muted-200 bg-paper p-4 shadow-[0_12px_32px_rgba(11,15,26,0.08)] sm:-left-6">
             <Eyebrow tone="muted">Up next</Eyebrow>
-            <p className="mt-2 font-display text-xl font-semibold tracking-tight">Jane Doe</p>
-            <p className="mt-1 font-mono text-xs text-muted-600">Jane Doe_0007.jpg</p>
+            <p className="mt-2 font-display text-xl font-semibold tracking-tight">Mara Visser</p>
+            <p className="mt-1 font-mono text-xs text-muted-600">Mara Visser_0007.jpg</p>
             <div className="mt-3 flex gap-2">
               <span className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg">Mark shot</span>
               <span className="rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-xs font-medium text-ink">No show</span>
@@ -571,7 +571,7 @@ export default function HomePage() {
                 In Capture One, build the Next Capture Naming format from the clipboard
                 (or name) token plus a counter. In Lightroom, use a Shot Name template
                 and press Cmd+Shift+T per person. Either way, frames come out as{" "}
-                <span className="whitespace-nowrap font-mono text-[13px] text-ink">Jane Doe_0001.jpg</span>.
+                <span className="whitespace-nowrap font-mono text-[13px] text-ink">Mara Visser_0001.jpg</span>.
               </p>
             </div>
             <div className="flex flex-col gap-2 border-y border-muted-200 py-6">
@@ -749,7 +749,7 @@ function StepMock({ index }: { index: number }) {
             <span className="flex h-6 w-6 items-center justify-center rounded-md bg-ink text-[10px] font-semibold text-paper">AC</span>
             <span className="text-[13px] font-medium">Acme Corp headshots</span>
           </div>
-          <Field label="Full name" placeholder="Jane Doe" />
+          <Field label="Full name" placeholder="Mara Visser" />
           <div className="flex gap-1.5">
             <span className="rounded-md border border-accent bg-accent-muted px-2.5 py-1 text-xs font-medium text-accent">10:20</span>
             <span className="rounded-md border border-muted-200 bg-paper px-2.5 py-1 text-xs">10:30</span>
@@ -764,7 +764,7 @@ function StepMock({ index }: { index: number }) {
         <div className={frame + " grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)] items-center gap-2.5"}>
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] text-muted-600">Export folder</span>
-            {["Jane Doe_0007.jpg", "Jane Doe_0008.jpg", "Tom Visser_0001.jpg"].map((f) => (
+            {["Mara Visser_0007.jpg", "Mara Visser_0008.jpg", "Tom Visser_0001.jpg"].map((f) => (
               <span key={f} className="truncate rounded-md border border-muted-200 bg-paper px-2 py-1.5 font-mono text-[11px]">{f}</span>
             ))}
           </div>
@@ -772,7 +772,7 @@ function StepMock({ index }: { index: number }) {
           <div className="flex flex-col gap-1.5">
             <span className="text-[11px] text-muted-600">Filed under</span>
             {[
-              ["Jane Doe", "8 photos"],
+              ["Mara Visser", "8 photos"],
               ["Tom Visser", "1 photo"],
               ["Unassigned", "0"],
             ].map(([n, c]) => (
@@ -788,7 +788,7 @@ function StepMock({ index }: { index: number }) {
       return (
         <div className="flex flex-col gap-2.5 rounded-lg border border-muted-200 bg-paper p-3.5">
           <div className="flex items-center justify-between">
-            <span className="text-[13px] font-medium">Jane, your headshots are ready</span>
+            <span className="text-[13px] font-medium">Mara, your headshots are ready</span>
             <span className="text-[11px] text-muted-400">from Acme Corp</span>
           </div>
           <div className="grid grid-cols-4 gap-1.5">

@@ -232,8 +232,8 @@ export function PhotosSection({
       count={files?.length}
       description={
         <>
-          Drag JPEG/PNG files in or map a folder. Filenames like &ldquo;Jane
-          Doe_001.jpg&rdquo; auto-match to participants.{" "}
+          Drag JPEG/PNG files in or map a folder. Filenames like &ldquo;Mara
+          Visser_001.jpg&rdquo; auto-match to participants.{" "}
           <a
             href="/help/filename-matching"
             target="_blank"
