@@ -1,10 +1,4 @@
-Vendor logos for the home page. Download the official marks from each
-vendor's brand page and save them here with these exact names, then add
-the filename to TOOL_LOGO_PRESENT in app/page.tsx:
-
-- capture-one.svg    https://www.captureone.com (press / brand assets)
-- lightroom.svg      Adobe brand portal (Lightroom app icon)
-- smart-shooter.svg  https://kuvacode.com
-
-Square, on transparent background, 64px or larger. Keep the vendors'
-usage rules in mind: no recolouring, no stretching.
+Vendor logos used on the home page, as published by each vendor. They are
+shown on the background they were designed for (see `bg` in TOOLS in
+app/page.tsx) and never recoloured or stretched. Source files live in
+frontend/Logos.

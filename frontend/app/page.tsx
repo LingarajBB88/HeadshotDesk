@@ -313,36 +313,37 @@ function QueueMock({ compact = false }: { compact?: boolean }) {
   );
 }
 
-// Capture software we sit behind. `logo` is a file in /public/logos; the
-// official marks come from each vendor's brand page and are not drawn here.
-// Until a file is dropped in, the name renders on its own.
-type Tool = { name: string; url: string; logo?: string };
+// The tools around us. Logos are the vendors' own files in /public/logos,
+// shown on the background they were made for (a white-on-black wordmark
+// stays on black) rather than recoloured. `wide` marks a wordmark that
+// needs a wider tile than a square app icon.
+type Tool = { name: string; url: string; logo: string; bg: string; wide?: boolean; capture: boolean };
 const TOOLS: Tool[] = [
-  { name: "Capture One", url: "https://www.captureone.com", logo: "/logos/capture-one.svg" },
-  { name: "Adobe Lightroom", url: "https://www.adobe.com/products/photoshop-lightroom.html", logo: "/logos/lightroom.svg" },
-  { name: "Smart Shooter", url: "https://kuvacode.com/smartshooter", logo: "/logos/smart-shooter.svg" },
+  { name: "Capture One", url: "https://www.captureone.com", logo: "/logos/capture-one.png", bg: "#000000", wide: true, capture: true },
+  { name: "Adobe Lightroom", url: "https://www.adobe.com/products/photoshop-lightroom.html", logo: "/logos/lightroom.png", bg: "#FFFFFF", capture: true },
+  { name: "Smart Shooter", url: "https://www.tethertools.com/smart-shooter/", logo: "/logos/smart-shooter.png", bg: "#0B0F1A", wide: true, capture: true },
+  { name: "Evoto", url: "https://www.evoto.ai", logo: "/logos/evoto.png", bg: "#FFDF52", wide: true, capture: false },
 ];
-const TOOL_LOGO_PRESENT = new Set<string>([
-  // Add a filename here once it exists in /public/logos, e.g. "capture-one.svg".
-]);
 
 function ToolLink({ tool, chip = false }: { tool: Tool; chip?: boolean }) {
-  const file = tool.logo?.split("/").pop() ?? "";
-  const showLogo = !!tool.logo && TOOL_LOGO_PRESENT.has(file);
   return (
     <a
       href={tool.url}
       target="_blank"
       rel="noopener noreferrer"
+      title={tool.name}
       className={
-        "inline-flex items-center gap-2 font-medium text-ink transition hover:text-accent " +
-        (chip ? "rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-[13px]" : "")
+        "inline-flex items-center gap-2.5 font-medium text-ink transition hover:text-accent " +
+        (chip ? "rounded-lg border border-muted-200 bg-paper py-1.5 pl-1.5 pr-3 text-[13px]" : "")
       }
     >
-      {showLogo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={tool.logo} alt="" className="h-5 w-5 object-contain" />
-      ) : null}
+      <span
+        className={"flex h-7 shrink-0 items-center justify-center overflow-hidden rounded-md " + (tool.wide ? "w-14 px-1.5" : "w-7")}
+        style={{ background: tool.bg }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={tool.logo} alt="" className="h-full w-full object-contain" />
+      </span>
       {tool.name}
     </a>
   );
@@ -529,7 +530,7 @@ export default function HomePage() {
       {/* Compatibility strip */}
       <section className="border-t border-muted-200">
         <div className="mx-auto flex max-w-[var(--max-content)] flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 py-6 text-sm sm:px-6">
-          <span className="text-muted-600">Works after your capture software</span>
+          <span className="text-muted-600">Works with</span>
           {TOOLS.map((t) => (
             <ToolLink key={t.name} tool={t} />
           ))}
@@ -600,15 +601,15 @@ export default function HomePage() {
               the right person while you keep shooting.
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
-              {TOOLS.map((t) => (
+              {TOOLS.filter((t) => t.capture).map((t) => (
                 <ToolLink key={t.name} tool={t} chip />
               ))}
               <span className="rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-[13px] font-medium">Any tool that exports to a folder</span>
             </div>
             <p className="mt-2 text-xs text-muted-400">
-              Capture One, Adobe Lightroom, and Smart Shooter are trademarks of
-              their respective owners. <BrandName /> is not affiliated with or
-              endorsed by them.
+              Capture One, Adobe Lightroom, Smart Shooter, and Evoto are trademarks
+              of their respective owners, shown as they publish them. <BrandName />{" "}
+              is not affiliated with or endorsed by them.
             </p>
           </div>
           <div className="flex flex-col">
