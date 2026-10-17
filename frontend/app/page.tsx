@@ -50,32 +50,32 @@ const STEPS: Step[] = [
   {
     n: "01",
     title: "Create a job",
-    body: "Name, shoot date, location, and how many headshots each person may keep. About two minutes, and everything can be changed later.",
-    unique: ["Multi-day shoots", "Per-person download limit"],
+    body: "Name, dates, location, and how many headshots each person may keep. Decide who receives the photos: each person, your client contact, or both. About two minutes, and everything can be changed later.",
+    unique: ["Multi-day shoots", "Per-person download limit", "Deliver to client, people, or both", "Client logo on everything"],
   },
   {
     n: "02",
     title: "Share one link",
-    body: "Every job gets its own signup page. Participants add themselves and book a slot. Have a list already? Import the CSV.",
-    unique: ["Time-slot self-booking", "Consent at signup", "Client logo on the page"],
+    body: "Every job gets its own signup page. Participants add themselves and book a slot. Have a list already? Import the CSV. Walk-ins scan a QR card at the booth.",
+    unique: ["Time-slot self-booking", "CSV import", "Consent at signup", "QR card for walk-ins", "Optional self-rescheduling"],
   },
   {
     n: "03",
     title: "Shoot with the queue",
-    body: "Tap the next name and it's on your clipboard for your tethering tool. Files named like “Mara Visser_001.jpg” match themselves to Mara.",
-    unique: ["Click-to-copy queue", "Walk-in QR card", "No-show tracking"],
+    body: "Tap the next name and it's on your clipboard for your tethering tool. Files named like “Mara Visser_001.jpg” match themselves to Mara. Jot a private note per person, glasses on or off, retouch wishes, so it's there when you edit.",
+    unique: ["Click-to-copy queue", "Private notes per person", "Mark shot, no show, reset", "Live queue position for walk-ins", "Attendance report"],
   },
   {
     n: "04",
     title: "Photos sort themselves",
-    body: "Point HeadshotDesk at your export folder once. Every new frame uploads in the background, skips duplicates, and files itself under the right person while you keep shooting.",
-    unique: ["Watch folder", "Filename auto-match", "No plugin"],
+    body: "Point HeadshotDesk at your export folder once. Every new frame uploads in the background, skips duplicates, and files itself under the right person while you keep shooting. Layered PSDs too.",
+    unique: ["Watch folder", "Filename auto-match", "Duplicate skipping", "PSD files", "No plugin"],
   },
   {
     n: "05",
     title: "Click Deliver",
-    body: "Everyone gets an email with a private gallery of only their photos, picks within the limit you set, and downloads. Links never expire.",
-    unique: ["Participant favourites", "Client status dashboard", "Client handover zip"],
+    body: "Everyone gets an email with a private gallery of only their photos, picks within the limit you set, and downloads. Or hand your client one link to everything, foldered per person. Links never expire.",
+    unique: ["Participant favourites", "Client status dashboard", "Client handover zip", "Resend anytime", "Live gallery updates"],
   },
 ];
 
@@ -91,16 +91,19 @@ const FEATURES_BY_STAGE: Stage[] = [
       { icon: "file", title: "CSV import", body: "Bring an HR list straight in. Delimiter quirks are handled." },
       { icon: "clock", title: "Time-slot booking", body: "Participants book appointments at signup; shoot day runs on a schedule." },
       { icon: "grid", title: "Flexible schedule editing", body: "Preview changes live, add or remove single slots. Existing bookings stay protected." },
+      { icon: "refresh", title: "Self-rescheduling, if you allow it", body: "Off by default. Switch it on per job and confirmation emails carry a link to move their own time." },
+      { icon: "grid", title: "Multi-day shoots", body: "Several days, each with its own hours, slot length, and breaks. Status per day, so you know which day is still owed." },
     ],
   },
   {
     n: "02",
     title: "Shoot",
     features: [
-      { icon: "check", title: "Shoot-day queue", body: "Click-to-copy names for tethered shooting, mark-shot tracking." },
+      { icon: "check", title: "Shoot-day queue", body: "Click-to-copy names for tethered shooting, mark shot, no show, reset." },
       { icon: "qr", title: "Walk-ins that handle themselves", body: "A QR card for the booth. People scan it, add themselves, and see their place in line." },
       { icon: "flag", title: "No-show tracking", body: "Flag anyone who didn't turn up and hand your client an attendance report." },
-      { icon: "note", title: "Private notes per person", body: "Retouch preferences and reminders, visible only to you." },
+      { icon: "note", title: "Private notes per person", body: "Retouch preferences and reminders, written at the camera, visible only to you." },
+      { icon: "image", title: "Your profile on every email", body: "A public page with your portrait, links, and portfolio, linked from the emails participants receive." },
     ],
   },
   {
@@ -110,6 +113,7 @@ const FEATURES_BY_STAGE: Stage[] = [
       { icon: "camera", title: "Works with Capture One and Lightroom", body: "No plugin, no new habits. Name files from the queue, point us at your export folder." },
       { icon: "folder", title: "Watch folder", body: "Map your export folder; new frames upload and sort automatically." },
       { icon: "arrow", title: "Filename auto-match", body: "Shots match to participants by name, including partial matches." },
+      { icon: "file", title: "PSD files", body: "Layered Photoshop files upload and match like any photo, and go to your client only." },
       { icon: "refresh", title: "Live gallery updates", body: "Upload more photos later; open galleries refresh on their own." },
     ],
   },
@@ -120,8 +124,9 @@ const FEATURES_BY_STAGE: Stage[] = [
       { icon: "lock", title: "Private galleries", body: "Each participant sees only their own photos. Link-only access." },
       { icon: "star", title: "Participant favourites", body: "People star the shots they want kept. Your retouch list builds itself." },
       { icon: "mail", title: "One-click delivery", body: "Email every finished participant their gallery at once. Resend anytime." },
+      { icon: "download", title: "Deliver to the client instead", body: "Per job, choose who gets the photos: each person, your client contact, or both. The client gets one link and one zip, foldered per person." },
       { icon: "image", title: "Client-branded delivery", body: "Upload a client's logo once. Signup page, galleries, and emails carry it." },
-      { icon: "dashboard", title: "Client status dashboard", body: "A live progress link for your contact. No more status-check emails." },
+      { icon: "dashboard", title: "Client status dashboard", body: "A live progress link for your contact, per day on multi-day shoots. No more status-check emails." },
       { icon: "download", title: "Download limits", body: "Set how many headshots each person keeps. Re-downloads are free." },
     ],
   },
@@ -263,11 +268,18 @@ function QueueMock({ compact = false }: { compact?: boolean }) {
   ] as const;
   return (
     <div className="overflow-hidden rounded-lg border border-muted-200 bg-paper">
-      <div className="flex items-center justify-between bg-accent-muted px-3 py-2.5">
-        <span className={"font-medium " + (compact ? "text-sm" : "font-display text-lg tracking-tight")}>Mara Visser</span>
-        <span className="flex gap-1.5">
-          <span className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-fg">Mark shot</span>
-          <span className="rounded-md border border-muted-200 bg-paper px-2 py-1 text-xs font-medium text-ink">No show</span>
+      <div className="flex flex-col gap-1.5 bg-accent-muted px-3 py-2.5">
+        <div className="flex items-center justify-between">
+          <span className={"font-medium " + (compact ? "text-sm" : "font-display text-lg tracking-tight")}>Mara Visser</span>
+          <span className="flex gap-1.5">
+            <span className="rounded-md bg-accent px-2 py-1 text-xs font-medium text-accent-fg">Mark shot</span>
+            <span className="rounded-md border border-muted-200 bg-paper px-2 py-1 text-xs font-medium text-ink">No show</span>
+          </span>
+        </div>
+        {/* The private note: the thing the existing tools do not have. */}
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-600">
+          <svg aria-hidden viewBox="0 0 20 20" className="h-3 w-3 shrink-0"><path d="M4 3h12v14H4z M7 7h6 M7 10h6 M7 13h3" fill="none" className="stroke-muted-400" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
+          Note: glasses on for one, off for one. Prefers the left side.
         </span>
       </div>
       {rows.map((r) => (
@@ -277,6 +289,41 @@ function QueueMock({ compact = false }: { compact?: boolean }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// Capture software we sit behind. `logo` is a file in /public/logos; the
+// official marks come from each vendor's brand page and are not drawn here.
+// Until a file is dropped in, the name renders on its own.
+type Tool = { name: string; url: string; logo?: string };
+const TOOLS: Tool[] = [
+  { name: "Capture One", url: "https://www.captureone.com", logo: "/logos/capture-one.svg" },
+  { name: "Adobe Lightroom", url: "https://www.adobe.com/products/photoshop-lightroom.html", logo: "/logos/lightroom.svg" },
+  { name: "Smart Shooter", url: "https://kuvacode.com/smartshooter", logo: "/logos/smart-shooter.svg" },
+];
+const TOOL_LOGO_PRESENT = new Set<string>([
+  // Add a filename here once it exists in /public/logos, e.g. "capture-one.svg".
+]);
+
+function ToolLink({ tool, chip = false }: { tool: Tool; chip?: boolean }) {
+  const file = tool.logo?.split("/").pop() ?? "";
+  const showLogo = !!tool.logo && TOOL_LOGO_PRESENT.has(file);
+  return (
+    <a
+      href={tool.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={
+        "inline-flex items-center gap-2 font-medium text-ink transition hover:text-accent " +
+        (chip ? "rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-[13px]" : "")
+      }
+    >
+      {showLogo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={tool.logo} alt="" className="h-5 w-5 object-contain" />
+      ) : null}
+      {tool.name}
+    </a>
   );
 }
 
@@ -335,6 +382,7 @@ export default function HomePage() {
             <Eyebrow tone="muted">Up next</Eyebrow>
             <p className="mt-2 font-display text-xl font-semibold tracking-tight">Mara Visser</p>
             <p className="mt-1 font-mono text-xs text-muted-600">Mara Visser_0007.jpg</p>
+            <p className="mt-2 text-[11px] leading-snug text-muted-600">Note: glasses on for one, off for one.</p>
             <div className="mt-3 flex gap-2">
               <span className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg">Mark shot</span>
               <span className="rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-xs font-medium text-ink">No show</span>
@@ -460,47 +508,17 @@ export default function HomePage() {
       <section className="border-t border-muted-200">
         <div className="mx-auto flex max-w-[var(--max-content)] flex-wrap items-center justify-center gap-x-8 gap-y-2 px-4 py-6 text-sm sm:px-6">
           <span className="text-muted-600">Works after your capture software</span>
-          {["Capture One", "Adobe Lightroom", "Smart Shooter", "Any folder export"].map((t) => (
-            <span key={t} className="font-medium">{t}</span>
+          {TOOLS.map((t) => (
+            <ToolLink key={t.name} tool={t} />
           ))}
-        </div>
-      </section>
-
-      {/* The problem. Plain two columns, no cards. */}
-      <section className="border-t border-muted-200">
-        <div className="mx-auto max-w-[var(--max-content)] px-4 py-14 sm:px-6 sm:py-20">
-          <H2 className="max-w-2xl">A 30-person shoot is one hour of photography and a week of admin</H2>
-          <p className="mt-3 max-w-2xl text-sm text-muted-600 sm:text-base">
-            If you&apos;ve shot team headshots, you know the photography is the easy
-            part. It&apos;s everything around it that eats the week.
-          </p>
-          <div className="mt-10 grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
-            <div className="flex flex-col gap-4 md:border-r md:border-muted-200 md:pr-8">
-              <Eyebrow tone="muted">Without a tool</Eyebrow>
-              <p className="text-sm leading-relaxed text-muted-600">Names and emails collected across reply-all threads and a spreadsheet someone keeps &ldquo;improving&rdquo;.</p>
-              <p className="text-sm leading-relaxed text-muted-600">Shoot day off a printed list, guessing who&apos;s in front of the camera and scribbling frame numbers next to names.</p>
-              <p className="text-sm leading-relaxed text-muted-600">An evening (or three) renaming hundreds of files and sorting them into folders per person.</p>
-              <p className="text-sm leading-relaxed text-muted-600">Zipping folders, uploading to WeTransfer, emailing thirty links one by one. Then the follow-ups: &ldquo;which photo was me?&rdquo;, &ldquo;the link expired&rdquo;, &ldquo;can you resend mine?&rdquo;</p>
-            </div>
-            <div className="flex flex-col gap-4">
-              <Eyebrow>With <BrandName /></Eyebrow>
-              <p className="text-sm leading-relaxed text-ink">People add themselves through one signup link.</p>
-              <p className="text-sm leading-relaxed text-ink">Shoot day runs off a live queue: tap a name, shoot, mark done.</p>
-              <p className="text-sm leading-relaxed text-ink">Photos upload and file themselves under the right person while you&apos;re still shooting.</p>
-              <p className="text-sm leading-relaxed text-ink">Participants star the shots they want, so your retouch list is decided before you open an editor. One click emails every person a private gallery. Links don&apos;t expire, re-downloads are free.</p>
-            </div>
-          </div>
-          {/* Honesty note: we don't retouch for you (yet). */}
-          <p className="mt-8 max-w-2xl text-xs text-muted-400">
-            Retouching stays yours, whether that&apos;s an hour in Evoto or a few
-            evenings by hand. AI retouching is on the roadmap, not shipped.
-          </p>
+          <span className="font-medium">Any folder export</span>
         </div>
       </section>
 
       {/* How it works: a bento of mini screens, each tagged with what's
-          unique to this tool. */}
-      <section id="how-it-works" className="border-t border-muted-200 bg-muted-50">
+          unique to this tool. Comes before the benefits on purpose: a
+          photographer wants to see the flow before being sold on it. */}
+      <section id="how-it-works" className="border-t border-muted-200">
         <div className="mx-auto max-w-[var(--max-content)] px-4 py-14 sm:px-6 sm:py-20">
           <Eyebrow>How it works</Eyebrow>
           <H2 className="mt-3">How a shoot runs on <BrandName /></H2>
@@ -542,7 +560,7 @@ export default function HomePage() {
       </section>
 
       {/* Tethering: the question every photographer asks first. */}
-      <section id="tethering" className="border-t border-muted-200">
+      <section id="tethering" className="border-t border-muted-200 bg-muted-50">
         <div className="mx-auto grid max-w-[var(--max-content)] grid-cols-1 gap-10 px-4 py-14 sm:px-6 sm:py-20 md:grid-cols-2 md:gap-16">
           <div className="flex flex-col gap-4">
             <H2>Works with the software you already shoot on</H2>
@@ -553,9 +571,10 @@ export default function HomePage() {
               the right person while you keep shooting.
             </p>
             <div className="flex flex-wrap gap-2 pt-2">
-              {["Capture One", "Adobe Lightroom", "Smart Shooter", "Any tool that exports to a folder"].map((t) => (
-                <span key={t} className="rounded-lg border border-muted-200 px-3 py-1.5 text-[13px] font-medium">{t}</span>
+              {TOOLS.map((t) => (
+                <ToolLink key={t.name} tool={t} chip />
               ))}
+              <span className="rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-[13px] font-medium">Any tool that exports to a folder</span>
             </div>
             <p className="mt-2 text-xs text-muted-400">
               Capture One, Adobe Lightroom, and Smart Shooter are trademarks of
@@ -591,6 +610,39 @@ export default function HomePage() {
               live in the help center, including what to do when a photo lands in Unassigned.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* The benefits, after the reader has seen how it works. Plain two
+          columns, no cards. */}
+      <section className="border-t border-muted-200">
+        <div className="mx-auto max-w-[var(--max-content)] px-4 py-14 sm:px-6 sm:py-20">
+          <H2 className="max-w-2xl">A 30-person shoot is one hour of photography and a week of admin</H2>
+          <p className="mt-3 max-w-2xl text-sm text-muted-600 sm:text-base">
+            If you&apos;ve shot team headshots, you know the photography is the easy
+            part. It&apos;s everything around it that eats the week.
+          </p>
+          <div className="mt-10 grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
+            <div className="flex flex-col gap-4 md:border-r md:border-muted-200 md:pr-8">
+              <Eyebrow tone="muted">Without a tool</Eyebrow>
+              <p className="text-sm leading-relaxed text-muted-600">Names and emails collected across reply-all threads and a spreadsheet someone keeps &ldquo;improving&rdquo;.</p>
+              <p className="text-sm leading-relaxed text-muted-600">Shoot day off a printed list, guessing who&apos;s in front of the camera and scribbling frame numbers next to names.</p>
+              <p className="text-sm leading-relaxed text-muted-600">An evening (or three) renaming hundreds of files and sorting them into folders per person.</p>
+              <p className="text-sm leading-relaxed text-muted-600">Zipping folders, uploading to WeTransfer, emailing thirty links one by one. Then the follow-ups: &ldquo;which photo was me?&rdquo;, &ldquo;the link expired&rdquo;, &ldquo;can you resend mine?&rdquo;</p>
+            </div>
+            <div className="flex flex-col gap-4">
+              <Eyebrow>With <BrandName /></Eyebrow>
+              <p className="text-sm leading-relaxed text-ink">People add themselves through one signup link.</p>
+              <p className="text-sm leading-relaxed text-ink">Shoot day runs off a live queue: tap a name, shoot, mark done.</p>
+              <p className="text-sm leading-relaxed text-ink">Photos upload and file themselves under the right person while you&apos;re still shooting.</p>
+              <p className="text-sm leading-relaxed text-ink">Participants star the shots they want, so your retouch list is decided before you open an editor. One click emails every person a private gallery. Links don&apos;t expire, re-downloads are free.</p>
+            </div>
+          </div>
+          {/* Honesty note: we don't retouch for you (yet). */}
+          <p className="mt-8 max-w-2xl text-xs text-muted-400">
+            Retouching stays yours, whether that&apos;s an hour in Evoto or a few
+            evenings by hand. AI retouching is on the roadmap, not shipped.
+          </p>
         </div>
       </section>
 
