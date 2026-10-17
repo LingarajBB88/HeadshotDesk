@@ -183,7 +183,7 @@ def resend_gallery_email(
 ) -> Participant:
     """F5c per-row Resend. Always sends, regardless of whether the participant
     has been delivered before — this is the explicit override path for
-    "I uploaded more photos for Jane after Deliver, nudge her again."
+    "I uploaded more photos for Mara after Deliver, nudge her again."
 
     Refuses to send if the participant has zero photos (resending an empty
     gallery is a worse experience than no email at all) or no email address.

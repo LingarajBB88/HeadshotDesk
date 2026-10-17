@@ -65,11 +65,11 @@ def _normalize_for_match(s: str) -> str:
 
 
 def _strip_index_suffix(stem: str) -> str:
-    """Remove trailing index numbers a la 'Jane_Doe_001' → 'Jane_Doe'.
+    """Remove trailing index numbers a la 'Mara_Visser_001' → 'Mara_Visser'.
 
     Only strips when a separator precedes the digits, so a name that
     genuinely ends in a number keeps it. Counters glued directly to the
-    name ('Jane Doe0042') are handled by the substring rule in
+    name ('Mara Visser0042') are handled by the substring rule in
     match_filename_to_participant instead.
     """
     return re.sub(r"[\s_\-]\d+$", "", stem)
@@ -84,8 +84,8 @@ def match_filename_to_participant(
     Strategy (most specific to most permissive):
       1. Exact normalized match
       2. Token-set match: every word of the participant's name appears in the
-         filename. Order doesn't matter, so 'Doe_Jane.jpg' still matches
-         'Jane Doe'. Requires the participant to have at least 2 name tokens
+         filename. Order doesn't matter, so 'Visser_Mara.jpg' still matches
+         'Mara Visser'. Requires the participant to have at least 2 name tokens
          so that a single-token participant ("Test") doesn't grab unrelated
          files ("Sangeetha Test.jpg").
 
@@ -127,8 +127,8 @@ def match_filename_to_participant(
     # before the counter — "Antonella Di Santi9223.jpg". Capture One writes
     # this when the naming format is clipboard + counter with nothing
     # between them, which is the default people land on. Still requires ≥2
-    # name tokens, and the longest matching name wins so "Jane Doe" can't
-    # beat "Jane Doerr" on a Doerr file.
+    # name tokens, and the longest matching name wins so "Mara Visser" can't
+    # beat "Mara Vissers" on a Vissers file.
     best_len = 0
     for p in participants:
         p_norm = _normalize_for_match(p.name)
@@ -239,7 +239,7 @@ async def upload_files(
             #
             # But: when the photographer has Cmd-D'd a file in Finder, the
             # folder ends up with several different filenames pointing to
-            # the same bytes (e.g., "Jane Doe.jpg" + "Jane Doe copy 4.jpg").
+            # the same bytes (e.g., "Mara Visser.jpg" + "Mara Visser copy 4.jpg").
             # All of them dedup to the same row, and we'd otherwise flip-flop
             # the display name on every poll. Rule: don't overwrite a
             # participant-matched name with one that doesn't match. The

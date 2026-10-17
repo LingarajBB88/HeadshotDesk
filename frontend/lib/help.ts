@@ -363,7 +363,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "clipboard",
         heading: "Names on your clipboard",
         body: [
-          "Tap a name and it is copied to your clipboard. Paste it as the capture or session name in your tethering tool (Capture One, Smart Shooter, or similar) so files come out named like Jane Doe_0001.jpg. That filename is what makes photos match to the right person automatically.",
+          "Tap a name and it is copied to your clipboard. Paste it as the capture or session name in your tethering tool (Capture One, Smart Shooter, or similar) so files come out named like Mara Visser_0001.jpg. That filename is what makes photos match to the right person automatically.",
         ],
       },
       {
@@ -562,16 +562,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "pattern",
         heading: "The pattern",
         body: [
-          "Name your files with the participant's name followed by a number: Jane Doe_0001.jpg. Set this once in your tethering tool using the queue's clipboard names and every frame matches automatically.",
+          "Name your files with the participant's name followed by a number: Mara Visser_0001.jpg. Set this once in your tethering tool using the queue's clipboard names and every frame matches automatically.",
         ],
       },
       {
         id: "rules",
         heading: "Matching rules",
         items: [
-          { term: "Case does not matter", def: "jane doe_001.jpg matches Jane Doe." },
+          { term: "Case does not matter", def: "mara visser_001.jpg matches Mara Visser." },
           { term: "Exact name wins", def: "A filename containing the full name always beats partial matches." },
-          { term: "Partial matches need two words", def: "At least two name words must appear. A file called jane_001.jpg will not guess between Jane Doe and Jane Smith." },
+          { term: "Partial matches need two words", def: "At least two name words must appear. A file called mara_001.jpg will not guess between Mara Visser and Mara de Groot." },
           { term: "No match, no guess", def: "Anything ambiguous goes to Unassigned for you to place by hand." },
         ],
       },
@@ -600,7 +600,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "goal",
         heading: "What you are setting up",
         body: [
-          "One rule makes the whole thing work: the file that lands on your laptop must start with the participant's name, for example Jane Doe_0001.jpg. Everything below is just how to get your capture software to write that name for you.",
+          "One rule makes the whole thing work: the file that lands on your laptop must start with the participant's name, for example Mara Visser_0001.jpg. Everything below is just how to get your capture software to write that name for you.",
           "The queue gives you the name. Tap a person in the shoot screen and their name is copied to your clipboard, ready to paste or picked up automatically, depending on which setup you choose.",
         ],
       },
@@ -625,7 +625,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "2. Name the session and pick a destination", def: "In the dialog, set a Session Name and choose the destination folder. Note where it is: you will map this folder in HeadshotDesk." },
           { term: "3. Turn on shot segmenting", def: "Tick Segment Photos By Shots. This is what lets you switch names during the shoot without reopening settings." },
           { term: "4. Build the naming template", def: "Under Naming, choose Edit and build a template of Shot Name, then underscore, then Sequence. Save it as a preset called something like HeadshotDesk." },
-          { term: "5. Switch person during the shoot", def: "Press Cmd+Shift+T (Ctrl+Shift+T on Windows) to start a new shot, paste the name from the queue, and shoot. Frames come out as Jane Doe_0001.jpg." },
+          { term: "5. Switch person during the shoot", def: "Press Cmd+Shift+T (Ctrl+Shift+T on Windows) to start a new shot, paste the name from the queue, and shoot. Frames come out as Mara Visser_0001.jpg." },
           { term: "6. Watch the right folder", def: "Segmenting can put each shot in its own subfolder. HeadshotDesk reads only the folder you map, not subfolders, so either leave subfolder creation off or map the specific folder your files land in. Culling first? Export your selects into one flat folder and map that instead." },
         ],
       },
@@ -651,7 +651,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           { term: "The filename has no name in it", def: "Check the naming format is applied to NEW captures. Existing frames keep the name they were born with; renaming the file on disk fixes them." },
           { term: "You forgot to switch person", def: "Frames carry the previous person's name. Reassign them from the photo row's dropdown, it takes seconds." },
           { term: "Wrong folder mapped", def: "Capture One Sessions have separate Capture and Output folders, and Lightroom may be writing into a per-shot subfolder. Map the folder where files actually appear." },
-          { term: "Only one name word", def: "A file called jane_001.jpg won't be guessed between Jane Doe and Jane Smith. Use the full name from the queue." },
+          { term: "Only one name word", def: "A file called mara_001.jpg won't be guessed between Mara Visser and Mara de Groot. Use the full name from the queue." },
         ],
       },
       {

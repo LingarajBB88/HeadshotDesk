@@ -116,7 +116,7 @@ export const TOUR_STOPS: TourStop[] = [
     title: "The screen you use while shooting",
     lead: "Tap a name and it lands on your clipboard, so your tethering software names the files for you.",
     body: [
-      "Set Capture One or Lightroom to name files from the clipboard once. From then on, tapping the next person means their frames come out as Jane Doe_0001.jpg, which is what lets photos file themselves later.",
+      "Set Capture One or Lightroom to name files from the clipboard once. From then on, tapping the next person means their frames come out as Mara Visser_0001.jpg, which is what lets photos file themselves later.",
       "Mark someone shot and they move across. Someone did not turn up? Flag them, and they get a follow-up with a rebooking link while your client gets an attendance report.",
     ],
     points: [

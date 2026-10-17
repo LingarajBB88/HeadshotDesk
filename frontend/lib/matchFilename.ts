@@ -30,9 +30,9 @@ function stripIndexSuffix(stem: string): string {
  * same job), we prefer one that has been marked as shot — the photographer's
  * shoot-queue action disambiguates "which John is this photo of."
  *
- *   findMatchingParticipant("Jane_Doe_001.jpg", [{name:"Jane Doe", shot_at:"..."}])
- *     → the Jane Doe participant
- *   findMatchingParticipant("Doe_Jane.jpg", ...)  → matches by token set
+ *   findMatchingParticipant("Mara_Visser_001.jpg", [{name:"Mara Visser", shot_at:"..."}])
+ *     → the Mara Visser participant
+ *   findMatchingParticipant("Visser_Mara.jpg", ...)  → matches by token set
  *   findMatchingParticipant("IMG_1234.jpg", ...)  → null
  */
 export function findMatchingParticipant<
@@ -64,7 +64,7 @@ export function findMatchingParticipant<
   // separator before the counter — "Antonella Di Santi9223.jpg", or a
   // Finder duplicate "… copy.jpg". Capture One writes the first form when
   // the naming token is clipboard + counter with nothing between them.
-  // Longest name wins so a Doerr file can't fall to Doe.
+  // Longest name wins so a Vissers file can't fall to Visser.
   if (matches.length === 0) {
     let best: T | null = null;
     let bestLen = 0;

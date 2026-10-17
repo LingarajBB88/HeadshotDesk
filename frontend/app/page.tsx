@@ -35,7 +35,7 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Shoot with the queue",
-    body: "On shoot day, tap the next name and it's on your clipboard for your tethering tool. Files named like “Jane Doe_001.jpg” match themselves to Jane. No renaming session afterwards.",
+    body: "On shoot day, tap the next name and it's on your clipboard for your tethering tool. Files named like “Mara Visser_001.jpg” match themselves to Mara. No renaming session afterwards.",
   },
   {
     title: "Photos sort themselves",
@@ -614,7 +614,7 @@ export default function HomePage() {
                 clipboard (or name) token plus a counter. In Lightroom, use a
                 Shot Name template and press Cmd+Shift+T per person. Either
                 way, frames come out as
-                <span className="whitespace-nowrap"> Jane Doe_0001.jpg</span>.
+                <span className="whitespace-nowrap"> Mara Visser_0001.jpg</span>.
               </p>
             </div>
             <div className="rounded-card border border-muted-200 bg-paper p-6">
@@ -686,7 +686,7 @@ export default function HomePage() {
               </h3>
               <p className="mt-3 text-sm text-muted-600 leading-relaxed">
                 No export sessions, no renaming evenings, no zip files over
-                WeTransfer, no &ldquo;which photo was Jane again?&rdquo; The
+                WeTransfer, no &ldquo;which photo was Mara again?&rdquo; The
                 admin happens while you shoot. Your retouching time stays
                 your own.
               </p>
