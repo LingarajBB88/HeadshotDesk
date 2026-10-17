@@ -40,7 +40,8 @@ export const metadata = {
 type Step = {
   n: string;
   title: string;
-  body: string;
+  // Short lines, read as bullets. Three at most.
+  points: string[];
   // Features that competitors generally don't have. Shown as pills on the
   // step card so the page sells what's distinctive, not just the flow.
   unique: string[];
@@ -50,31 +51,51 @@ const STEPS: Step[] = [
   {
     n: "01",
     title: "Create a job",
-    body: "Name, dates, location, and how many headshots each person may keep. Decide who receives the photos: each person, your client contact, or both. About two minutes, and everything can be changed later.",
+    points: [
+      "Name, dates, location, and how many headshots each person may keep.",
+      "Choose who receives the photos: each person, your client contact, or both.",
+      "Add the client's logo once; it appears on the signup page, galleries, and emails.",
+    ],
     unique: ["Multi-day shoots", "Per-person download limit", "Deliver to client, people, or both", "Client logo on everything"],
   },
   {
     n: "02",
     title: "Share one link",
-    body: "Every job gets its own signup page. Participants add themselves and book a slot. Have a list already? Import the CSV. Walk-ins scan a QR card at the booth.",
+    points: [
+      "Every job gets its own signup page. People add themselves and pick a time.",
+      "Have a list already? Import the CSV.",
+      "Walk-ins scan a QR card at the booth and join the queue.",
+    ],
     unique: ["Time-slot self-booking", "CSV import", "Consent at signup", "QR card for walk-ins", "Optional self-rescheduling"],
   },
   {
     n: "03",
     title: "Shoot with the queue",
-    body: "Tap the next name and it's on your clipboard for your tethering tool. Files named like “Mara Visser_001.jpg” match themselves to Mara. Jot a private note per person, glasses on or off, retouch wishes, so it's there when you edit.",
+    points: [
+      "Tap the next name and it's on your clipboard for your tethering tool.",
+      "Files come out as Mara Visser_001.jpg and match themselves to Mara.",
+      "Write a private note per person: it's there when you retouch.",
+    ],
     unique: ["Click-to-copy queue", "Private notes per person", "Mark shot, no show, reset", "Live queue position for walk-ins", "Attendance report"],
   },
   {
     n: "04",
     title: "Photos sort themselves",
-    body: "Point HeadshotDesk at your export folder once. Every new frame uploads in the background, skips duplicates, and files itself under the right person while you keep shooting. Layered PSDs too.",
+    points: [
+      "Point HeadshotDesk at your export folder once.",
+      "New frames upload in the background and file themselves under the right person.",
+      "Duplicates are skipped. Layered PSDs are accepted too.",
+    ],
     unique: ["Watch folder", "Filename auto-match", "Duplicate skipping", "PSD files", "No plugin"],
   },
   {
     n: "05",
     title: "Click Deliver",
-    body: "Everyone gets an email with a private gallery of only their photos, picks within the limit you set, and downloads. Or hand your client one link to everything, foldered per person. Links never expire.",
+    points: [
+      "Each person gets an email with a private gallery of only their photos.",
+      "They star favourites and download within the limit you set. Links never expire.",
+      "Or hand your client one link to everything, foldered per person.",
+    ],
     unique: ["Participant favourites", "Client status dashboard", "Client handover zip", "Resend anytime", "Live gallery updates"],
   },
 ];
@@ -279,7 +300,7 @@ function QueueMock({ compact = false }: { compact?: boolean }) {
         {/* The private note: the thing the existing tools do not have. */}
         <span className="flex items-center gap-1.5 text-[11px] text-muted-600">
           <svg aria-hidden viewBox="0 0 20 20" className="h-3 w-3 shrink-0"><path d="M4 3h12v14H4z M7 7h6 M7 10h6 M7 13h3" fill="none" className="stroke-muted-400" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></svg>
-          Note: glasses on for one, off for one. Prefers the left side.
+          Note: light retouching on the face only, keep the glasses.
         </span>
       </div>
       {rows.map((r) => (
@@ -359,10 +380,10 @@ export default function HomePage() {
             Team headshots, from signup to delivery, in one clear flow.
           </h1>
           <p className="max-w-xl text-base text-muted-600 sm:text-lg">
-            <BrandName /> takes over the admin around the camera: who&apos;s coming,
-            who&apos;s been shot, which photo belongs to whom, and getting every
-            person their own photos. A thirty-person shoot ends up feeling like a
-            one-person shoot.
+            <BrandName /> is a web app for photographers who shoot headshots for
+            companies, teams, and events. People sign up through one link, you
+            shoot from a live queue, photos file themselves under the right
+            person, and everyone gets their own private gallery with one click.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Link className="btn-primary" href="/signup">Try it free</Link>
@@ -382,7 +403,7 @@ export default function HomePage() {
             <Eyebrow tone="muted">Up next</Eyebrow>
             <p className="mt-2 font-display text-xl font-semibold tracking-tight">Mara Visser</p>
             <p className="mt-1 font-mono text-xs text-muted-600">Mara Visser_0007.jpg</p>
-            <p className="mt-2 text-[11px] leading-snug text-muted-600">Note: glasses on for one, off for one.</p>
+            <p className="mt-2 text-[11px] leading-snug text-muted-600">Note: light retouching on the face only, keep the glasses.</p>
             <div className="mt-3 flex gap-2">
               <span className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-fg">Mark shot</span>
               <span className="rounded-lg border border-muted-200 bg-paper px-3 py-1.5 text-xs font-medium text-ink">No show</span>
@@ -401,10 +422,11 @@ export default function HomePage() {
         <div className="mx-auto max-w-[var(--max-content)] px-4 pb-0 pt-14 sm:px-6 sm:pt-20">
           <div className="mx-auto max-w-2xl text-center">
             <Eyebrow>A job on HeadshotDesk</Eyebrow>
-            <H2 className="mt-3">One page per shoot. Everything on it is live.</H2>
+            <H2 className="mt-3">One page per shoot, from setup to delivery</H2>
             <p className="mt-3 text-sm text-muted-600 sm:text-base">
-              Setup, shoot day, delivery, done. The stats update while you shoot,
-              and your client contact gets their own read-only view.
+              This is the job page. Signups, bookings, who has been photographed,
+              how many photos are in, and who has been delivered all update on
+              their own while you work. Your client contact gets a read-only copy.
             </p>
           </div>
 
@@ -544,7 +566,14 @@ export default function HomePage() {
                   <div className="flex flex-col gap-1.5">
                     <span className="font-mono text-xs text-accent">{step.n}</span>
                     <h3 className="font-display text-lg font-semibold tracking-tight">{step.title}</h3>
-                    <p className="text-sm leading-relaxed text-muted-600">{renderBrand(step.body)}</p>
+                    <ul className="mt-1 flex flex-col gap-1.5">
+                      {step.points.map((pt) => (
+                        <li key={pt} className="flex gap-2 text-sm leading-relaxed text-muted-600">
+                          <span aria-hidden className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                          <span>{renderBrand(pt)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                   <StepMock index={i} />
                   <div className="flex flex-wrap gap-1.5">
