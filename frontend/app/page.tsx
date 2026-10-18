@@ -394,11 +394,21 @@ export default function HomePage() {
         </div>
 
         <div className="relative">
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 9 }, (_, i) => (
-              <Portrait key={i} tone={i} />
-            ))}
-          </div>
+          {/* One collage of headshots. Wide crop on small screens, where a
+              tall image would push everything below the fold; tall crop
+              beside the copy on desktop. */}
+          <picture>
+            <source media="(min-width: 1024px)" srcSet="/hero/headshots-tall.jpg" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/hero/headshots-wide.jpg"
+              alt="A grid of headshots of different people, each on a plain studio backdrop"
+              width={1600}
+              height={801}
+              fetchPriority="high"
+              className="aspect-[2/1] w-full rounded-card object-cover lg:aspect-[2/3] lg:max-h-[640px]"
+            />
+          </picture>
           {/* The only shadow on the page: an overlay on a photograph. */}
           <div className="absolute -left-2 bottom-6 w-60 rounded-card border border-muted-200 bg-paper p-4 shadow-[0_12px_32px_rgba(11,15,26,0.08)] sm:-left-6">
             <Eyebrow tone="muted">Up next</Eyebrow>
