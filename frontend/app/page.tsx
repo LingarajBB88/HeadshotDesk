@@ -403,8 +403,8 @@ export default function HomePage() {
             <img
               src="/hero/headshots-wide.jpg"
               alt="A grid of headshots of different people, each on a plain studio backdrop"
-              width={1600}
-              height={801}
+              width={2396}
+              height={1200}
               fetchPriority="high"
               className="aspect-[2/1] w-full rounded-card object-cover lg:aspect-[2/3] lg:max-h-[640px]"
             />
