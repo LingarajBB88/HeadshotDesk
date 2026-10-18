@@ -1,5 +1,19 @@
 # Working in this repo
 
+## Where work comes from: "dispatch"
+
+The functional chat is the orchestrator. It details features with
+Lingaraj and queues them on the Notion page **DISPATCH — Technical Chat
+Work Queue** under the HeadshotDesk hub
+(https://app.notion.com/p/3fc5f6bd21bc811c8686efbb0b991a52), ordered in
+waves. The HeadshotDesk Backlog database is the spec library, not the
+queue.
+
+When Lingaraj says "dispatch", open that page and work it top-down.
+Read the item's backlog card before building. When an item is done,
+move the card's Status and strike the item through on the DISPATCH page
+with the date. He may also hand you tasks directly; those come first.
+
 ## Git: commit yourself, using the lock sweep
 
 Do not hand Lingaraj a commit message to copy-paste. He works across
