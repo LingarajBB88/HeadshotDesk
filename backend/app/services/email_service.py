@@ -49,6 +49,23 @@ def _first_name(full_name: str | None) -> str:
     return first or "there"
 
 
+# Domains reserved for documentation and testing (RFC 2606 / RFC 6761).
+# Nobody can receive mail there.
+_RESERVED_DOMAINS = ("example.com", "example.net", "example.org")
+_RESERVED_TLDS = (".example", ".test", ".invalid", ".localhost")
+
+
+def is_reserved_address(email: str | None) -> bool:
+    if not email or "@" not in email:
+        return False
+    domain = email.rsplit("@", 1)[1].strip().lower().rstrip(".")
+    return (
+        domain in _RESERVED_DOMAINS
+        or any(domain.endswith("." + d) for d in _RESERVED_DOMAINS)
+        or domain.endswith(_RESERVED_TLDS)
+    )
+
+
 def _send_via_postmark(
     *,
     to_email: str,
@@ -67,6 +84,11 @@ def _send_via_postmark(
     never learns the request was made. Left unset on photographer-facing
     mail, where we are the right recipient.
     """
+    if is_reserved_address(to_email):
+        # Demo jobs and test data use reserved domains on purpose. Sending
+        # would only bounce, and bounces cost Postmark sender reputation.
+        logger.info("Skipped email to reserved address %s", to_email)
+        return
     try:
         from postmarker.core import PostmarkClient
     except ImportError:

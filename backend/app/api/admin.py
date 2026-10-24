@@ -17,7 +17,7 @@ Subscription status is derived until Stripe billing ships:
 """
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -307,3 +307,34 @@ def update_account(
         if row.account_id == account.id:
             return row
     raise HTTPException(status_code=404, detail="Account not found.")
+
+
+# --- Demo job (HSD-81) ------------------------------------------------------
+#
+# Builds the walkthrough job in the calling admin's own account from photos
+# they upload. Replaces the previous demo job. Emails nobody: see
+# demo_service for why.
+
+
+class DemoJobOut(BaseModel):
+    job_id: str
+    people_photographed: int
+    photos: int
+    day_two_bookings: int
+
+
+@router.post("/demo-job", response_model=DemoJobOut)
+async def create_demo_job(
+    files: list[UploadFile],
+    user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> DemoJobOut:
+    from app.services import demo_service
+
+    account = db.get(Account, user.account_id)
+    photos = [
+        (f.filename or "photo.jpg", await f.read(), f.content_type or "")
+        for f in files[: demo_service.MAX_FILES + 1]
+    ]
+    result = demo_service.build_demo_job(db, account=account, user=user, photos=photos)
+    return DemoJobOut(**result)

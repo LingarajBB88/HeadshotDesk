@@ -78,3 +78,30 @@ export async function listAdminAccounts(params: {
     { token: authToken() },
   );
 }
+
+// HSD-81 — build (or rebuild) the walkthrough demo job in the admin's own
+// account from uploaded headshots. Multipart, so plain fetch: api() sends
+// JSON.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export type DemoJobResult = {
+  job_id: string;
+  people_photographed: number;
+  photos: number;
+  day_two_bookings: number;
+};
+
+export async function createDemoJob(files: File[]): Promise<DemoJobResult> {
+  const fd = new FormData();
+  for (const f of files) fd.append("files", f);
+  const res = await fetch(`${API_BASE}/api/v1/admin/demo-job`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${getAccessToken() ?? ""}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { detail?: string })?.detail ?? `Failed: ${res.status}`);
+  }
+  return (await res.json()) as DemoJobResult;
+}

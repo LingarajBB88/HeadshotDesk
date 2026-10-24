@@ -167,7 +167,7 @@ Deferred: Studio launch details; an annual discount (17 to 20%) after the first 
 ## 2026-10 — Analytics
 
 ### D-025 — Web analytics: Plausible, never on token routes
-**Decision:** Plausible (paid plan from 2026-10) for website analytics and custom events (`Signup`, `Job created`, `Start free clicked`, later `Demo booked`), sent through `frontend/lib/track.ts`. The script is never loaded on `/g/ /q/ /c/ /r/`, whose paths carry access tokens. See `docs/ANALYTICS.md`.
+**Decision:** Plausible (paid plan from 2026-10) for website analytics and custom events (`Signup`, `Job created`, `Start free clicked`, `Demo clicked`), sent through `frontend/lib/track.ts`. The script is never loaded on `/g/ /q/ /c/ /r/`, whose paths carry access tokens. See `docs/ANALYTICS.md`.
 **Why:** Cookieless and privacy-first like Cloudflare's free analytics, but with goals, UTM conversion, scroll depth, and funnels, which is what tells us which channel produces accounts rather than visits. Replaces PostHog from D-018 for marketing-site analytics; product analytics in the app can be revisited later.
 
 ---

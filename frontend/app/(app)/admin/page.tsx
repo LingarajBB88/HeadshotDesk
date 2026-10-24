@@ -17,6 +17,7 @@ import {
   type AdminAccountRow,
   type AdminOverview,
 } from "@/lib/admin";
+import { DemoJobCard } from "@/components/DemoJobCard";
 import { SearchInput } from "@/components/SearchInput";
 import { SortableHeader, useSort } from "@/components/SortableHeader";
 
@@ -327,6 +328,8 @@ export default function AdminPage() {
         <MetricTile label="Hibernating" value={overview.hibernating} />
         <MetricTile label="Cancelled" value={overview.cancelled} />
       </div>
+
+      <DemoJobCard />
 
       {/* --- Accounts table -------------------------------------------- */}
       <div className="mt-10">

@@ -350,6 +350,10 @@ function ToolLink({ tool, chip = false }: { tool: Tool; chip?: boolean }) {
   );
 }
 
+// Booking page for founder walkthroughs (HSD-81): a Google Calendar
+// appointment schedule. Unset means the button does not render.
+const DEMO_URL = process.env.NEXT_PUBLIC_DEMO_URL || "";
+
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
@@ -389,7 +393,13 @@ export default function HomePage() {
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <TrackedLink event="Start free clicked" where="hero" className="btn-primary" href="/signup">Try it free</TrackedLink>
-            <a className="btn-secondary" href="#how-it-works">See how it works</a>
+            {DEMO_URL ? (
+              <TrackedLink event="Demo clicked" where="hero" className="btn-secondary" href={DEMO_URL as Route} target="_blank" rel="noopener noreferrer">
+                Book a 15-min walkthrough
+              </TrackedLink>
+            ) : (
+              <a className="btn-secondary" href="#how-it-works">See how it works</a>
+            )}
           </div>
           <p className="text-xs text-muted-400">Free during beta · No credit card</p>
         </div>
@@ -785,6 +795,11 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <TrackedLink event="Start free clicked" where="closing" className="btn-primary" href="/signup">Create your account</TrackedLink>
+            {DEMO_URL ? (
+              <TrackedLink event="Demo clicked" where="closing" className="btn-secondary" href={DEMO_URL as Route} target="_blank" rel="noopener noreferrer">
+                Book a 15-min walkthrough
+              </TrackedLink>
+            ) : null}
             <a className="btn-secondary" href="mailto:info@headshotdesk.com?subject=HeadshotDesk beta">Questions? Email us</a>
           </div>
         </div>

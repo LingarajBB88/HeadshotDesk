@@ -12,7 +12,7 @@ export type TrackedEvent =
   | "Signup" // account created
   | "Job created" // any job; unique conversions ≈ accounts that created one
   | "Start free clicked" // a "Try it free" / "Create your account" CTA
-  | "Demo booked"; // reserved for the walkthrough booking (HSD-81)
+  | "Demo clicked"; // "Book a 15-min walkthrough" (HSD-81); the booking itself happens on Google's page
 
 export function track(event: TrackedEvent, props?: Record<string, string>) {
   try {
