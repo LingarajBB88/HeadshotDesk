@@ -9,6 +9,7 @@ import { FormField } from "@/components/FormField";
 import { ApiError } from "@/lib/api";
 import { signup } from "@/lib/auth";
 import { classifyFormError } from "@/lib/form-errors";
+import { track } from "@/lib/track";
 
 // useSearchParams needs a Suspense boundary in the App Router, so the page
 // is a thin shell around the real form.
@@ -68,6 +69,7 @@ function SignupForm() {
         referral_code: referralCode,
         invite_code: inviteCode,
       });
+      track("Signup");
       router.push("/jobs");
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {

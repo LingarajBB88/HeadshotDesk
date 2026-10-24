@@ -16,6 +16,7 @@ import {
   type Client,
 } from "@/lib/clients";
 import { createJob, type ShootMode } from "@/lib/jobs";
+import { track } from "@/lib/track";
 import { classifyFormError } from "@/lib/form-errors";
 
 export default function NewJobPage() {
@@ -160,6 +161,7 @@ export default function NewJobPage() {
             : null,
         shoot_mode: shootMode,
       });
+      track("Job created");
       router.push(`/jobs/${job.id}`);
     } catch (err) {
       const c = classifyFormError(err);

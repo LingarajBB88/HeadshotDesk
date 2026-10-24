@@ -26,6 +26,7 @@ import type { ReactNode } from "react";
 import { BrandName, renderBrand } from "@/components/BrandName";
 import { FeatureRequestForm } from "@/components/FeatureRequestForm";
 import { Logo } from "@/components/Logo";
+import { TrackedLink } from "@/components/TrackedLink";
 
 export const metadata = {
   title: "HeadshotDesk | Team headshot shoots, from signup to delivery",
@@ -369,7 +370,7 @@ export default function HomePage() {
           <Link href={"/for-clients" as Route} className="hidden text-muted-600 transition hover:text-ink sm:inline">For clients</Link>
           <Link href="/help" className="hidden text-muted-600 transition hover:text-ink sm:inline">Help</Link>
           <Link href="/login" className="hidden text-muted-600 transition hover:text-ink sm:inline">Log in</Link>
-          <Link href="/signup" className="btn-primary text-sm">Try it free</Link>
+          <TrackedLink event="Start free clicked" where="nav" href="/signup" className="btn-primary text-sm">Try it free</TrackedLink>
         </nav>
       </header>
 
@@ -387,7 +388,7 @@ export default function HomePage() {
             person, and everyone gets their own private gallery with one click.
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Link className="btn-primary" href="/signup">Try it free</Link>
+            <TrackedLink event="Start free clicked" where="hero" className="btn-primary" href="/signup">Try it free</TrackedLink>
             <a className="btn-secondary" href="#how-it-works">See how it works</a>
           </div>
           <p className="text-xs text-muted-400">Free during beta · No credit card</p>
@@ -783,7 +784,7 @@ export default function HomePage() {
             the roadmap. Pricing comes later; your jobs and photos stay yours either way.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link className="btn-primary" href="/signup">Create your account</Link>
+            <TrackedLink event="Start free clicked" where="closing" className="btn-primary" href="/signup">Create your account</TrackedLink>
             <a className="btn-secondary" href="mailto:info@headshotdesk.com?subject=HeadshotDesk beta">Questions? Email us</a>
           </div>
         </div>
