@@ -11,6 +11,8 @@
 // change between shoots and retyping it every time guarantees it goes stale
 // on half of them.
 
+import type { Route } from "next";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { FormField } from "@/components/FormField";
@@ -187,6 +189,11 @@ export default function SettingsPage() {
       <p className="mt-1 text-sm text-muted-600">
         Everything on this page is shown to participants, on your signup
         pages and in their galleries. Leave anything blank to hide it.
+      </p>
+      <p className="mt-2 text-sm">
+        <Link href={"/settings/billing" as Route} className="font-medium text-accent hover:underline">
+          Plan and billing
+        </Link>
       </p>
 
       <div className="mt-8 rounded-card border border-muted-200 bg-paper p-5">

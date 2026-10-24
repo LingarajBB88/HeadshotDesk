@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     admin,
     auth,
+    billing,
     clients,
     files,
     gallery,
@@ -203,5 +204,7 @@ app.include_router(
     studio.router, prefix="/api/v1", tags=["studio"], dependencies=verified
 )
 
-# Wired up as features ship:
-# app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])
+# HSD-21 billing. Not behind the verified-email gate at router level: the
+# Stripe webhook carries no user at all and authenticates by signature.
+# The other routes require a signed-in account through their own deps.
+app.include_router(billing.router, prefix="/api/v1/billing", tags=["billing"])

@@ -15,6 +15,7 @@ from app.schemas.job import (
 )
 from app.schemas.slots import BookSlotForParticipantRequest, ScheduleEntryOut, ScheduleOut
 from app.services import (
+    billing_service,
     job_service,
     notify_service,
     participant_service,
@@ -48,6 +49,7 @@ def create(
     account: Account = Depends(get_current_account),
     db: Session = Depends(get_db),
 ) -> JobOut:
+    billing_service.require_can_create_job(db, account)
     job = job_service.create_job(
         db,
         account=account,
@@ -128,6 +130,7 @@ def deliver(
     who weren't reached on the first pass. Pass include_already_delivered=true
     to resend to everyone with photos + email.
     """
+    billing_service.require_can_deliver(account)
     result = job_service.deliver_galleries(
         db,
         account=account,

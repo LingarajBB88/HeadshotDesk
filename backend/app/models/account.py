@@ -20,6 +20,14 @@ class Account(Base):
 
     plan: Mapped[str] = mapped_column(String, nullable=False, default="trial")
     plan_renews_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Mirrored from Stripe by the webhook (HSD-21). Stripe is the source of
+    # truth; these exist so a request can decide entitlement without a
+    # network call.
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    subscription_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # "usd" or "eur", fixed at first checkout.
+    billing_currency: Mapped[str | None] = mapped_column(String, nullable=True)
     hibernate_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # This account's own share link: /r/{referral_code}. Every account gets
@@ -132,8 +140,8 @@ class Account(Base):
             # 'beta' is a free seat drawn from the capped pool. It behaves
             # like a paid plan (nothing expires) but costs nothing and is
             # counted separately so the pool can't be overspent.
-            "plan IN ('trial', 'beta', 'solo', 'pro', 'studio', 'hibernate', "
-            "'cancelled')",
+            "plan IN ('trial', 'beta', 'starter', 'solo', 'pro', 'studio', "
+            "'hibernate', 'cancelled')",
             name="ck_accounts_plan",
         ),
     )

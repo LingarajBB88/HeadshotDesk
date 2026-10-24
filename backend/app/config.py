@@ -97,11 +97,26 @@ class Settings(BaseSettings):
     # --- Stripe ---
     stripe_secret_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
+    # Price IDs per plan and currency (D-023). A plan/currency pair with
+    # no price configured is simply not offered, so EUR can be switched on
+    # later by adding its prices, with no code change.
+    stripe_price_starter_usd: str = Field(default="")
+    stripe_price_pro_usd: str = Field(default="")
+    stripe_price_starter_eur: str = Field(default="")
+    stripe_price_pro_eur: str = Field(default="")
+    # Legacy names from the D-007 ladder; unused, kept so old env files load.
     stripe_price_solo: str = Field(default="")
     stripe_price_pro: str = Field(default="")
     stripe_price_studio: str = Field(default="")
     stripe_price_hibernate: str = Field(default="")
-    stripe_price_ai_overage: str = Field(default="")  # metered
+    stripe_price_ai_overage: str = Field(default="")
+
+    @property
+    def billing_enabled(self) -> bool:
+        """Billing, and every paywall that depends on it, only switches on
+        once Stripe is configured. Until then nobody is locked out of
+        anything for lack of a way to pay."""
+        return bool(self.stripe_secret_key and self.stripe_price_pro_usd)
 
     # --- Admin (HSD-66) ---
     # Comma-separated list of user emails allowed into the operator

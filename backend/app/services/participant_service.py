@@ -19,7 +19,13 @@ from app.core.ids import new_id
 from app.core.security import generate_refresh_token  # reused for opaque tokens
 from app.models import Account, Job, Participant, User
 from app.schemas.participant import ParticipantCreate
-from app.services import email_service, job_service, profile_service, slot_service
+from app.services import (
+    billing_service,
+    email_service,
+    job_service,
+    profile_service,
+    slot_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +114,7 @@ def add_participant(
     title: str | None,
 ) -> Participant:
     job = job_service.get_job(db, account=account, job_id=job_id)
+    billing_service.require_can_add_participants(db, account)
 
     if email:
         existing = db.scalar(
@@ -190,6 +197,7 @@ def resend_gallery_email(
     """
     from app.models import File
 
+    billing_service.require_can_deliver(account)
     p = get_participant(db, account=account, participant_id=participant_id)
     if not p.email:
         raise HTTPException(
@@ -440,6 +448,7 @@ def import_csv(
     Duplicate emails (within this job) are silently deduplicated.
     """
     job_service.get_job(db, account=account, job_id=job_id)
+    billing_service.require_writable(account)
 
     csv_text = _preprocess_csv(csv_text)
     if not csv_text.strip():
@@ -540,6 +549,14 @@ def import_csv(
             pending_bookings.append((i, participant, wanted_time))
 
     if created > 0:
+        # Starter's participant cap applies to the batch as a whole: refuse
+        # the import rather than keep an arbitrary first 40.
+        try:
+            db.flush()
+            billing_service.require_can_add_participants(db, account, adding=0)
+        except HTTPException:
+            db.rollback()
+            raise
         job_service.maybe_advance_status(job, "open_for_signup")
 
     db.commit()
@@ -683,6 +700,17 @@ def public_signup(
     )
     if existing is not None:
         return existing, False
+
+    # A full Starter account, or a read-only one, can't take new signups.
+    # Said to the participant in their terms, not the photographer's plan.
+    owner = db.get(Account, job.account_id)
+    try:
+        billing_service.require_can_add_participants(db, owner)
+    except HTTPException:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This shoot isn't taking new signups right now. Please contact your photographer.",
+        )
 
     participant = Participant(
         id=new_id("part"),

@@ -46,6 +46,24 @@ def _gallery_open(job: Job) -> bool:
     return job.archived_at is None and job.delivery_mode != "client"
 
 
+def _shareable(db: Session, job: Job, participant: Participant) -> bool:
+    """Sharing a gallery is part of a paid plan (D-023). A gallery delivered
+    while the account was paying stays live afterwards; a trial account's
+    galleries open only once it subscribes. The photographer previews in
+    the app, not through this link."""
+    if participant.gallery_sent_at is not None:
+        return True
+    from app.models import Account
+    from app.services import billing_service
+
+    account = db.get(Account, job.account_id)
+    try:
+        billing_service.require_can_deliver(account)
+    except HTTPException:
+        return False
+    return True
+
+
 def _resolve_participant(db: Session, token: str) -> Participant:
     """Look up a participant by gallery token. 404 generically on miss so we
     don't leak whether the token is malformed vs. unknown."""
@@ -113,7 +131,7 @@ def get_gallery(db: Session, *, token: str) -> dict:
     """
     participant = _resolve_participant(db, token)
     job = db.get(Job, participant.job_id)
-    if job is None or not _gallery_open(job):
+    if job is None or not _gallery_open(job) or not _shareable(db, job, participant):
         # If the job is archived, treat the gallery as gone too. Same generic
         # 404 — don't tell the participant their photographer archived the job.
         raise HTTPException(
@@ -247,7 +265,7 @@ def set_pick(
     """
     participant = _resolve_participant(db, token)
     job = db.get(Job, participant.job_id)
-    if job is None or not _gallery_open(job):
+    if job is None or not _gallery_open(job) or not _shareable(db, job, participant):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Gallery not found."
         )
@@ -435,7 +453,7 @@ def download_zip_for_gallery(
     participant = _resolve_participant(db, token)
 
     job = db.get(Job, participant.job_id)
-    if job is None or not _gallery_open(job):
+    if job is None or not _gallery_open(job) or not _shareable(db, job, participant):
         # Match get_gallery's behavior — archived job = no gallery.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Gallery not found."

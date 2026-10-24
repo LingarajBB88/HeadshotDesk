@@ -170,6 +170,11 @@ Deferred: Studio launch details; an annual discount (17 to 20%) after the first 
 **Decision:** Plausible (paid plan from 2026-10) for website analytics and custom events (`Signup`, `Job created`, `Start free clicked`, `Demo clicked`), sent through `frontend/lib/track.ts`. The script is never loaded on `/g/ /q/ /c/ /r/`, whose paths carry access tokens. See `docs/ANALYTICS.md`.
 **Why:** Cookieless and privacy-first like Cloudflare's free analytics, but with goals, UTM conversion, scroll depth, and funnels, which is what tells us which channel produces accounts rather than visits. Replaces PostHog from D-018 for marketing-site analytics; product analytics in the app can be revisited later.
 
+### D-026 — Payments: Stripe, not Mollie (2026-10-24)
+**Decision:** Stripe Billing (Checkout, Customer Portal, webhook) for subscriptions. USD first; EUR prices can be added later as configuration only, with each customer's currency fixed at first checkout.
+**Why:** US-first customers paying by card; hosted checkout and self-serve billing management without building them; Stripe Tax for US and EU tax; one provider with the planned Stripe Connect for paid extras (F8 Phase 3). Mollie is stronger for iDEAL and SEPA in the Benelux but would need much of the subscription management built by hand, and Stripe also supports iDEAL.
+**Implementation:** `docs/BILLING.md`. Paywalls stay off until Stripe keys are configured.
+
 ---
 
 ## Decisions still pending (move to above when made)

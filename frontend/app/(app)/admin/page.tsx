@@ -308,7 +308,7 @@ export default function AdminPage() {
 
       {/* --- Business metrics ------------------------------------------ */}
       <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <MetricTile label="MRR" value={`€${overview.mrr_eur}`} />
+        <MetricTile label="MRR (list, USD)" value={`$${overview.mrr_eur}`} />
         <MetricTile label="Paying customers" value={overview.paying_customers} />
         <MetricTile label="Trials in flight" value={overview.trials_in_flight} />
         <MetricTile label="Soft-locked" value={overview.soft_locked} />

@@ -234,7 +234,7 @@ export default function JobDetailPage() {
         skipped_no_email: 0,
         // A 400 carries a reason worth reading (no client email, say).
         errors: [
-          err instanceof ApiError && err.status === 400 && err.message
+          err instanceof ApiError && (err.status === 400 || err.status === 402) && err.message
             ? err.message
             : "Couldn't reach the server. Try again?",
         ],

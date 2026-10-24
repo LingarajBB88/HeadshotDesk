@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { PlanBanner } from "@/components/PlanBanner";
 import { VerifyEmailGate } from "@/components/VerifyEmailGate";
 import { type Account, type User, fetchMe, logout } from "@/lib/auth";
 
@@ -117,6 +118,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      <PlanBanner />
       <main className="mx-auto max-w-[1400px] px-4 sm:px-6 py-6 sm:py-10 print:max-w-none print:p-0">
         {children}
       </main>

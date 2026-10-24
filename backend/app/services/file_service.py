@@ -190,6 +190,9 @@ async def upload_files(
     Returns a summary: { uploaded: [FileOut...], skipped: [filename...],
                          matched: int, unmatched: int }
     """
+    from app.services import billing_service
+
+    billing_service.require_writable(account)
     job = job_service.get_job(db, account=account, job_id=job_id)
 
     participants = list(

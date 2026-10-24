@@ -31,9 +31,10 @@ router = APIRouter(dependencies=[Depends(require_admin)])
 
 TRIAL_DAYS = 31
 
-# Monthly price per plan in EUR — mirrors the public pricing page. Used for
-# the MRR headline until Stripe is the source of truth.
-PLAN_PRICES = {"solo": 29, "pro": 44, "studio": 89, "hibernate": 7}
+# Monthly list price per plan (D-023, USD). Used for the MRR headline; Stripe
+# remains the source of truth for what was actually charged. 'solo' and
+# 'studio' are the old D-007 names, priced as their nearest current plan.
+PLAN_PRICES = {"starter": 29, "solo": 29, "pro": 59, "studio": 59, "hibernate": 10}
 
 
 def _utcnow() -> datetime:
@@ -48,7 +49,7 @@ def _derive_status(account: Account) -> tuple[str, int | None]:
     admin "extend trial" action), and signup + 31 days is the fallback for
     rows created before trial_ends_at existed.
     """
-    if account.plan in ("solo", "pro", "studio"):
+    if account.plan in ("starter", "solo", "pro", "studio"):
         return "active", None
     if account.plan == "beta":
         # A free seat from the capped pool. Nothing expires, but it's not
@@ -255,7 +256,7 @@ class AdminAccountUpdate(BaseModel):
     extend_trial_days: int | None = None
 
 
-VALID_PLANS = ("trial", "solo", "pro", "studio", "hibernate", "cancelled")
+VALID_PLANS = ("trial", "beta", "starter", "solo", "pro", "studio", "hibernate", "cancelled")
 
 
 @router.patch("/accounts/{account_id}", response_model=AdminAccountRow)

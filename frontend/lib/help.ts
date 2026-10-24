@@ -203,6 +203,55 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     related: ["create-a-job", "deliver-emails"],
   },
+  {
+    slug: "plans-and-billing",
+    title: "Plans, the free month, and billing",
+    category: "Getting started",
+    summary: "What the free month includes, what Starter and Pro add, and how to change or cancel.",
+    intro: [
+      "Every new account starts with a free month, no card needed. It is meant for running a real shoot from start to finish, so you can see the whole flow before paying.",
+    ],
+    keywords: ["plan", "plans", "pricing", "price", "billing", "trial", "free month", "starter", "pro", "subscribe", "subscription", "cancel", "invoice", "card", "stripe", "upgrade"],
+    sections: [
+      {
+        id: "free-month",
+        heading: "The free month",
+        body: [
+          "During the free month you can create jobs, add people by link, CSV or by hand, run the shoot queue, upload and match photos, and look through every gallery in the app.",
+          "Sending photos is what a plan pays for: delivery emails, gallery links that open for participants, and the handover link for your client. The Deliver button tells you this and links to the plans.",
+          "When the month ends without a plan, the account becomes read-only. Nothing is deleted. Choosing a plan unlocks everything again, with all your jobs where you left them.",
+        ],
+      },
+      {
+        id: "plans",
+        heading: "Starter and Pro",
+        items: [
+          { term: "Starter", def: "One active job at a time and up to 40 participants across your active jobs. Archiving a finished job frees the slot for the next one." },
+          { term: "Pro", def: "Unlimited jobs and participants." },
+        ],
+        body: [
+          "Both include everything else: signup pages, time slots, the shoot queue, the watch folder, galleries, client branding, the client dashboard and delivery. Prices are on the Plan and billing page.",
+        ],
+      },
+      {
+        id: "manage",
+        heading: "Subscribing, changing, cancelling",
+        body: [
+          "Go to Settings, then Plan and billing. Choosing a plan opens a secure Stripe checkout; HeadshotDesk never sees your card.",
+          "Once you are subscribed, Manage billing opens Stripe's billing page, where you can switch between Starter and Pro, update your card, download invoices, or cancel.",
+          "If you cancel, the account becomes read-only at the end of the period you paid for. Galleries you already delivered stay online for the people in them.",
+        ],
+      },
+      {
+        id: "limits",
+        heading: "When a Starter limit is reached",
+        body: [
+          "Creating a second active job, or adding a 41st participant, is refused with a note explaining the limit. On your public signup page, new visitors see that the shoot isn't taking signups and are asked to contact you, rather than anything about your plan.",
+        ],
+      },
+    ],
+    related: ["job-statuses", "deliver-emails"],
+  },
 
   // ------------------------------------------------------------------
   // Participants

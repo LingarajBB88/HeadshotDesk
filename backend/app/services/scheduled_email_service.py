@@ -87,7 +87,7 @@ def send_trial_ending(db: Session) -> int:
                 studio_name=account.name,
                 days_left=days_left,
                 ends_on=account.trial_ends_at.strftime("%-d %B"),
-                pricing_url=f"{settings.frontend_url}/pricing",
+                pricing_url=f"{settings.frontend_url}/settings/billing",
             )
         except Exception:  # noqa: BLE001 — one bad address can't stop the batch
             logger.exception("Trial-ending email failed (account=%s)", account.id)
@@ -132,7 +132,7 @@ def send_trial_ended(db: Session) -> int:
                 to_email=owner.email,
                 user_name=owner.name,
                 studio_name=account.name,
-                pricing_url=f"{settings.frontend_url}/pricing",
+                pricing_url=f"{settings.frontend_url}/settings/billing",
             )
         except Exception:  # noqa: BLE001
             logger.exception("Trial-ended email failed (account=%s)", account.id)
