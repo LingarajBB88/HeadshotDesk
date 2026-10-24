@@ -13,11 +13,14 @@ container restarts.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from app.config import settings
 
-_LOCAL_ROOT = Path("/app/uploads")
+# /app/uploads inside the container. Overridable so tests can run outside
+# Docker (CI), where /app does not exist.
+_LOCAL_ROOT = Path(os.environ.get("LOCAL_STORAGE_ROOT", "/app/uploads"))
 
 
 def _is_local_mode() -> bool:
