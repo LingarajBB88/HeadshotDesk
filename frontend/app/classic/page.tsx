@@ -187,8 +187,8 @@ const ROADMAP_TIMELINE: {
   },
   {
     status: "next",
-    title: "AI retouching and background swap",
-    detail: "Consistent, on-brand headshots without the editing evenings.",
+    title: "A folder bridge to your retouching tool",
+    detail: "Send picks to Evoto or any tool with a hot folder, and the finished files come back on their own.",
   },
 ];
 
@@ -418,7 +418,6 @@ export default function HomePage() {
               it: chasing names, renaming, sorting, zipping, emailing, and
               answering &ldquo;can you resend mine?&rdquo; Participants even
               star the shots they want, so you retouch a decided list.
-              AI retouching is on the roadmap, not shipped.
             </p>
           </div>
 

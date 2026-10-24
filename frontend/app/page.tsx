@@ -164,7 +164,7 @@ const ROADMAP: { status: "shipped" | "building" | "next"; title: string; detail:
   { status: "shipped", title: "Client status dashboard", detail: "Signups, bookings, and delivery progress without asking you." },
   { status: "building", title: "Subscriptions and billing", detail: "Solo, Pro, and Studio plans with a one-month trial, no card needed to start." },
   { status: "next", title: "Paid extra downloads", detail: "Participants can buy photos beyond the included allowance." },
-  { status: "next", title: "AI retouching and background swap", detail: "Roadmap only, not shipped." },
+  { status: "next", title: "A folder bridge to your retouching tool", detail: "Send picks to Evoto or any tool with a hot folder, and the finished files come back on their own." },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -679,10 +679,10 @@ export default function HomePage() {
               <p className="text-sm leading-relaxed text-ink">Participants star the shots they want, so your retouch list is decided before you open an editor. One click emails every person a private gallery. Links don&apos;t expire, re-downloads are free.</p>
             </div>
           </div>
-          {/* Honesty note: we don't retouch for you (yet). */}
+          {/* Honesty note: we don't retouch, and won't (Path B, D-024). */}
           <p className="mt-8 max-w-2xl text-xs text-muted-400">
             Retouching stays yours, whether that&apos;s an hour in Evoto or a few
-            evenings by hand. AI retouching is on the roadmap, not shipped.
+            evenings by hand. <BrandName /> does the admin around it.
           </p>
         </div>
       </section>

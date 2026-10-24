@@ -11,7 +11,7 @@ const interTight = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tig
 export const metadata: Metadata = {
   title: "HeadshotDesk | Headshot workflow for photographers",
   description:
-    "Run team and event headshot shoots with auto-renaming, branded galleries, and AI retouching built in.",
+    "Software for photographers who shoot team and event headshots. From signup to delivered galleries, in one flow.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
