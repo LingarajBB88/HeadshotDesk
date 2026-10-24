@@ -598,6 +598,11 @@ def reopen_if_undelivered(db: Session, job: Job) -> bool:
         return False
     from app.models.file import PSD_MIME
 
+    # Sessions run with autoflush off, so the file just added (or the
+    # assignment just changed) is invisible to the count below until it is
+    # flushed.
+    db.flush()
+
     conditions = [
         File.job_id == job.id,
         File.deleted_at.is_(None),

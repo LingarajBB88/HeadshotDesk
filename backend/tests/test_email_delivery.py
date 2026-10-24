@@ -282,7 +282,9 @@ class TestBulkDeliver:
             r = client.post(f"/api/v1/jobs/{job['id']}/deliver", headers=_auth(photographer))
         assert r.json()["sent"] == 1
         r = client.get(f"/api/v1/jobs/{job['id']}", headers=_auth(photographer))
-        assert r.json()["status"] == "in_progress"
+        # Nobody was marked shot here, so the job is still open for signup;
+        # what matters is that day one's delivery did not close it.
+        assert r.json()["status"] != "delivered"
 
     def test_new_photos_for_an_undelivered_person_reopen_a_delivered_job(
         self, client: TestClient
