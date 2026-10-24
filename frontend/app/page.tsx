@@ -395,7 +395,7 @@ export default function HomePage() {
             <TrackedLink event="Start free clicked" where="hero" className="btn-primary" href="/signup">Try it free</TrackedLink>
             {DEMO_URL ? (
               <TrackedLink event="Demo clicked" where="hero" className="btn-secondary" href={DEMO_URL as Route} target="_blank" rel="noopener noreferrer">
-                Book a 15-min walkthrough
+                Book a 30-min walkthrough
               </TrackedLink>
             ) : (
               <a className="btn-secondary" href="#how-it-works">See how it works</a>
@@ -797,7 +797,7 @@ export default function HomePage() {
             <TrackedLink event="Start free clicked" where="closing" className="btn-primary" href="/signup">Create your account</TrackedLink>
             {DEMO_URL ? (
               <TrackedLink event="Demo clicked" where="closing" className="btn-secondary" href={DEMO_URL as Route} target="_blank" rel="noopener noreferrer">
-                Book a 15-min walkthrough
+                Book a 30-min walkthrough
               </TrackedLink>
             ) : null}
             <a className="btn-secondary" href="mailto:info@headshotdesk.com?subject=HeadshotDesk beta">Questions? Email us</a>

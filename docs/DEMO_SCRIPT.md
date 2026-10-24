@@ -1,6 +1,6 @@
 # Founder walkthrough (HSD-81)
 
-Fifteen minutes, screen shared, run by Lingaraj. Roughly five demos make one
+Thirty minutes, screen shared, run by Lingaraj. Roughly five demos make one
 customer, so the first ten customers are about fifty of these.
 
 ## Before the call (2 minutes)
@@ -17,22 +17,25 @@ customer, so the first ten customers are about fifty of these.
 
 ## The call
 
-1. **Their pain, first (3 min).** "How do you deliver photos after a 50-person
+1. **Their pain, first (5 min).** "How do you deliver photos after a 50-person
    shoot today?" Let them describe it: the spreadsheet, the renaming evening,
    WeTransfer, "which one was me?". Write down the hours they mention.
-2. **The magic moment (4 min).** Shoot screen: tap the next name, it is on the
+2. **The magic moment (8 min).** Shoot screen: tap the next name, it is on the
    clipboard; show the private note under the person; mark shot. Then the job
    page: photos filed under the right person, per-day status ("day one
    delivered, day two waiting").
-3. **Their participant's view (3 min).** The gallery in the private window:
+3. **Their participant's view (5 min).** The gallery in the private window:
    only their photos, star a favourite, the download limit. Then the client
    dashboard: what HR sees without emailing them.
-4. **The time maths (2 min).** Their hours from step 1 against this: signup
+4. **The time maths (3 min).** Their hours from step 1 against this: signup
    link instead of collecting names, no renaming, one click to deliver. Say
    the number back to them.
-5. **Close (2 min).** "The first month is free, no card. Run your next real
-   shoot on it, and I'll set it up with you." Book that setup call before
-   hanging up.
+5. **Their questions (5 min).** Let them steer: their capture software,
+   their delivery rules, their clients' HR. Answer with the product on
+   screen where you can.
+6. **Close (4 min).** "The first month is free, no card. Run your next real
+   shoot on it, and I'll set it up with you." Create their account together
+   if they're ready, or book the setup call before hanging up.
 
 ## After the call
 
@@ -42,11 +45,11 @@ booked → held → trials started → paid.
 
 ## Setting up the booking link (once)
 
-The "Book a 15-min walkthrough" buttons on the home page stay hidden until a
+The "Book a 30-min walkthrough" buttons on the home page stay hidden until a
 booking link is configured.
 
 1. Google Calendar → **Create** → **Appointment schedule**. Title "HeadshotDesk
-   walkthrough", 15 minutes, your available hours, a buffer of 15 minutes
+   walkthrough", 30 minutes, your available hours, a buffer of 15 minutes
    between bookings, and Google Meet as the location. Ask for the booker's
    name, email, and "How many people do you usually shoot per job?".
 2. Save, then **Share** → copy the booking page link (it looks like
