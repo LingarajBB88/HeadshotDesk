@@ -19,6 +19,7 @@ A running list of meaningful decisions and the reasoning behind each. Append-onl
 **Why:** User comfort with Python; Next.js is the standard for modern minimal SaaS frontends; R2 has S3 compatibility with cheaper egress; Vercel + Render gets us live without server admin.
 
 ### D-004 — AI strategy: build in-app, not integrate Evoto
+**Status:** Superseded on 2026-07-25 by D-024 (Path B: Evoto via hot folder). Kept for the record.
 **Decision:** Build AI features natively using hosted model APIs (Replicate, PhotoRoom).
 **Why:** Evoto has no public API. Filesystem integration is brittle and forces customers to maintain a separate Evoto subscription. In-app gives controlled UX and is the differentiator vs. competitors.
 
@@ -31,6 +32,7 @@ A running list of meaningful decisions and the reasoning behind each. Append-onl
 **Why:** Smaller MVP scope, validates self-capture before building marketplace mechanics (vetting, payouts, ratings).
 
 ### D-007 — Pricing tiers
+**Status:** Superseded on 2026-07-25 by D-023. The AI allotments below no longer apply (see D-024).
 **Decision:**
 - Solo: $29/mo (1 photographer, 5 active jobs, 200 AI images included)
 - Pro: $44/mo (unlimited jobs, 1000 AI images included)
@@ -85,6 +87,7 @@ A running list of meaningful decisions and the reasoning behind each. Append-onl
 **Why:** Zero egress fees vs S3 = $0 vs $90/mo per TB downloaded. Hibernate cold-tier optimization keeps that $7/mo plan margin-positive.
 
 ### D-016 — AI: Replicate + PhotoRoom for MVP, abstract for future swap
+**Status:** Superseded on 2026-07-25 by D-024. HeadshotDesk hosts no AI processing.
 **Decision:** Replicate (pay-per-call) for skin retouch + face restoration, PhotoRoom Pro ($99/mo, only after v0.2 launches) for background removal. Build AI service behind one interface so we can swap.
 **Why:** Fastest integration. PhotoRoom quality > open-source for portraits. Migration trigger: >5,000 images/day → move to Modal or self-hosted GPU (3-5× cheaper at volume).
 
@@ -131,11 +134,45 @@ The three original concept drafts (`logo-concept-a/b/c.svg`) remain in `docs/` f
 
 ---
 
+## 2026-07-25 — Pricing, trial, and retouching strategy
+
+### D-023 — Free trial and billing model (locked 2026-07-25)
+**Decision:** Tiers at launch, USD only:
+
+| Tier | Price / month | Included |
+|---|---|---|
+| Starter | $29 | 1 active job, 40 participants in total |
+| Pro | $59 | Unlimited jobs and participants |
+| Studio | Coming soon (v0.2) | Pro plus white-label, priority support, one-click job setup, Evoto integration polish. Details still open; earlier placeholder price $74. |
+| Hibernate | $10 | Read-only for paying customers going seasonal: galleries stay live, no new jobs. |
+
+Free trial: one month, no card required. The principle is free to test the workflow, pay to deliver real work.
+- Free during the trial: creating jobs, adding participants (manual, CSV, public signup link), shoot mode, uploads, the watch folder, and the photographer previewing galleries.
+- Paid only, always: sharing a gallery link with a participant, delivery emails, and (probably) branded galleries.
+- Day 31: soft lock. The account becomes read-only, data is kept, and subscribing unlocks it at any time. No dunning and no involuntary charges, since no card is on file until the photographer chooses to pay.
+
+Add-on revenue (F6 paid extras, v0.2): HeadshotDesk takes 0%; the photographer keeps everything. Revisit a small share once F6 has traction.
+
+Deferred: Studio launch details; an annual discount (17 to 20%) after the first 100 paying customers.
+
+**Why:** Starter undercuts every competitor and is a true entry price for solo and low-volume work. Pro anchors at parity with HeadshotTools' $59 flat rate and is the default choice. A premium tier before the v0.2 features exist would be empty. The trial lets a photographer run one real shoot end to end before paying, which is the activation moment.
+**Watch:** Starter's 1 active job and 40 participants is tight by design. After six months, if more than 30% of Starter cancellations cite the cap rather than upgrading, loosen it to 2 active jobs.
+**Implementation status (2026-10):** Stripe billing (HSD-21) not built yet. Trial-ending and trial-ended emails exist but are switched off (`trial_emails_enabled = False`) until billing ships, because their call to action had nowhere to go.
+
+### D-024 — Retouching: integrate Evoto via hot folder, no native AI (Path B, supersedes D-004 and D-016)
+**Decision:** HeadshotDesk does not build or host AI retouching, background swap, or skin work. Photographers keep their own retouching tool (Evoto, Retouch4Me, Imagen, or by hand) and connect it through folders: HeadshotDesk exports picks to the tool's hot folder and picks finished files back up from its export folder.
+**Why:** Photographers already pay for and trust these tools; meeting them where they work beats asking them to switch. It removes per-tier AI credits and overage maths from pricing (D-023), lowers cost to serve, and keeps HeadshotDesk focused on the workflow around the camera, which is where competitors are weakest. The original objection in D-004 (no Evoto API, brittle filesystem integration) is answered by the watch folder already proving reliable in production.
+**Consequences:** No "AI included" claims anywhere in product or marketing copy. Evoto is presented as a partner. The v0.2 story is the Evoto help guide (HSD-73), the hot-folder pipeline (HSD-72), and the job setup wizard (HSD-74).
+
+## 2026-10 — Analytics
+
+### D-025 — Web analytics: Plausible, never on token routes
+**Decision:** Plausible (paid plan from 2026-10) for website analytics and custom events (`Signup`, `Job created`, `Start free clicked`, later `Demo booked`), sent through `frontend/lib/track.ts`. The script is never loaded on `/g/ /q/ /c/ /r/`, whose paths carry access tokens. See `docs/ANALYTICS.md`.
+**Why:** Cookieless and privacy-first like Cloudflare's free analytics, but with goals, UTM conversion, scroll depth, and funnels, which is what tells us which channel produces accounts rather than visits. Replaces PostHog from D-018 for marketing-site analytics; product analytics in the app can be revisited later.
+
+---
+
 ## Decisions still pending (move to above when made)
-- Final brand name (currently working as HeadshotDesk)
-- Logo direction (3 options drafted: A aperture, B wordmark, C monogram)
-- Primary accent color (3 options drafted in BRAND.md; recommendation: B Cool Studio)
-- Domain name
-- Whether to add per-shoot "Day Pass" SKU at launch or wait for v2
-- Free trial vs. money-back guarantee
+- Studio tier contents and price (placeholder $74, see D-023)
+- Whether to add a per-shoot "Day Pass" SKU at launch or wait for v2
 - Photographer beta tester recruitment plan
