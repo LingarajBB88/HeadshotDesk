@@ -74,7 +74,7 @@ class TestEntitlement:
         expired = entitlement(self._acct("trial", trial_ends_at=now - timedelta(days=1)))
         assert expired.state == "expired" and expired.read_only
         starter = entitlement(self._acct("starter"))
-        assert starter.can_deliver and starter.max_active_jobs == 1 and starter.max_participants == 40
+        assert starter.can_deliver and starter.max_active_jobs == 1 and starter.max_participants is None
         for p in ("pro", "solo", "studio", "beta"):
             e = entitlement(self._acct(p))
             assert e.can_deliver and e.max_active_jobs is None, p
@@ -149,33 +149,38 @@ class TestPaywallsOn:
         assert client.get("/api/v1/billing", headers=_auth(tok)).json()["read_only"] is True
 
     def test_starter_limits(self, client: TestClient, billing_on, db_session):
-        from app.models import Participant
-        from app.core.security import generate_refresh_token
-
         a = _signup(client)
         tok = a["tokens"]["access_token"]
         _set_plan(db_session, a["account"]["id"], "starter")
         job = _job(client, tok).json()
         r = _job(client, tok, "Second")
         assert r.status_code == 402 and "one active job" in r.json()["detail"]
+        # Archiving the first frees the slot.
+        client.post(f"/api/v1/jobs/{job['id']}/archive", headers=_auth(tok))
+        assert _job(client, tok, "Third").status_code == 201
 
-        for i in range(40):
-            db_session.add(
-                Participant(
-                    id=new_id("part"), job_id=job["id"], name=f"Person {i}",
-                    email=f"p{i}_{uuid.uuid4().hex[:4]}@example.com",
-                    gallery_token=generate_refresh_token(),
-                )
+    def test_starter_has_no_participant_cap(self, client: TestClient, billing_on, db_session):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        _set_plan(db_session, a["account"]["id"], "starter")
+        job = _job(client, tok).json()
+        for i in range(45):
+            r = client.post(
+                f"/api/v1/jobs/{job['id']}/participants",
+                json={"name": f"Person {i}", "email": f"p{i}_{uuid.uuid4().hex[:4]}@example.com"},
+                headers=_auth(tok),
             )
-        db_session.commit()
-        r = client.post(
-            f"/api/v1/jobs/{job['id']}/participants",
-            json={"name": "One Too Many", "email": "many@example.com"},
-            headers=_auth(tok),
-        )
-        assert r.status_code == 402
-        # The public signup page refuses in the participant's terms.
+            assert r.status_code == 201, r.text
+
+    def test_read_only_account_refuses_public_signups_politely(self, client: TestClient, billing_on, db_session):
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        job = _job(client, tok).json()
         client.patch(f"/api/v1/jobs/{job['id']}", json={"status": "open_for_signup"}, headers=_auth(tok))
+        _set_plan(
+            db_session, a["account"]["id"], "trial",
+            trial_ends_at=datetime.now(timezone.utc) - timedelta(days=2), plan_renews_at=None,
+        )
         r = client.post(
             f"/api/v1/public/jobs/{job['public_slug']}/signup",
             json={"name": "Walk In", "email": "walkin@example.com", "consent": True},

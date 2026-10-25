@@ -226,7 +226,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "plans",
         heading: "Starter and Pro",
         items: [
-          { term: "Starter", def: "One active job at a time and up to 40 participants across your active jobs. Archiving a finished job frees the slot for the next one." },
+          { term: "Starter", def: "One active job at a time, with as many participants as the shoot needs. Archiving a finished job frees the slot for the next one." },
           { term: "Pro", def: "Unlimited jobs and participants." },
         ],
         body: [
@@ -246,7 +246,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         id: "limits",
         heading: "When a Starter limit is reached",
         body: [
-          "Creating a second active job, or adding a 41st participant, is refused with a note explaining the limit. On your public signup page, new visitors see that the shoot isn't taking signups and are asked to contact you, rather than anything about your plan.",
+          "Creating a second active job on Starter is refused with a note explaining the limit; archive the finished one first. If your account is read-only, your public signup pages tell new visitors the shoot isn't taking signups and ask them to contact you, without mentioning your plan.",
         ],
       },
     ],

@@ -15,7 +15,7 @@ The rules, from D-023:
              workflow, pay to deliver real work").
   expired    trial over, nothing bought: read-only. Data kept, subscribe
              any time to unlock.
-  starter    everything, up to 1 active job and 40 participants.
+  starter    everything, one active job at a time, unlimited participants.
   pro        everything, unlimited. 'solo' and 'studio' (old ladder) count
              as unlimited too, so no early account loses anything.
   beta       a free seat: unlimited, nothing expires.
@@ -43,7 +43,10 @@ logger = logging.getLogger(__name__)
 
 TRIAL_DAYS = 31
 STARTER_ACTIVE_JOBS = 1
-STARTER_PARTICIPANTS = 40
+# No participant cap on Starter (Lingaraj, 2026-10-25): one active job
+# already defines the tier, and a cap would turn a good shoot into a
+# support ticket.
+STARTER_PARTICIPANTS: int | None = None
 
 PLANS_SOLD = ("starter", "pro")
 UNLIMITED_PAID = ("pro", "solo", "studio")

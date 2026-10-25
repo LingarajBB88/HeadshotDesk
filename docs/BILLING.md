@@ -17,7 +17,7 @@ nothing for anyone.
 |---|---|---|---|
 | trial (first month) | no | yes | none |
 | expired trial | no | read-only | |
-| starter | yes | yes | 1 active job, 40 participants across active jobs |
+| starter | yes | yes | 1 active job at a time; no participant cap (changed 2026-10-25) |
 | pro (and old solo, studio) | yes | yes | none |
 | beta seat | yes | yes | none, never expires, survives a cancelled subscription |
 | hibernate, cancelled | no | read-only | |
@@ -31,7 +31,7 @@ follows.
 
 1. Create the Stripe account (dashboard.stripe.com), business Panther
    Studios, and stay in **Test mode** until the end-to-end test below passes.
-2. **Products**: create "HeadshotDesk Starter" with a recurring monthly price
+2. **Products** (or let Claude create them through the Stripe connector in test mode): create "HeadshotDesk Starter" with a recurring monthly price
    of 29 USD, and "HeadshotDesk Pro" at 59 USD. Copy each **price ID**
    (`price_...`).
 3. **Customer Portal** (Settings → Billing → Customer portal): allow updating

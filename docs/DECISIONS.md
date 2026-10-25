@@ -141,7 +141,7 @@ The three original concept drafts (`logo-concept-a/b/c.svg`) remain in `docs/` f
 
 | Tier | Price / month | Included |
 |---|---|---|
-| Starter | $29 | 1 active job, 40 participants in total |
+| Starter | $29 | 1 active job at a time. (Participant cap of 40 dropped 2026-10-25: one active job already defines the tier.) |
 | Pro | $59 | Unlimited jobs and participants |
 | Studio | Coming soon (v0.2) | Pro plus white-label, priority support, one-click job setup, Evoto integration polish. Details still open; earlier placeholder price $74. |
 | Hibernate | $10 | Read-only for paying customers going seasonal: galleries stay live, no new jobs. |
@@ -156,7 +156,7 @@ Add-on revenue (F6 paid extras, v0.2): HeadshotDesk takes 0%; the photographer k
 Deferred: Studio launch details; an annual discount (17 to 20%) after the first 100 paying customers.
 
 **Why:** Starter undercuts every competitor and is a true entry price for solo and low-volume work. Pro anchors at parity with HeadshotTools' $59 flat rate and is the default choice. A premium tier before the v0.2 features exist would be empty. The trial lets a photographer run one real shoot end to end before paying, which is the activation moment.
-**Watch:** Starter's 1 active job and 40 participants is tight by design. After six months, if more than 30% of Starter cancellations cite the cap rather than upgrading, loosen it to 2 active jobs.
+**Watch:** Starter's single active job is tight by design. After six months, if more than 30% of Starter cancellations cite it rather than upgrading, loosen it to 2 active jobs.
 **Implementation status (2026-10):** Stripe billing (HSD-21) not built yet. Trial-ending and trial-ended emails exist but are switched off (`trial_emails_enabled = False`) until billing ships, because their call to action had nowhere to go.
 
 ### D-024 — Retouching: integrate Evoto via hot folder, no native AI (Path B, supersedes D-004 and D-016)

@@ -26,7 +26,7 @@ const PLANS: {
   {
     id: "starter",
     name: "Starter",
-    points: ["1 active job", "Up to 40 participants", "Everything else included"],
+    points: ["One active job at a time", "Unlimited participants", "Everything else included"],
   },
   {
     id: "pro",
@@ -107,8 +107,7 @@ function BillingInner() {
         </p>
         {b.max_active_jobs !== null ? (
           <p className="mt-2 text-sm text-muted-600">
-            Using {b.active_jobs} of {b.max_active_jobs} active job and {b.participants} of{" "}
-            {b.max_participants} participants.
+            {b.active_jobs} of {b.max_active_jobs} active job in use. Archive a finished job to start the next.
           </p>
         ) : null}
         {b.has_customer ? (
