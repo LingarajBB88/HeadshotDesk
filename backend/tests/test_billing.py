@@ -200,7 +200,9 @@ class FakeStripe:
             @staticmethod
             def create(**kw):
                 fake.calls.append(("customer", kw))
-                return {"id": "cus_123"}
+                # Unique like Stripe's: stripe_customer_id is unique on
+                # accounts, so a fixed ID collides across tests.
+                return {"id": f"cus_{secrets.token_hex(6)}"}
 
         class _Session:
             @staticmethod
@@ -235,7 +237,8 @@ class TestStripe:
         assert checkout["line_items"][0]["price"] == "price_pro_usd"
         assert checkout["client_reference_id"] == a["account"]["id"]
         db_session.expire_all()
-        assert db_session.get(Account, a["account"]["id"]).stripe_customer_id == "cus_123"
+        customer_id = db_session.get(Account, a["account"]["id"]).stripe_customer_id
+        assert customer_id and customer_id.startswith("cus_")
 
         # EUR isn't configured, so it isn't offered.
         r = client.post("/api/v1/billing/checkout", json={"plan": "pro", "currency": "eur"}, headers=_auth(tok))

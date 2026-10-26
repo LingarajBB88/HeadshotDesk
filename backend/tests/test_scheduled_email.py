@@ -107,7 +107,7 @@ class TestTrialEmails:
         assert scheduled_email_service.send_trial_ending(db_session) >= 1
         sent = outbox["send_trial_ending_email"]
         assert any(m["to_email"] == a["user"]["email"] for m in sent)
-        assert all("pricing" in m["pricing_url"] for m in sent)
+        assert all("/settings/billing" in m["pricing_url"] for m in sent)
 
     def test_silent_outside_the_window(
         self, client: TestClient, db_session, outbox
