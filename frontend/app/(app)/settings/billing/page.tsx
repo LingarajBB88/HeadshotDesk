@@ -12,10 +12,12 @@ import { Suspense, useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import {
   getBilling,
+  joinStudioWaitlist,
   openPortal,
   PLAN_PRICES,
   startCheckout,
   type BillingStatus,
+  type Interval,
 } from "@/lib/billing";
 
 const PLANS: {
@@ -35,6 +37,15 @@ const PLANS: {
   },
 ];
 
+// Studio is sold as a priced waitlist until its features exist (D-023).
+const STUDIO_POINTS = [
+  "Everything in Pro",
+  "Emails sent from your own domain",
+  "White-label galleries",
+  "Priority support, same business day",
+  "Onboarding call to set up your account and first job",
+];
+
 const STATE_LABEL: Record<string, string> = {
   trial: "Free month",
   expired: "Free month ended",
@@ -50,6 +61,7 @@ function BillingInner() {
   const [b, setB] = useState<BillingStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [interval, setInterval] = useState<Interval>("month");
 
   useEffect(() => {
     getBilling().then(setB).catch(() => setError("Couldn't load your plan."));
@@ -70,7 +82,9 @@ function BillingInner() {
   if (!b) return <p className="text-sm text-muted-600">Loading…</p>;
 
   const currency = (b.currency ?? b.currencies[0] ?? "usd").toLowerCase();
-  const prices = PLAN_PRICES[currency] ?? PLAN_PRICES.usd;
+  const yearly = b.intervals.includes("year");
+  const shownInterval: Interval = yearly ? interval : "month";
+  const prices = (PLAN_PRICES[currency] ?? PLAN_PRICES.usd)[shownInterval];
   const subscribed = ["starter", "pro"].includes(b.state) && !!b.subscription_status;
   const checkout = params?.get("checkout");
 
@@ -102,7 +116,7 @@ function BillingInner() {
               : b.state === "beta"
                 ? "A free beta seat. Everything is included and nothing expires."
                 : b.current_period_end
-                  ? `Renews on ${new Date(b.current_period_end).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}.`
+                  ? `${b.interval === "year" ? "Billed yearly, renews" : "Renews"} on ${new Date(b.current_period_end).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}.`
                   : null}
         </p>
         {b.max_active_jobs !== null ? (
@@ -127,6 +141,24 @@ function BillingInner() {
           Plans open soon. Until then everything stays free.
         </p>
       ) : b.state === "beta" ? null : (
+        <>
+        {yearly && !subscribed ? (
+          <div className="mt-6 inline-flex rounded-full border border-muted-200 bg-paper p-1 text-sm">
+            {(["month", "year"] as Interval[]).map((i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setInterval(i)}
+                className={
+                  "rounded-full px-4 py-1.5 " +
+                  (shownInterval === i ? "bg-ink text-paper" : "text-muted-600 hover:text-ink")
+                }
+              >
+                {i === "month" ? "Monthly" : "Yearly, two months free"}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           {PLANS.map((p) => {
             const current = subscribed && b.state === p.id;
@@ -141,7 +173,9 @@ function BillingInner() {
                 <p className="font-display text-lg font-semibold tracking-tight">{p.name}</p>
                 <p className="mt-1">
                   <span className="font-display text-3xl font-semibold">{prices[p.id]}</span>
-                  <span className="text-sm text-muted-600"> / month</span>
+                  <span className="text-sm text-muted-600">
+                    {shownInterval === "year" ? " / year" : " / month"}
+                  </span>
                 </p>
                 <ul className="mt-3 flex flex-col gap-1.5 text-sm text-muted-600">
                   {p.points.map((pt) => (
@@ -162,7 +196,7 @@ function BillingInner() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => go(p.id, () => startCheckout(p.id, currency))}
+                    onClick={() => go(p.id, () => startCheckout(p.id, currency, shownInterval))}
                     disabled={busy !== null}
                     className="btn-primary mt-4 text-sm disabled:opacity-60"
                   >
@@ -173,6 +207,47 @@ function BillingInner() {
             );
           })}
         </div>
+
+        <div className="mt-4 rounded-card border border-dashed border-muted-200 bg-paper p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-display text-lg font-semibold tracking-tight">Studio</p>
+            <span className="rounded-full bg-muted-100 px-2.5 py-0.5 text-xs font-medium text-muted-600">
+              Coming soon
+            </span>
+          </div>
+          <p className="mt-1">
+            <span className="font-display text-3xl font-semibold">{prices.studio}</span>
+            <span className="text-sm text-muted-600">
+              {shownInterval === "year" ? " / year" : " / month"}
+            </span>
+          </p>
+          <ul className="mt-3 flex flex-col gap-1.5 text-sm text-muted-600">
+            {STUDIO_POINTS.map((pt) => (
+              <li key={pt}>{pt}</li>
+            ))}
+          </ul>
+          {b.studio_waitlist ? (
+            <p className="mt-4 text-sm font-medium text-green-700">
+              You are on the list. We will email you when Studio opens.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                go("studio", async () => {
+                  await joinStudioWaitlist();
+                  setB({ ...b, studio_waitlist: true });
+                  setBusy(null);
+                })
+              }
+              disabled={busy !== null}
+              className="btn-secondary mt-4 text-sm disabled:opacity-60"
+            >
+              {busy === "studio" ? "Saving…" : "Tell me when Studio opens"}
+            </button>
+          )}
+        </div>
+        </>
       )}
 
       {error ? <p className="mt-4 text-sm text-red-600">{error}</p> : null}

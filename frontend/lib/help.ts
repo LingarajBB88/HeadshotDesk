@@ -207,11 +207,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     slug: "plans-and-billing",
     title: "Plans, the free month, and billing",
     category: "Getting started",
-    summary: "What the free month includes, what Starter and Pro add, and how to change or cancel.",
+    summary: "What the free month includes, what Starter, Pro and Studio add, monthly or yearly billing, and how to change or cancel.",
     intro: [
       "Every new account starts with a free month, no card needed. It is meant for running a real shoot from start to finish, so you can see the whole flow before paying.",
     ],
-    keywords: ["plan", "plans", "pricing", "price", "billing", "trial", "free month", "starter", "pro", "subscribe", "subscription", "cancel", "invoice", "card", "stripe", "upgrade"],
+    keywords: ["plan", "plans", "pricing", "price", "billing", "trial", "free month", "starter", "pro", "studio", "yearly", "annual", "waitlist", "subscribe", "subscription", "cancel", "invoice", "card", "stripe", "upgrade"],
     sections: [
       {
         id: "free-month",
@@ -224,13 +224,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         id: "plans",
-        heading: "Starter and Pro",
+        heading: "Starter, Pro and Studio",
         items: [
           { term: "Starter", def: "One active job at a time, with as many participants as the shoot needs. Archiving a finished job frees the slot for the next one." },
           { term: "Pro", def: "Unlimited jobs and participants." },
+          { term: "Studio", def: "Everything in Pro, plus emails sent from your own domain, white-label galleries, priority support and an onboarding call. Studio is not open yet; the Plan and billing page shows its price and lets you ask to be told when it is." },
         ],
         body: [
-          "Both include everything else: signup pages, time slots, the shoot queue, the watch folder, galleries, client branding, the client dashboard and delivery. Prices are on the Plan and billing page.",
+          "Starter and Pro include everything else: signup pages, time slots, the shoot queue, the watch folder, galleries, client branding, the client dashboard and delivery. Prices are on the Plan and billing page.",
+          "Both can be paid monthly or yearly. A year costs the same as ten months.",
         ],
       },
       {

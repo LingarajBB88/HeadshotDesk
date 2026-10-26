@@ -53,6 +53,8 @@ def billing_on(monkeypatch):
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_test_fake")
     monkeypatch.setattr(settings, "stripe_price_starter_usd", "price_starter_usd")
     monkeypatch.setattr(settings, "stripe_price_pro_usd", "price_pro_usd")
+    monkeypatch.setattr(settings, "stripe_price_starter_usd_year", "price_starter_usd_year")
+    monkeypatch.setattr(settings, "stripe_price_pro_usd_year", "price_pro_usd_year")
     monkeypatch.setattr(settings, "stripe_webhook_secret", "whsec_fake")
 
 
@@ -239,6 +241,49 @@ class TestStripe:
         r = client.post("/api/v1/billing/checkout", json={"plan": "pro", "currency": "eur"}, headers=_auth(tok))
         assert r.status_code == 422
 
+    def test_annual_checkout_uses_the_yearly_price(self, client: TestClient, billing_on, monkeypatch):
+        from app.services import billing_service
+
+        fake = FakeStripe()
+        monkeypatch.setattr(billing_service, "_stripe", lambda: fake)
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        status = client.get("/api/v1/billing", headers=_auth(tok)).json()
+        assert status["intervals"] == ["month", "year"]
+        r = client.post(
+            "/api/v1/billing/checkout",
+            json={"plan": "starter", "interval": "year"},
+            headers=_auth(tok),
+        )
+        assert r.status_code == 200, r.text
+        checkout = [kw for kind, kw in fake.calls if kind == "checkout"][0]
+        assert checkout["line_items"][0]["price"] == "price_starter_usd_year"
+        assert checkout["metadata"]["interval"] == "year"
+
+    def test_yearly_is_not_offered_without_a_price(self, client: TestClient, billing_on, monkeypatch):
+        monkeypatch.setattr(settings, "stripe_price_pro_usd_year", "")
+        monkeypatch.setattr(settings, "stripe_price_starter_usd_year", "")
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        assert client.get("/api/v1/billing", headers=_auth(tok)).json()["intervals"] == ["month"]
+        r = client.post("/api/v1/billing/checkout", json={"plan": "pro", "interval": "year"}, headers=_auth(tok))
+        assert r.status_code == 422
+
+    def test_studio_waitlist_is_remembered_once(self, client: TestClient, billing_on, db_session):
+        from app.models import Account
+
+        a = _signup(client)
+        tok = a["tokens"]["access_token"]
+        assert client.get("/api/v1/billing", headers=_auth(tok)).json()["studio_waitlist"] is False
+        assert client.post("/api/v1/billing/studio-waitlist", headers=_auth(tok)).status_code == 204
+        db_session.expire_all()
+        first = db_session.get(Account, a["account"]["id"]).studio_waitlist_at
+        assert first is not None
+        assert client.post("/api/v1/billing/studio-waitlist", headers=_auth(tok)).status_code == 204
+        db_session.expire_all()
+        assert db_session.get(Account, a["account"]["id"]).studio_waitlist_at == first
+        assert client.get("/api/v1/billing", headers=_auth(tok)).json()["studio_waitlist"] is True
+
     def test_subscription_events_set_and_clear_the_plan(self, client: TestClient, billing_on, db_session):
         from app.models import Account
         from app.services import billing_service
@@ -258,12 +303,14 @@ class TestStripe:
         db_session.expire_all()
         acct = db_session.get(Account, acct_id)
         assert acct.plan == "starter" and acct.billing_currency == "usd"
+        assert acct.billing_interval == "month"
         assert acct.current_period_end is not None
 
-        sub["items"]["data"][0]["price"]["id"] = "price_pro_usd"
+        sub["items"]["data"][0]["price"]["id"] = "price_pro_usd_year"
         billing_service.handle_event(db_session, {"type": "customer.subscription.updated", "data": {"object": sub}})
         db_session.expire_all()
-        assert db_session.get(Account, acct_id).plan == "pro"
+        acct = db_session.get(Account, acct_id)
+        assert acct.plan == "pro" and acct.billing_interval == "year"
 
         sub["status"] = "canceled"
         billing_service.handle_event(db_session, {"type": "customer.subscription.deleted", "data": {"object": sub}})

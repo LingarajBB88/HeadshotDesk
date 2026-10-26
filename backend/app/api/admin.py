@@ -34,7 +34,10 @@ TRIAL_DAYS = 31
 # Monthly list price per plan (D-023, USD). Used for the MRR headline; Stripe
 # remains the source of truth for what was actually charged. 'solo' and
 # 'studio' are the old D-007 names, priced as their nearest current plan.
-PLAN_PRICES = {"starter": 29, "solo": 29, "pro": 59, "studio": 59, "hibernate": 10}
+# Monthly list prices (D-023, locked 2026-10-25). 'solo' is the old ladder.
+PLAN_PRICES = {"starter": 25, "solo": 29, "pro": 59, "studio": 100, "hibernate": 10}
+# Annual prices are two months free; as MRR they count at ten twelfths.
+ANNUAL_MRR_FACTOR = 10 / 12
 
 
 def _utcnow() -> datetime:
@@ -76,6 +79,7 @@ class AdminAccountRow(BaseModel):
     name: str
     email: str | None
     plan: str
+    billing_interval: str | None = None
     status: str
     trial_days_left: int | None
     signed_up_at: datetime
@@ -194,6 +198,7 @@ def _account_rows(
                 name=a.name,
                 email=email,
                 plan=a.plan,
+                billing_interval=a.billing_interval,
                 status=status,
                 trial_days_left=days_left,
                 signed_up_at=a.created_at,
@@ -216,7 +221,13 @@ def overview(db: Session = Depends(get_db)) -> AdminOverview:
     by_status: dict[str, int] = {}
     for r in rows:
         by_status[r.status] = by_status.get(r.status, 0) + 1
-    mrr = sum(PLAN_PRICES.get(r.plan, 0) for r in rows)
+    mrr = round(
+        sum(
+            PLAN_PRICES.get(r.plan, 0)
+            * (ANNUAL_MRR_FACTOR if r.billing_interval == "year" else 1)
+            for r in rows
+        )
+    )
     return AdminOverview(
         accounts_total=len(rows),
         paying_customers=by_status.get("active", 0),

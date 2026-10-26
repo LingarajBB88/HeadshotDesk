@@ -136,15 +136,21 @@ The three original concept drafts (`logo-concept-a/b/c.svg`) remain in `docs/` f
 
 ## 2026-07-25 — Pricing, trial, and retouching strategy
 
-### D-023 — Free trial and billing model (locked 2026-07-25)
-**Decision:** Tiers at launch, USD only:
+### D-023 — Free trial and billing model (locked 2026-07-25, prices revised and frozen 2026-10-25)
+**Decision:** Tiers, USD only at launch. Prices are frozen until 20 paying customers; do not reopen before then.
 
-| Tier | Price / month | Included |
-|---|---|---|
-| Starter | $29 | 1 active job at a time. (Participant cap of 40 dropped 2026-10-25: one active job already defines the tier.) |
-| Pro | $59 | Unlimited jobs and participants |
-| Studio | Coming soon (v0.2) | Pro plus white-label, priority support, one-click job setup, Evoto integration polish. Details still open; earlier placeholder price $74. |
-| Hibernate | $10 | Read-only for paying customers going seasonal: galleries stay live, no new jobs. |
+| Tier | Monthly | Yearly (two months free) | Included |
+|---|---|---|---|
+| Starter | $25 | $250 | 1 active job at a time. (Participant cap of 40 dropped 2026-10-25 by Lingaraj: one active job already defines the tier.) |
+| Pro | $59 | $590 | Unlimited jobs and participants, and every workflow differentiator: client entity and dashboard, Evoto bridge, duplicate job, proofing flow, multi-photographer when shipped. |
+| Studio | $100 | $1,000 | Pro plus the identity and service layer: emails from the photographer's own domain (with the deliverability engineering on the branded-email card), white-label galleries (custom domain at v0.3), priority support same business day, one-time concierge onboarding call (extra setup calls $49), feature-request fast lane (flags and early access, never per-customer forks). Shown on the pricing page from day one as a priced waitlist; opens when the own-domain email ships. |
+| Hibernate | $10 | | Read-only for paying customers going seasonal: galleries stay live, no new jobs. |
+
+Founding offer, private and never on the website: beta partners get 50% off Pro for their first twelve months, offered personally in demos and outreach. Implemented as a Stripe promotion code, not in product code.
+
+Decided out: per-seat billing (shelved until there is demand), multi-photographer in Studio (it stays in Pro, where it wins the comparison), a $50 Pro price, any public founding banner, a perpetual monthly concierge call.
+
+Tier-split principle: workflow differentiators go to Pro; identity and service go to Studio.
 
 Free trial: one month, no card required. The principle is free to test the workflow, pay to deliver real work.
 - Free during the trial: creating jobs, adding participants (manual, CSV, public signup link), shoot mode, uploads, the watch folder, and the photographer previewing galleries.
@@ -153,11 +159,9 @@ Free trial: one month, no card required. The principle is free to test the workf
 
 Add-on revenue (F6 paid extras, v0.2): HeadshotDesk takes 0%; the photographer keeps everything. Revisit a small share once F6 has traction.
 
-Deferred: Studio launch details; an annual discount (17 to 20%) after the first 100 paying customers.
-
-**Why:** Starter undercuts every competitor and is a true entry price for solo and low-volume work. Pro anchors at parity with HeadshotTools' $59 flat rate and is the default choice. A premium tier before the v0.2 features exist would be empty. The trial lets a photographer run one real shoot end to end before paying, which is the activation moment.
+**Why:** Starter undercuts every competitor and is a true entry price for solo and low-volume work. Pro at $59 is parity with HeadshotTools' flat rate with more product behind it ("same price, twice the product"); a $50 price was a round-number preference that gave up ARPU and signalled less. Studio is priced from day one so the ladder is visible and demand is measurable before its features exist. Annual from day one because photographers budget by season. The trial lets a photographer run one real shoot end to end before paying, which is the activation moment.
 **Watch:** Starter's single active job is tight by design. After six months, if more than 30% of Starter cancellations cite it rather than upgrading, loosen it to 2 active jobs.
-**Implementation status (2026-10):** Stripe billing (HSD-21) not built yet. Trial-ending and trial-ended emails exist but are switched off (`trial_emails_enabled = False`) until billing ships, because their call to action had nowhere to go.
+**Implementation status (2026-10-26):** Built on branch `stripe-billing` (HSD-21): monthly and yearly Checkout, Customer Portal, webhook mirror, Studio waitlist button; paywalls stay off until Stripe keys are set. Trial-ending and trial-ended emails exist but stay off (`trial_emails_enabled = False`) until billing is live.
 
 ### D-024 — Retouching: integrate Evoto via hot folder, no native AI (Path B, supersedes D-004 and D-016)
 **Decision:** HeadshotDesk does not build or host AI retouching, background swap, or skin work. Photographers keep their own retouching tool (Evoto, Retouch4Me, Imagen, or by hand) and connect it through folders: HeadshotDesk exports picks to the tool's hot folder and picks finished files back up from its export folder.
@@ -178,6 +182,5 @@ Deferred: Studio launch details; an annual discount (17 to 20%) after the first 
 ---
 
 ## Decisions still pending (move to above when made)
-- Studio tier contents and price (placeholder $74, see D-023)
 - Whether to add a per-shoot "Day Pass" SKU at launch or wait for v2
 - Photographer beta tester recruitment plan

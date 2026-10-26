@@ -28,6 +28,11 @@ class Account(Base):
     current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # "usd" or "eur", fixed at first checkout.
     billing_currency: Mapped[str | None] = mapped_column(String, nullable=True)
+    # "month" or "year", mirrored from the subscription's price.
+    billing_interval: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Studio is sold as a priced waitlist until its features exist. When
+    # the photographer asked to be told, and nothing else.
+    studio_waitlist_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hibernate_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # This account's own share link: /r/{referral_code}. Every account gets

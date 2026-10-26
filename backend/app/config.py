@@ -104,6 +104,12 @@ class Settings(BaseSettings):
     stripe_price_pro_usd: str = Field(default="")
     stripe_price_starter_eur: str = Field(default="")
     stripe_price_pro_eur: str = Field(default="")
+    # Annual prices (two months free, D-023 revision 2026-10-25). Same
+    # rule: unset means the yearly option isn't shown for that currency.
+    stripe_price_starter_usd_year: str = Field(default="")
+    stripe_price_pro_usd_year: str = Field(default="")
+    stripe_price_starter_eur_year: str = Field(default="")
+    stripe_price_pro_eur_year: str = Field(default="")
     # Legacy names from the D-007 ladder; unused, kept so old env files load.
     stripe_price_solo: str = Field(default="")
     stripe_price_pro: str = Field(default="")

@@ -29,7 +29,10 @@ class BillingStatus(BaseModel):
     current_period_end: str | None
     currency: str | None
     currencies: list[str]
+    interval: str | None
+    intervals: list[str]
     has_customer: bool
+    studio_waitlist: bool
 
 
 @router.get("", response_model=BillingStatus)
@@ -38,6 +41,8 @@ def get_status(
     db: Session = Depends(get_db),
 ) -> BillingStatus:
     ent = billing_service.entitlement(account)
+    currencies = billing_service.offered_currencies()
+    currency = account.billing_currency or (currencies[0] if currencies else "usd")
     return BillingStatus(
         billing_enabled=settings.billing_enabled,
         plan=account.plan,
@@ -54,14 +59,18 @@ def get_status(
             account.current_period_end.isoformat() if account.current_period_end else None
         ),
         currency=account.billing_currency,
-        currencies=billing_service.offered_currencies(),
+        currencies=currencies,
+        interval=account.billing_interval,
+        intervals=billing_service.offered_intervals(currency),
         has_customer=bool(account.stripe_customer_id),
+        studio_waitlist=account.studio_waitlist_at is not None,
     )
 
 
 class CheckoutRequest(BaseModel):
     plan: Literal["starter", "pro"]
     currency: Literal["usd", "eur"] | None = None
+    interval: Literal["month", "year"] = "month"
 
 
 class RedirectOut(BaseModel):
@@ -76,9 +85,23 @@ def checkout(
     db: Session = Depends(get_db),
 ) -> RedirectOut:
     url = billing_service.create_checkout(
-        db, account=account, user=user, plan=payload.plan, currency=payload.currency
+        db,
+        account=account,
+        user=user,
+        plan=payload.plan,
+        currency=payload.currency,
+        interval=payload.interval,
     )
     return RedirectOut(url=url)
+
+
+@router.post("/studio-waitlist", status_code=204)
+def studio_waitlist(
+    account: Account = Depends(get_current_account),
+    db: Session = Depends(get_db),
+) -> None:
+    """Studio is a priced waitlist until its features exist (D-023)."""
+    billing_service.join_studio_waitlist(db, account)
 
 
 @router.post("/portal", response_model=RedirectOut)

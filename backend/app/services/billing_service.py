@@ -15,12 +15,21 @@ The rules, from D-023:
              workflow, pay to deliver real work").
   expired    trial over, nothing bought: read-only. Data kept, subscribe
              any time to unlock.
-  starter    everything, one active job at a time, unlimited participants.
-  pro        everything, unlimited. 'solo' and 'studio' (old ladder) count
-             as unlimited too, so no early account loses anything.
+  starter    $25. Everything, one active job at a time, unlimited
+             participants.
+  pro        $59. Everything, unlimited. 'solo' (old ladder) counts as
+             unlimited too, so no early account loses anything.
+  studio     $100. Pro plus the identity and service layer (own email
+             domain, white-label, priority support, concierge onboarding).
+             Sold as a priced waitlist until those exist; an account on
+             'studio' today is unlimited like Pro.
   beta       a free seat: unlimited, nothing expires.
   hibernate  read-only, galleries stay live (the plan itself is HSD-22).
   cancelled  read-only.
+
+Monthly or annual (two months free) for Starter and Pro. The private
+founding offer for beta partners is a Stripe promotion code, not code
+here: Checkout accepts promotion codes.
 
 None of the paywalls apply until billing is switched on
 (`settings.billing_enabled`). Locking people out before there is a way to
@@ -49,6 +58,7 @@ STARTER_ACTIVE_JOBS = 1
 STARTER_PARTICIPANTS: int | None = None
 
 PLANS_SOLD = ("starter", "pro")
+INTERVALS = ("month", "year")
 UNLIMITED_PAID = ("pro", "solo", "studio")
 # Stripe subscription statuses during which the customer keeps access.
 # past_due keeps access while Stripe retries the card; unpaid and
@@ -192,22 +202,35 @@ def _stripe():
     return stripe
 
 
-def price_id(plan: str, currency: str) -> str | None:
-    return getattr(settings, f"stripe_price_{plan}_{currency}", "") or None
+def price_id(plan: str, currency: str, interval: str = "month") -> str | None:
+    suffix = "" if interval == "month" else f"_{interval}"
+    return getattr(settings, f"stripe_price_{plan}_{currency}{suffix}", "") or None
 
 
-def plan_for_price(price: str | None) -> str | None:
+def plan_for_price(price: str | None) -> tuple[str, str] | None:
+    """(plan, interval) for a configured price ID, else None."""
     if not price:
         return None
     for plan in PLANS_SOLD:
         for currency in ("usd", "eur"):
-            if price_id(plan, currency) == price:
-                return plan
+            for interval in INTERVALS:
+                if price_id(plan, currency, interval) == price:
+                    return plan, interval
     return None
 
 
 def offered_currencies() -> list[str]:
     return [c for c in ("usd", "eur") if price_id("pro", c)]
+
+
+def offered_intervals(currency: str) -> list[str]:
+    return [i for i in INTERVALS if price_id("pro", currency, i)]
+
+
+def join_studio_waitlist(db: Session, account: Account) -> None:
+    if account.studio_waitlist_at is None:
+        account.studio_waitlist_at = _utcnow()
+        db.commit()
 
 
 def _require_billing() -> None:
@@ -232,17 +255,28 @@ def _ensure_customer(db: Session, account: Account, user: User) -> str:
 
 
 def create_checkout(
-    db: Session, *, account: Account, user: User, plan: str, currency: str | None = None
+    db: Session,
+    *,
+    account: Account,
+    user: User,
+    plan: str,
+    currency: str | None = None,
+    interval: str = "month",
 ) -> str:
     """Returns the Stripe Checkout URL for subscribing to `plan`."""
     _require_billing()
     if plan not in PLANS_SOLD:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown plan.")
+    if interval not in INTERVALS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown billing period.")
     # Once a customer has paid in one currency, Stripe keeps them there.
     currency = (account.billing_currency or currency or "usd").lower()
-    price = price_id(plan, currency)
+    price = price_id(plan, currency, interval)
     if not price:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "That plan isn't offered in this currency.")
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "That plan isn't offered in this currency and billing period.",
+        )
     if account.stripe_subscription_id and account.subscription_status in _LIVE_STATUSES:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -260,7 +294,7 @@ def create_checkout(
         billing_address_collection="required",
         tax_id_collection={"enabled": True},
         subscription_data={"metadata": {"account_id": account.id}},
-        metadata={"account_id": account.id, "plan": plan},
+        metadata={"account_id": account.id, "plan": plan, "interval": interval},
     )
     return session["url"]
 
@@ -298,7 +332,8 @@ def apply_subscription(db: Session, sub: dict) -> Account | None:
         return None
     items = (sub.get("items") or {}).get("data") or []
     price = items[0]["price"] if items else {}
-    plan = plan_for_price(price.get("id"))
+    matched = plan_for_price(price.get("id"))
+    plan, interval = matched if matched else (None, None)
     status_ = sub.get("status")
     account.stripe_subscription_id = sub.get("id")
     account.subscription_status = status_
@@ -306,6 +341,8 @@ def apply_subscription(db: Session, sub: dict) -> Account | None:
         account.stripe_customer_id = sub["customer"]
     if price.get("currency"):
         account.billing_currency = price["currency"]
+    if interval:
+        account.billing_interval = interval
     period_end = sub.get("current_period_end") or (items[0].get("current_period_end") if items else None)
     account.current_period_end = (
         datetime.fromtimestamp(period_end, tz=timezone.utc) if period_end else None
