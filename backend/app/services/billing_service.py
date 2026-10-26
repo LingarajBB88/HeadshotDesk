@@ -283,19 +283,29 @@ def create_checkout(
             "You already have a subscription. Change plan from Manage billing.",
         )
     customer = _ensure_customer(db, account, user)
-    session = _stripe().checkout.Session.create(
-        mode="subscription",
-        customer=customer,
-        client_reference_id=account.id,
-        line_items=[{"price": price, "quantity": 1}],
-        success_url=f"{settings.frontend_url}/settings/billing?checkout=success",
-        cancel_url=f"{settings.frontend_url}/settings/billing?checkout=cancelled",
-        allow_promotion_codes=True,
-        billing_address_collection="required",
-        tax_id_collection={"enabled": True},
-        subscription_data={"metadata": {"account_id": account.id}},
-        metadata={"account_id": account.id, "plan": plan, "interval": interval},
-    )
+    try:
+        session = _stripe().checkout.Session.create(
+            mode="subscription",
+            customer=customer,
+            client_reference_id=account.id,
+            line_items=[{"price": price, "quantity": 1}],
+            success_url=f"{settings.frontend_url}/settings/billing?checkout=success",
+            cancel_url=f"{settings.frontend_url}/settings/billing?checkout=cancelled",
+            allow_promotion_codes=True,
+            billing_address_collection="required",
+            tax_id_collection={"enabled": True},
+            # Collecting a tax ID on an existing customer means Checkout
+            # may write the business name and address back to them.
+            customer_update={"name": "auto", "address": "auto"},
+            subscription_data={"metadata": {"account_id": account.id}},
+            metadata={"account_id": account.id, "plan": plan, "interval": interval},
+        )
+    except Exception as exc:  # noqa: BLE001 — any Stripe error
+        logger.exception("Stripe Checkout failed for account %s", account.id)
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Stripe couldn't open the checkout. Please try again in a moment.",
+        ) from exc
     return session["url"]
 
 
@@ -303,10 +313,17 @@ def create_portal(db: Session, *, account: Account) -> str:
     _require_billing()
     if not account.stripe_customer_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "There's no subscription to manage yet.")
-    portal = _stripe().billing_portal.Session.create(
-        customer=account.stripe_customer_id,
-        return_url=f"{settings.frontend_url}/settings/billing",
-    )
+    try:
+        portal = _stripe().billing_portal.Session.create(
+            customer=account.stripe_customer_id,
+            return_url=f"{settings.frontend_url}/settings/billing",
+        )
+    except Exception as exc:  # noqa: BLE001 — any Stripe error
+        logger.exception("Stripe portal failed for account %s", account.id)
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Stripe couldn't open the billing page. Please try again in a moment.",
+        ) from exc
     return portal["url"]
 
 
