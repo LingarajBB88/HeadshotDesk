@@ -891,7 +891,49 @@ export const HELP_ARTICLES: HelpArticle[] = [
         ],
       },
     ],
-    related: ["create-a-job", "galleries", "deliver-emails"],
+    related: ["create-a-job", "galleries", "deliver-emails", "sample-experience-on-your-website"],
+  },
+  {
+    slug: "sample-experience-on-your-website",
+    title: "Show the sample experience on your own website",
+    category: "Getting started",
+    summary: "A block of HTML that lets visitors to your site click through what a headshot day with you is like.",
+    intro: [
+      "A company deciding whether to book you wants to know what their colleagues will have to do. The sample experience lets them try it: sign up, pick a time, open a gallery. You can link to it, or place it directly on your own headshots page.",
+    ],
+    keywords: ["embed", "website", "html", "iframe", "sample", "demo", "squarespace", "wix", "wordpress", "showit", "pitch", "widget"],
+    sections: [
+      {
+        id: "get-the-code",
+        heading: "Getting the code",
+        body: [
+          "Open Clients in the main menu. Under the pitch link there is a card called Show the experience on your own website. Copy HTML puts the block on your clipboard, Preview opens it on its own, and Show code lets you read it first.",
+          "The block carries your studio name, so the sample is introduced as a headshot day with you.",
+        ],
+      },
+      {
+        id: "paste-it",
+        heading: "Pasting it into your site",
+        items: [
+          { term: "Squarespace", def: "Add a Code block and paste." },
+          { term: "Wix", def: "Add an Embed HTML element and paste." },
+          { term: "WordPress", def: "Add a Custom HTML block and paste." },
+          { term: "Showit", def: "Add an Embed code box and paste." },
+        ],
+        body: [
+          "The block takes the full width of the column you put it in and adjusts its height to the step being shown. If your site builder removes scripts, it still works at a fixed height.",
+        ],
+      },
+      {
+        id: "what-visitors-see",
+        heading: "What visitors see",
+        body: [
+          "Three steps they can click through in any order: the signup form, the confirmation with their time slot, and a gallery where they can star a favourite. A banner says it is a sample.",
+          "Nothing they type is saved or sent, nobody is emailed, and the photos are drawn placeholders, never pictures of real people. Visits to the block are not tracked.",
+        ],
+      },
+    ],
+    related: ["clients-and-branding", "signup-link", "galleries"],
   },
 
   // ------------------------------------------------------------------

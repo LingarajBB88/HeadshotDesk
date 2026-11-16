@@ -31,6 +31,9 @@ import Script from "next/script";
  * token travelling onward in a Referer header from a gallery.
  */
 const TOKEN_ROUTES = ["/g/", "/q/", "/c/", "/r/"];
+// Embedded pages run inside a photographer's own website. Their visitors
+// are the photographer's, not ours, so nothing is measured there either.
+const EMBED_ROUTES = ["/embed/"];
 
 declare global {
   interface Window {
@@ -47,7 +50,7 @@ export function Analytics() {
   const src = process.env.NEXT_PUBLIC_PLAUSIBLE_SRC;
 
   if (!src) return null;
-  if (TOKEN_ROUTES.some((prefix) => pathname?.startsWith(prefix))) return null;
+  if ([...TOKEN_ROUTES, ...EMBED_ROUTES].some((prefix) => pathname?.startsWith(prefix))) return null;
 
   return (
     <Script

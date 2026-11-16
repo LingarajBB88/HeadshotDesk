@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { EmbedSnippetCard } from "@/components/EmbedSnippetCard";
 import { PitchLinkCard } from "@/components/PitchLinkCard";
 import {
   createClient,
@@ -187,6 +188,9 @@ export default function ClientsPage() {
           one screen that's about clients rather than a shoot in progress. */}
       <div className="mt-6">
         <PitchLinkCard />
+      </div>
+      <div className="mt-4">
+        <EmbedSnippetCard />
       </div>
 
       <form onSubmit={handleCreate} className="mt-6 flex items-center gap-2">

@@ -11,6 +11,8 @@ import { captureAttribution } from "@/lib/attribution";
 
 export function AttributionCapture() {
   useEffect(() => {
+    // Not inside an embed: that visitor is on a photographer's website.
+    if (window.location.pathname.startsWith("/embed/")) return;
     captureAttribution();
   }, []);
   return null;
